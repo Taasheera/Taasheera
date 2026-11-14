@@ -114,6 +114,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
   (no passport or answer values); application deletion and account erasure delete them. Email copies wait on CMPS271-233.
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
+- A new table that refers to a traveler, application or session goes in `PERSONAL_DATA` (`backend/app/personal_data.py`)
+  and in account erasure: the data download (US 87, `GET /auth/account/export`) reads that list, and
+  `tests/test_data_export.py` fails until both include it. Secrets are listed in `omit`; left-out tables give a reason.
 - Feature changes include meaningful tests; lint, tests and build pass before a PR merges.
 - Every merge to `main` goes live, so unfinished work merges behind a feature flag (`backend/app/features.py`):
   add the name to `FLAGS` and to `FeatureName` in `frontend/src/features.ts`, guard its router with
