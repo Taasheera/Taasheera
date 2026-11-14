@@ -12,7 +12,7 @@ request_log = logging.getLogger("taasheera.requests")
 
 
 def install_private_no_store(app: FastAPI) -> None:
-    private_prefixes = ("/auth", "/passports", "/profile", "/sessions", "/activity", "/applications", "/assistant")
+    private_prefixes = ("/auth", "/passports", "/profile", "/sessions", "/activity", "/applications", "/assistant", "/notifications")
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):
