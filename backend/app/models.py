@@ -277,6 +277,22 @@ class AssistantMessage(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class Notification(SQLModel, table=True):
+    """An in-app message for one traveler (US 28), listed in the notification centre (US 107).
+
+    Plain sentences about their own applications: never passport fields or answer values.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str | None = Field(default=None, foreign_key="application.id", max_length=32, index=True)
+    kind: str = Field(max_length=30)  # "status_changed", "agent_finished" or "agent_stopped"
+    message: str = Field(max_length=300)
+    link: str | None = Field(default=None, max_length=200)  # A page on this site, such as /dashboard/<id>
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    read_at: datetime | None = None
+
+
 APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
 
 

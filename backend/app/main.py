@@ -37,6 +37,7 @@ from .profile import create_profile_router
 from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
+from .notifications import create_notifications_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
@@ -109,6 +110,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))
     app.include_router(create_profile_router(get_session, current_traveler))
+    app.include_router(create_notifications_router(get_session, current_traveler))
 
     def current_traveler_id(traveler: Annotated[Traveler, Depends(current_traveler)]) -> int:
         return traveler.id

@@ -108,6 +108,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 
 - Match surrounding code; new backend features use router factories.
 - Validate request bodies with Pydantic `extra="forbid"`; validate configuration at startup.
+- Report application events through `backend/app/notifications.py` (US 28), in the same session as the change
+  and before its commit: `notify_status_change(session, application, previous)` after setting a status, and
+  `notify_agent_run(session, application, stopped_reason=None)` for the agent. Messages are fixed sentences
+  (no passport or answer values); application deletion and account erasure delete them. Email copies wait on CMPS271-233.
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
 - Feature changes include meaningful tests; lint, tests and build pass before a PR merges.
