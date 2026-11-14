@@ -72,6 +72,9 @@ handed over/verified separately from the existing AWS account and GitHub reposit
 Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires),
 `backend/alembic/`, `backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`,
 `backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
+Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
+(notifications join with CMPS271-100), and its Assistant button calls `openAssistant()`, which every
+`AssistantPanel` listens for. It makes the sticky header about 60px taller; `sectionNav.css` adjusts offsets below it.
 
 ## Local commands and routing
 
