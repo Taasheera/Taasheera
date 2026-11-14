@@ -96,8 +96,8 @@ this does not load `.env.local`, sends no mail/Gemini calls, and keeps separate 
 processes on those ports is intended.
 Full Sprint 3 delivery and isolated manual tests with Gemini: `docs/SPRINT3_MANUAL_TESTING.md`.
 
-API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`
-and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
+`/features` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
 `/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
@@ -115,6 +115,11 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
 - Feature changes include meaningful tests; lint, tests and build pass before a PR merges.
+- Every merge to `main` goes live, so unfinished work merges behind a feature flag (`backend/app/features.py`):
+  add the name to `FLAGS` and to `FeatureName` in `frontend/src/features.ts`, guard its router with
+  `dependencies=[Depends(require_feature("name"))]` (404 while off) and its UI with `<Feature name="name">`
+  (pass `fallback={<NotFound />}` on a page route). Flags are on in development and off in production
+  unless `FEATURE_<NAME>=true|false` is set; delete the flag once the feature is released.
 
 ## Decisions log
 
@@ -186,3 +191,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     manual runs. Actions publishes immutable SHA-tagged API/web images to private EC2-specific ECR repos;
     the host pulls digests, verifies revision labels, preserves secrets, backs up SQLite and migrates. Old
     manual dev/bootstrap still builds locally. Owner setup: `deploy/aws/README.md`; no stored AWS keys.
+40. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
+    off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
+    `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
+    nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
+    *Rejected: a flag service or database table (flags change only with a deploy), build-time frontend
+    variables (the same web image serves every environment).*
