@@ -1,6 +1,6 @@
 // The traveler's sections in the navigation panel (US 15), in order. A section is current when the
 // page's path is one of its prefixes or below one, so /apply/<id> is inside Applications.
-// Notifications join this panel with the bell (CMPS271-100).
+// The notification bell (CMPS271-100) sits after these sections, outside the list.
 export type Section = {
   id: 'applications' | 'documents' | 'account'
   label: string

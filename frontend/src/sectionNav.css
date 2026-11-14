@@ -2,6 +2,9 @@
    the Assistant button sits at the far end. */
 
 .section-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   max-width: 1200px;
   margin: 8px auto 0;
   padding: 6px;
@@ -19,6 +22,7 @@
 
 .section-nav-list {
   display: flex;
+  flex: 1;
   flex-wrap: wrap;
   gap: 4px;
   margin: 0;
@@ -68,11 +72,15 @@
 }
 
 @media (max-width: 700px) {
+  .section-nav {
+    flex-wrap: wrap;
+  }
+
   .section-nav-toggle {
     display: flex;
+    flex: 1;
     align-items: center;
     gap: 10px;
-    width: 100%;
     min-height: 44px;
     padding: 8px 12px;
     border: 0;
@@ -87,6 +95,8 @@
   .section-nav-list {
     display: none;
     flex-direction: column;
+    order: 3;
+    width: 100%;
     padding-top: 4px;
   }
 

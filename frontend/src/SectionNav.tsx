@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router'
 import { openAssistant } from './assistant/openAssistant'
 import { MenuIcon } from './icons'
+import NotificationBell from './notifications/NotificationBell'
 import { currentSection, sections } from './sections'
 import './sectionNav.css'
 
@@ -48,6 +49,8 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
             onClick={() => { close(); openAssistant() }}>Assistant</button>
         </li>
       </ul>
+      {/* Outside the list, so the bell and its count stay visible when the list folds away on a phone. */}
+      <NotificationBell pathname={pathname} routed={routed} />
     </nav>
   )
 }
