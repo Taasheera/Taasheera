@@ -75,11 +75,15 @@ class Application(SQLModel, table=True):
     # each application is for one person until group applications (US 81).
     group_size: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
     # DRAFT while answering, INELIGIBLE when an answer stops the flow, ANSWERS_COMPLETE when nothing is left.
+    # Then what the traveler records themself (US 55): SUBMITTED, and APPROVED or REFUSED. The agent never submits.
     status: str = Field(default="DRAFT", max_length=20)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Set when the traveler archives it (US 79): hidden from the dashboard, kept until they delete it.
     archived_at: datetime | None = None
+    # When the traveler recorded handing it to the embassy, and the embassy's decision (US 55).
+    submitted_at: datetime | None = None
+    decided_at: datetime | None = None
 
 
 class ApplicationAnswer(SQLModel, table=True):
@@ -293,7 +297,9 @@ class Notification(SQLModel, table=True):
     read_at: datetime | None = None
 
 
-APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
+# Recorded by the traveler (US 55). Answers are frozen from then on: they are what the embassy received.
+RECORDED_STATUSES = ("SUBMITTED", "APPROVED", "REFUSED")
+APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE", *RECORDED_STATUSES)
 
 
 class DocumentAccess(SQLModel, table=True):

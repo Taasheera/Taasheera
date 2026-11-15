@@ -16,12 +16,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlmodel import Session, select
 
-from ..models import Application, ApplicationAnswer, Traveler, TravelerProfile
+from ..models import RECORDED_STATUSES, Application, ApplicationAnswer, Traveler, TravelerProfile
 from ..notifications import notify_status_change
 from ..profile import ProfileFields
 from . import actions, completeness, flow
 
-Status = Literal["DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE"]
+# The last three are recorded by the traveler (US 55); the first three follow from the answers.
+Status = Literal["DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE", "SUBMITTED", "APPROVED", "REFUSED"]
 
 
 class VisaOption(BaseModel):
@@ -112,6 +113,9 @@ class ApplicationSummary(BaseModel):
     updated_at: datetime
     # Set while archived (US 79): hidden from the dashboard and sidebar until restored.
     archived_at: datetime | None
+    # When the traveler recorded submitting it, and the embassy's decision (US 55).
+    submitted_at: datetime | None
+    decided_at: datetime | None
 
 
 class ApplicationState(ApplicationSummary):
@@ -132,6 +136,27 @@ def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
+def _optional_utc(value: datetime | None) -> datetime | None:
+    return _utc(value) if value else None
+
+
+def is_recorded(application: Application) -> bool:
+    """Submitted, approved or refused (US 55): the answers are what the embassy received, so they stay as they are."""
+    return application.status in RECORDED_STATUSES
+
+
+def current_answers(questionnaire: flow.Questionnaire, application: Application, stored: flow.Answers,
+                    today: date) -> tuple[flow.Answers, list[str]]:
+    """The answers to show and act on, and the ids no longer valid.
+
+    Re-checked against today while the traveler is still answering. Once recorded as
+    submitted they are frozen: a trip date that has since passed is history, not a mistake.
+    """
+    if is_recorded(application):
+        return dict(stored), []
+    return flow.reconcile(questionnaire, stored, today)
+
+
 def _summary(application: Application, questionnaire: flow.Questionnaire,
              answers: flow.Answers) -> dict[str, Any]:
     progress = flow.progress(questionnaire, answers)
@@ -143,7 +168,8 @@ def _summary(application: Application, questionnaire: flow.Questionnaire,
         place=flow.summary_place(questionnaire, answers), trip_date=trip_date,
         answered=progress.answered, total=progress.total,
         created_at=_utc(application.created_at), updated_at=_utc(application.updated_at),
-        archived_at=_utc(application.archived_at) if application.archived_at else None,
+        archived_at=_optional_utc(application.archived_at),
+        submitted_at=_optional_utc(application.submitted_at), decided_at=_optional_utc(application.decided_at),
     )
 
 
@@ -166,6 +192,22 @@ def _owned_answers(session: Session, traveler_id: int, application_id: str):
     return application, flow.load_questionnaire(application.questionnaire_id), {row.question_id: row.value for row in rows}
 
 
+RECORDED_READ_ONLY = ("This application is recorded as submitted to the embassy, so its answers can't change. "
+                      "Undo the submission on the dashboard if it was recorded by mistake.")
+
+
+def _state_line(application: Application) -> str:
+    if application.archived_at:
+        return "This application is archived and read-only. Restore it from the dashboard before changing answers."
+    recorded = {
+        "SUBMITTED": "The traveler recorded submitting this application to the embassy; the decision is pending. "
+                     "Its answers are read-only.",
+        "APPROVED": "The traveler recorded that the embassy approved this application. Its answers are read-only.",
+        "REFUSED": "The traveler recorded that the embassy refused this application. Its answers are read-only.",
+    }
+    return recorded.get(application.status, "This application is active.")
+
+
 def application_context(session: Session, traveler_id: int, application_id: str, *,
                         latest_passport: dict | None = None, today: date | None = None) -> str | None:
     """The assistant's view of one application (US 47), or None if it isn't this traveler's.
@@ -178,14 +220,13 @@ def application_context(session: Session, traveler_id: int, application_id: str,
         return None
     application, questionnaire, answers = found
     today = today or date.today()
-    answers, _ = flow.reconcile(questionnaire, answers, today)
+    answers, _ = current_answers(questionnaire, application, answers, today)
     progress = flow.progress(questionnaire, answers)
     report = completeness.check(questionnaire, answers, today, latest_passport=latest_passport,
                                 profile=saved_profile(session, traveler_id))
     return "\n\n".join([
         flow.describe(questionnaire, answers, application.group_size),
-        ("This application is archived and read-only. Restore it from the dashboard before changing answers."
-         if application.archived_at else "This application is active."),
+        _state_line(application),
         f"Current step: {progress.step_title} (step {progress.step_number} of {progress.step_count})",
         actions.catalog(questionnaire, answers),
         completeness.describe(report),
@@ -202,8 +243,11 @@ def application_proposal(session: Session, traveler_id: int, application_id: str
     if found is None:
         return None
     application, questionnaire, answers = found
-    if application.archived_at and name != "run_completeness_check":
-        raise flow.InvalidAnswer("This application is archived. Restore it from your dashboard before changing it.")
+    if name != "run_completeness_check":
+        if application.archived_at:
+            raise flow.InvalidAnswer("This application is archived. Restore it from your dashboard before changing it.")
+        if is_recorded(application):
+            raise flow.InvalidAnswer(RECORDED_READ_ONLY)
     return actions.propose(questionnaire, answers, name, args, today or date.today(),
                            latest_passport=latest_passport, profile=saved_profile(session, traveler_id))
 
@@ -241,9 +285,11 @@ def create_applications_router(
         Runs on every read too, so an answer that was valid when given but isn't
         any more (a trip date now in the past) is asked again instead of trusted.
         """
-        answers, cleared = flow.reconcile(questionnaire, {key: row.value for key, row in rows.items()}, today())
-        if application.archived_at is not None:
+        answers, cleared = current_answers(questionnaire, application,
+                                           {key: row.value for key, row in rows.items()}, today())
+        if application.archived_at is not None or is_recorded(application):
             # Archived applications are read-only (US 79): shown re-checked, but nothing is stored.
+            # Recorded ones (US 55) are frozen as submitted, so their status is the traveler's to change.
             return answers, cleared
         for question_id in cleared:
             session.delete(rows.pop(question_id))
@@ -369,6 +415,8 @@ def create_applications_router(
         application = owned(session, traveler, application_id)
         if application.archived_at is not None:
             raise HTTPException(status_code=409, detail="This application is archived. Restore it from your dashboard to carry on.")
+        if is_recorded(application):
+            raise HTTPException(status_code=409, detail=RECORDED_READ_ONLY)
         questionnaire = flow.load_questionnaire(application.questionnaire_id)
         question = questionnaire.question(question_id)
         if question is None:

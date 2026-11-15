@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { listApplications, type ApplicationSummary } from '../application/api'
+import { isRecorded, listApplications, type ApplicationSummary } from '../application/api'
 import ApplicationActions from './ApplicationActions'
 import { applicationLabel, applicationName, DISCLAIMER, formatDateTime, tripWhen, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
@@ -98,7 +98,10 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="dash-card-side">
-          {view === 'active' && <Link to={`/apply/${application.id}`} className="button button-primary dash-small"
+          {view === 'active' && isRecorded(application.status) && <Link to={`/dashboard/${application.id}`}
+            className="button button-primary dash-small" data-activity-id="application-details"
+            aria-label={`View ${applicationLabel(application)}`}>View</Link>}
+          {view === 'active' && !isRecorded(application.status) && <Link to={`/apply/${application.id}`} className="button button-primary dash-small"
             data-activity-id="application-resume" aria-label={`${application.status === 'ANSWERS_COMPLETE' ? 'Review answers for' : 'Resume'} ${applicationLabel(application)}`}>
             {application.status === 'ANSWERS_COMPLETE' ? 'Review answers' : 'Resume'}
           </Link>}

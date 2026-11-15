@@ -1,12 +1,16 @@
-"""Archive, delete and the timeline of one application (US 79, US 20).
+"""Archive, delete, the embassy decision and the timeline of one application (US 79, US 55, US 20).
 
 Added to the applications router, so every path here sits under
 /applications (and logs with that full route template) and has its owner check: another traveler's id is a 404,
 the same as an id that doesn't exist.
 
 The timeline is worked out from what is already stored (when the application
-was started, when each answer was last saved, when it was archived) instead of
-a separate event table, so deleting an application leaves nothing behind.
+was started, when each answer was last saved, when it was archived, submitted
+and decided) instead of a separate event table, so deleting an application
+leaves nothing behind.
+
+Submitting and the embassy's decision are recorded by the traveler (US 55): the
+agent never submits anything. A recorded application's answers are frozen.
 """
 
 from collections.abc import Callable
@@ -14,16 +18,17 @@ from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, delete, select
 
 from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, Traveler
+from ..notifications import notify_status_change
 from . import flow
-from .router import ApplicationSummary, _status, _summary, _utc
+from .router import ApplicationSummary, _status, _summary, _utc, current_answers, is_recorded
 
 
 class TimelineEvent(BaseModel):
-    kind: Literal["started", "answered", "stopped", "complete", "archived"]
+    kind: Literal["started", "answered", "stopped", "complete", "submitted", "approved", "refused", "archived"]
     at: datetime
     text: str
     # For answers: which question, and the step it belongs to, so the page can group them.
@@ -32,8 +37,31 @@ class TimelineEvent(BaseModel):
 
 
 class NextStep(BaseModel):
-    kind: Literal["answer", "change", "complete", "archived"]
+    kind: Literal["answer", "change", "complete", "submitted", "approved", "refused", "archived"]
     text: str
+
+
+class DecisionRequest(BaseModel):
+    """What the traveler records (US 55). ANSWERS_COMPLETE takes back a submission recorded by mistake."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["SUBMITTED", "APPROVED", "REFUSED", "ANSWERS_COMPLETE"]
+
+
+# Where each status can go next. Submitting needs every question answered; a decision needs a
+# submission first; a wrong click on either can be taken back one step.
+DECISION_STEPS = {
+    "ANSWERS_COMPLETE": {"SUBMITTED"},
+    "SUBMITTED": {"APPROVED", "REFUSED", "ANSWERS_COMPLETE"},
+    "APPROVED": {"REFUSED", "SUBMITTED"},
+    "REFUSED": {"APPROVED", "SUBMITTED"},
+}
+DECISION_REFUSED = {
+    "SUBMITTED": "Answer every question before recording that you submitted this application.",
+    "APPROVED": "Record that you submitted this application before recording the embassy's decision.",
+    "REFUSED": "Record that you submitted this application before recording the embassy's decision.",
+    "ANSWERS_COMPLETE": "This application isn't recorded as submitted.",
+}
 
 
 class Timeline(BaseModel):
@@ -100,6 +128,47 @@ def add_lifecycle_routes(
     def unarchive(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
         return set_archived(application_id, traveler, session, response, False)
 
+    def status_today(session: Session, application: Application) -> str:
+        """The status the answers give today: a trip date that has passed since the last visit can undo "complete"."""
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        stored = {key: row.value for key, row in stored_rows(session, application).items()}
+        return _status(questionnaire, flow.reconcile(questionnaire, stored, today())[0])
+
+    @router.post("/{application_id}/decision", response_model=ApplicationSummary,
+                 dependencies=[Depends(check_origin)])
+    def record_decision(application_id: str, data: DecisionRequest, traveler: TravelerDep, session: SessionDep,
+                        response: Response):
+        """The traveler records submitting the application, then the embassy's decision (US 55)."""
+        application = owned(session, traveler, application_id)
+        if application.archived_at is not None:
+            raise HTTPException(status_code=409, detail="This application is archived. Restore it from your dashboard first.")
+        previous = application.status
+        current = previous if is_recorded(application) else status_today(session, application)
+        response.headers["Cache-Control"] = "private, no-store"
+        if data.status == previous and is_recorded(application):
+            # Recording the same thing twice (a double click) changes nothing.
+            return summary(session, application)
+        if data.status not in DECISION_STEPS.get(current, set()):
+            raise HTTPException(status_code=409, detail=DECISION_REFUSED[data.status])
+
+        now = datetime.now(timezone.utc)
+        if data.status == "ANSWERS_COMPLETE":
+            # Taken back: answering resumes, re-checked against today like any other read.
+            application.status = status_today(session, application)
+            application.submitted_at = application.decided_at = None
+        elif data.status == "SUBMITTED":
+            # From a decision this clears only the decision: the submission date stays.
+            if previous not in ("APPROVED", "REFUSED"):
+                application.submitted_at = now
+            application.status, application.decided_at = "SUBMITTED", None
+        else:
+            application.status, application.decided_at = data.status, now
+        # `updated_at` stays as it is: it means the last change to the answers, as for archiving.
+        notify_status_change(session, application, previous)
+        session.add(application)
+        session.commit()
+        return summary(session, application)
+
     @router.delete("/{application_id}", status_code=204, dependencies=[Depends(check_origin)])
     def remove(application_id: str, traveler: TravelerDep, session: SessionDep):
         # Passport uploads stay: they belong to the passport page, and answers hold their own copy.
@@ -113,8 +182,10 @@ def add_lifecycle_routes(
         questionnaire = flow.load_questionnaire(application.questionnaire_id)
         rows = stored_rows(session, application)
         # Checked like the chat does, but only read: answers that no longer apply are left out, not deleted.
-        answers, _ = flow.reconcile(questionnaire, {key: row.value for key, row in rows.items()}, today())
-        status = _status(questionnaire, answers)
+        # Recorded ones are shown frozen, as they were submitted.
+        answers, _ = current_answers(questionnaire, application, {key: row.value for key, row in rows.items()}, today())
+        recorded = is_recorded(application)
+        status = "ANSWERS_COMPLETE" if recorded else _status(questionnaire, answers)
 
         events = [TimelineEvent(kind="started", at=_utc(application.created_at),
                                 text=f"Started the {questionnaire.title} application")]
@@ -128,6 +199,13 @@ def add_lifecycle_routes(
             events.append(TimelineEvent(kind="stopped", at=last_answer, text=stopped or "An answer stopped the application."))
         elif status == "ANSWERS_COMPLETE" and last_answer:
             events.append(TimelineEvent(kind="complete", at=last_answer, text="Every question answered"))
+        if recorded and application.submitted_at:
+            events.append(TimelineEvent(kind="submitted", at=_utc(application.submitted_at),
+                                        text="You recorded submitting it to the embassy"))
+        if application.status in ("APPROVED", "REFUSED") and application.decided_at:
+            decision = application.status.lower()
+            events.append(TimelineEvent(kind=decision, at=_utc(application.decided_at),
+                                        text=f"You recorded that the embassy {decision} it"))
         if application.archived_at:
             events.append(TimelineEvent(kind="archived", at=_utc(application.archived_at), text="Archived"))
         # Stable sort: answers saved in the same instant keep the questionnaire's order.
@@ -136,6 +214,15 @@ def add_lifecycle_routes(
         current = flow.next_question(questionnaire, answers)
         if application.archived_at:
             next_step = NextStep(kind="archived", text="This application is archived. Restore it to pick up where you left off.")
+        elif application.status == "SUBMITTED":
+            next_step = NextStep(kind="submitted", text="Waiting for the embassy's decision. When you hear back, record "
+                                                        "whether the visa was approved or refused.")
+        elif application.status == "APPROVED":
+            next_step = NextStep(kind="approved", text="The embassy approved this application. Keep this record with "
+                                                       "your travel documents.")
+        elif application.status == "REFUSED":
+            next_step = NextStep(kind="refused", text="The embassy refused this application. Its letter gives the "
+                                                      "reasons; you can start a new application whenever you're ready.")
         elif status == "INELIGIBLE":
             # The reason itself is the timeline's last entry; this says what to do about it.
             next_step = NextStep(kind="change", text="An answer stopped this application. Change that answer, or "
@@ -147,7 +234,8 @@ def add_lifecycle_routes(
                                                      f"{step.title}): {current.prompt}")
         else:
             next_step = NextStep(kind="complete", text="Your answers are complete. Supporting documents and a final "
-                                                       "review come next; nothing is submitted without your confirmation.")
+                                                       "review come next; nothing is submitted without your confirmation. "
+                                                       "Once you hand it to the embassy yourself, record it here.")
         response.headers["Cache-Control"] = "private, no-store"
         return Timeline(id=application.id, archived_at=_utc(application.archived_at) if application.archived_at else None,
                         events=events, next=next_step)

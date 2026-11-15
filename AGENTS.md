@@ -183,3 +183,5 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     manual runs. Actions publishes immutable SHA-tagged API/web images to private EC2-specific ECR repos;
     the host pulls digests, verifies revision labels, preserves secrets, backs up SQLite and migrates. Old
     manual dev/bootstrap still builds locally. Owner setup: `deploy/aws/README.md`; no stored AWS keys.
+40. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
+    agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.

@@ -26,7 +26,11 @@ export type Question = {
 export type Suggestion = { value: AnswerValue; source: 'passport' | 'profile' }
 export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile'
 export type Answer = { question: Question; value: AnswerValue; source: AnswerSource }
-export type Status = 'DRAFT' | 'INELIGIBLE' | 'ANSWERS_COMPLETE'
+// The last three are recorded by the traveler (US 55); the first three follow from the answers.
+export type Status = 'DRAFT' | 'INELIGIBLE' | 'ANSWERS_COMPLETE' | 'SUBMITTED' | 'APPROVED' | 'REFUSED'
+export type RecordedStatus = 'SUBMITTED' | 'APPROVED' | 'REFUSED'
+export const isRecorded = (status: Status): status is RecordedStatus =>
+  status === 'SUBMITTED' || status === 'APPROVED' || status === 'REFUSED'
 export type Progress = { step_number: number; step_count: number; step_title: string; answered: number; total: number }
 
 // What the applications sidebar shows (US 12).
@@ -48,6 +52,9 @@ export type ApplicationSummary = {
   updated_at: string
   // Set while archived (US 79): hidden from the dashboard and sidebar until restored.
   archived_at: string | null
+  // When the traveler recorded submitting it, and the embassy's decision (US 55).
+  submitted_at: string | null
+  decided_at: string | null
 }
 export type ApplicationState = ApplicationSummary & {
   steps: { id: string; title: string }[]
@@ -142,13 +149,13 @@ export async function checkApplication(id: string): Promise<CheckReport> {
 }
 // Archive, delete and the timeline (US 79, US 20). Mirrors backend/app/applications/lifecycle.py.
 export type TimelineEvent = {
-  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'archived'
+  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'submitted' | 'approved' | 'refused' | 'archived'
   at: string
   text: string
   question_id: string | null
   step_title: string | null
 }
-export type NextStep = { kind: 'answer' | 'change' | 'complete' | 'archived'; text: string }
+export type NextStep = { kind: 'answer' | 'change' | 'complete' | 'submitted' | 'approved' | 'refused' | 'archived'; text: string }
 export type Timeline = { id: string; archived_at: string | null; events: TimelineEvent[]; next: NextStep }
 
 export async function getTimeline(id: string): Promise<Timeline | null> {
@@ -163,6 +170,16 @@ export async function setArchived(id: string, archived: boolean): Promise<Applic
     method: 'POST', cache: 'no-store', silent: true,
   })
   if (!response.ok) throw new Error(await detail(response, archived ? 'Could not archive the application.' : 'Could not restore the application.'))
+  return response.json()
+}
+
+// The traveler records handing it to the embassy, then the decision (US 55). ANSWERS_COMPLETE takes
+// back a submission recorded by mistake. Mirrors POST /applications/{id}/decision.
+export async function recordDecision(id: string, status: RecordedStatus | 'ANSWERS_COMPLETE'): Promise<ApplicationSummary> {
+  const response = await protectedFetch(`/applications/${id}/decision`, {
+    method: 'POST', headers: json, cache: 'no-store', silent: true, body: JSON.stringify({ status }),
+  })
+  if (!response.ok) throw new Error(await detail(response, 'Could not record that. Please try again.'))
   return response.json()
 }
 
