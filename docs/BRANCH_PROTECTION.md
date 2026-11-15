@@ -29,22 +29,32 @@ Settings → Branches → Add branch protection rule, once for `dev` and once fo
   - Require approvals: **1**
   - Dismiss stale pull request approvals when new commits are pushed
 - Require status checks to pass before merging
-  - Require branches to be up to date before merging
+  - Leave "Require branches to be up to date before merging" **off** (see "Releases" below)
   - Status checks: `backend`, `frontend`, `browser`, `container` (each appears in the search box
     after it has run once on a pull request)
 - Do not allow bypassing the above settings (applies the rules to admins too)
 - Leave "Allow force pushes" and "Allow deletions" **off**
 
+With "Dismiss stale approvals" on, a pull request needs approving again after every new commit.
+
+## Releases (`dev` into `main`)
+
+"Require branches to be up to date" stays off. `main` has merge commits that `dev` doesn't, so
+every `dev` → `main` pull request would count as out of date. Its "Update branch" button would
+then try to push a merge of `main` straight into `dev`, which this protection rejects, and the
+release would be stuck. The checks still run on the pull request's own merge result.
+
 ## Same settings from the command line
 
-An admin signed in with the GitHub CLI can apply both rules at once:
+A repository admin can apply both rules at once from bash (Git Bash on Windows, not PowerShell),
+with the GitHub CLI signed in (`gh auth status`):
 
 ```bash
 for branch in dev main; do
   gh api --method PUT "repos/mhs86/Taasheera/branches/$branch/protection" --input - <<'JSON'
 {
   "required_status_checks": {
-    "strict": true,
+    "strict": false,
     "checks": [
       {"context": "backend", "app_id": 15368},
       {"context": "frontend", "app_id": 15368},
@@ -69,14 +79,22 @@ done
 
 ## Verify
 
-Anyone with access to the repository can confirm the rules are in place:
+Anyone with access to the repository, including write access, can confirm the required checks:
 
 ```bash
-gh api repos/mhs86/Taasheera/branches/dev/protection --jq '{checks: [.required_status_checks.checks[].context], approvals: .required_pull_request_reviews.required_approving_review_count, admins: .enforce_admins.enabled}'
+gh api repos/mhs86/Taasheera/branches/dev --jq '{protected, checks: [.protection.required_status_checks.checks[]?.context]}'
 ```
 
-Expected: the four checks, `approvals: 1`, `admins: true`. Run the same for `main`. A `404 Branch
-not protected` answer means the rule is missing.
+Expected: `protected: true` and the four checks. Run the same for `main`.
+
+The approvals and admin settings can only be read by an admin:
+
+```bash
+gh api repos/mhs86/Taasheera/branches/dev/protection --jq '{approvals: .required_pull_request_reviews.required_approving_review_count, admins: .enforce_admins.enabled}'
+```
+
+Expected: `approvals: 1`, `admins: true`. Without admin rights this answers `404 Not Found` even
+when the branch is protected.
 
 Then open a pull request with a deliberately failing test: the merge button must stay disabled
 until the check is fixed and a reviewer approves.

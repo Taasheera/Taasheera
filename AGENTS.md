@@ -188,6 +188,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 40. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
     agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
 41. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
-    questionnaire/country, re-checked by the engine (dependent dates dropped too); provenance kept, original untouched.
+    questionnaire/country, re-checked by the engine (dependent dates dropped too); accommodation/host answers are
+    asked again (`COUNTRY_SPECIFIC`); provenance kept, original untouched.
 42. **Export record (US 80).** Owner-only `GET /applications/{id}/export`: answers as shown, status and the shared
     `build_timeline` as `taasheera.application-record` v1 JSON; no-store, audited before the file leaves.
