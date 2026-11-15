@@ -70,7 +70,7 @@ test('admin dashboard displays persisted counts and deletes a selected synthetic
   await page.getByRole('link', { name: 'Staff dashboard' }).click()
   await expect(page.getByRole('heading', { name: 'Applications by status' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ask the assistant', exact: true })).toBeVisible()
-  await expect(page.locator('.status-card')).toHaveCount(3)
+  await expect(page.locator('.status-card')).toHaveCount(6)
   await expect(page.getByRole('heading', { name: 'Recent errors' })).toBeVisible()
   await page.getByLabel('Search name or email').fill(unique)
   await page.getByRole('button', { name: 'Search', exact: true }).click()

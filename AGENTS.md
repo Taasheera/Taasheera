@@ -85,7 +85,8 @@ supply environment secrets (Render names the key with `sync: false`). **Never co
 public.** Without a key, `/assistant/messages` returns 503 and other features remain available.
 
 Checks: backend `python -m pytest -q`; frontend `npm test`, `npm run lint`, `npm run build`,
-`npm run test:e2e` (install Playwright Chromium; set `TAASHEERA_TEST_PYTHON` if needed).
+`npm run test:e2e` (install Playwright Chromium; set `TAASHEERA_TEST_PYTHON` if needed). `e2e/critical-path.spec.ts`
+is the critical path (sign-in, passport, chat, dashboard); CI's browser job runs it on every push and PR.
 `TEST_POSTGRES_URL` must name a disposable database with create/drop privileges. Browser tests use
 ports 8100/5273 and isolated synthetic storage. Preview: `python preview.py run --seed-demo`;
 this does not load `.env.local`, sends no mail/Gemini calls, and keeps separate data under ignored
