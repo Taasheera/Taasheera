@@ -1,4 +1,4 @@
-"""Duplicate an application for another country (US 78).
+"""Duplicate an application for another country (US 78) and export its record as a file (US 80).
 
 Added to the applications router from lifecycle.py, so every path here sits under /applications
 and checks the owner: another traveler's id is a 404, the same as an id that doesn't exist.
@@ -6,20 +6,26 @@ and checks the owner: another traveler's id is a 404, the same as an id that doe
 Reads the destination question files without changing them. Only answers to questions the new
 questionnaire also asks, of the same type, are copied, and each is checked again by the engine
 (`flow.reconcile`), so a copy can never hold an answer its own questionnaire would refuse.
+
+The export is the traveler's own copy, independent of the service: the answers as the page shows
+them, the status and the timeline, as a JSON file. It holds passport details from the answers, so
+it is owner-only, never cached, and each download is written to the activity log.
 """
 
 from collections.abc import Callable
 from datetime import date, datetime, timezone
-from typing import Annotated
+import re
+from typing import Annotated, Any, Literal
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
+from ..activity import record_activity
 from ..models import Application, ApplicationAnswer, Traveler
 from . import flow
-from .router import ApplicationSummary, _status, _summary, current_answers
+from .router import ApplicationSummary, _status, _summary, _utc, current_answers
 
 
 class DuplicateChoice(BaseModel):
@@ -41,6 +47,49 @@ class DuplicateRequest(BaseModel):
     visa_type: str = Field(min_length=1, max_length=40)
     # An option of the new questionnaire's country question. Required when it has one.
     place: str | None = Field(default=None, min_length=1, max_length=40)
+
+
+EXPORT_NOTICE = ("Your own copy of a visa application prepared with Taasheera. It holds your passport details: "
+                 "keep it somewhere private. Taasheera does not give legal or immigration advice, and nothing "
+                 "was submitted to an embassy by Taasheera.")
+
+
+class ExportedAnswer(BaseModel):
+    question_id: str
+    step: str
+    question: str
+    value: Any
+    # The option's wording for choices and yes/no questions, as the page shows it.
+    label: str | None
+    source: str
+    answered_at: datetime
+
+
+class ExportedRecord(BaseModel):
+    format: Literal["taasheera.application-record"] = "taasheera.application-record"
+    version: Literal[1] = 1
+    exported_at: datetime
+    notice: str
+    application: ApplicationSummary
+    questionnaire_id: str
+    questionnaire_version: int
+    answers: list[ExportedAnswer]
+    # The same entries and next step as the timeline on the application's page (US 20).
+    timeline: Any
+
+
+def _label(question: flow.Question, value: Any) -> str | None:
+    if question.type == "yes_no" and isinstance(value, bool):
+        return "Yes" if value else "No"
+    if question.type == "choice":
+        return next((option.label for option in question.options or [] if option.value == value), None)
+    return None
+
+
+def export_filename(summary: ApplicationSummary, today: date) -> str:
+    """ "taasheera-france-2026-11-15.json": ASCII only, so every browser saves it under that name."""
+    name = re.sub(r"[^a-z0-9]+", "-", (summary.place or summary.destination_label).lower()).strip("-") or "application"
+    return f"taasheera-{name[:40]}-{today.isoformat()}.json"
 
 
 def _place_question(questionnaire: flow.Questionnaire) -> flow.Question | None:
@@ -110,6 +159,39 @@ def add_record_routes(router: APIRouter, get_session, current_traveler, *,
     def stored_rows(session: Session, application: Application) -> dict[str, ApplicationAnswer]:
         rows = session.exec(select(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
         return {row.question_id: row for row in rows}
+
+    @router.get("/{application_id}/export", response_class=Response,
+                responses={200: {"content": {"application/json": {}}, "description": "The record as a JSON file."}})
+    def export(application_id: str, traveler: TravelerDep, session: SessionDep, request: Request):
+        """The application's answers, status and timeline as a file the traveler keeps (US 80)."""
+        from .lifecycle import build_timeline
+
+        application = owned(session, traveler, application_id)
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        rows = stored_rows(session, application)
+        # As the page shows them: re-checked against today, or frozen once recorded. Read only.
+        answers, _ = current_answers(questionnaire, application, {key: row.value for key, row in rows.items()}, today())
+        summary = ApplicationSummary(**_summary(application, questionnaire, answers))
+        record = ExportedRecord(
+            exported_at=datetime.now(timezone.utc), notice=EXPORT_NOTICE, application=summary,
+            questionnaire_id=questionnaire.id, questionnaire_version=application.questionnaire_version,
+            answers=[ExportedAnswer(question_id=question.id, step=questionnaire.step_of(question.id).title,
+                                    question=question.prompt, value=answers[question.id],
+                                    label=_label(question, answers[question.id]), source=rows[question.id].source,
+                                    answered_at=_utc(rows[question.id].answered_at))
+                     for question in flow.visible_questions(questionnaire, answers) if question.id in answers],
+            timeline=build_timeline(session, application, today()).model_dump(mode="json"),
+        )
+        # Written before the file leaves, like passport access: no record, no download.
+        if record_activity(session, request.app.state.activity_directory, traveler.id,
+                           "application_export", "application", "success") is None:
+            raise HTTPException(status_code=401, detail="Your account is no longer available.")
+        filename = export_filename(summary, today())
+        return Response(content=record.model_dump_json(indent=2), media_type="application/json", headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        })
 
     @router.get("/{application_id}/duplicate", response_model=list[DuplicateChoice])
     def duplicate_choices(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):

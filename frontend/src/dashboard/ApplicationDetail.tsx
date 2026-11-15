@@ -4,6 +4,7 @@ import { getApplication, getTimeline, isRecorded, type ApplicationState, type Ti
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
 import ApplicationActions from './ApplicationActions'
 import DecisionActions from './DecisionActions'
+import ExportRecord from './ExportRecord'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -90,6 +91,7 @@ function Detail({ applicationId }: { applicationId: string }) {
         </Link>}
         {/* Recording or taking back a decision changes the status, the timeline and what comes next. */}
         <DecisionActions application={application} onChange={() => setAttempt(count => count + 1)} />
+        <ExportRecord application={application} />
         <ApplicationActions application={application}
           // The timeline gains or loses its "Archived" entry, so load both again.
           onArchiveChange={() => setAttempt(count => count + 1)}

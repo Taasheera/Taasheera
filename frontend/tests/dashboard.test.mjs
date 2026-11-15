@@ -377,3 +377,44 @@ test('cancelling a duplicate creates nothing', async () => {
   assert.ok(button('Duplicate'))
   assert.ok(!calls.includes(`POST /applications/${APP}/duplicate`))
 })
+
+// Exporting the record (US 80, CMPS271-83).
+test('the detail page downloads the record as a named JSON file', async () => {
+  const saved = []
+  const created = []
+  URL.createObjectURL = blob => { created.push(blob); return 'blob:record' }
+  URL.revokeObjectURL = () => {}
+  const click = window.HTMLAnchorElement.prototype.click
+  window.HTMLAnchorElement.prototype.click = function () { saved.push([this.download, this.getAttribute('href')]) }
+  try {
+    handlers = signedIn({
+      [`GET /applications/${APP}`]: () => json(detail()),
+      [`GET /applications/${APP}/timeline`]: () => json(timeline()),
+      [`GET /applications/${APP}/export`]: () => new Response('{"format":"taasheera.application-record"}', {
+        status: 200, headers: { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="taasheera-france-2026-11-15.json"' },
+      }),
+    })
+    await render(`/dashboard/${APP}`)
+    await act(async () => button('Download record').click())
+    await settle()
+    assert.deepEqual(saved, [['taasheera-france-2026-11-15.json', 'blob:record']])
+    assert.equal(await created[0].text(), '{"format":"taasheera.application-record"}')
+    assert.equal(container.querySelector('a[download]'), null)
+  } finally {
+    window.HTMLAnchorElement.prototype.click = click
+  }
+})
+
+test('a failed export says so and saves nothing', async () => {
+  let saved = false
+  URL.createObjectURL = () => { saved = true; return 'blob:x' }
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(detail()),
+    [`GET /applications/${APP}/timeline`]: () => json(timeline()),
+    [`GET /applications/${APP}/export`]: () => json({ detail: 'Application not found.' }, 404),
+  })
+  await render(`/dashboard/${APP}`)
+  await click(button('Download record'))
+  assert.equal(saved, false)
+  assert.equal(button('Download record').disabled, false)
+})

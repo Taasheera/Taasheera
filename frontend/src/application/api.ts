@@ -183,6 +183,14 @@ export async function recordDecision(id: string, status: RecordedStatus | 'ANSWE
   return response.json()
 }
 
+// The application's answers, status and timeline as a JSON file the traveler keeps (US 80).
+export async function exportRecord(id: string): Promise<{ file: Blob; filename: string }> {
+  const response = await protectedFetch(`/applications/${id}/export`, { cache: 'no-store', silent: true })
+  if (!response.ok) throw new Error(await detail(response, 'Could not export the application.'))
+  const named = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')
+  return { file: await response.blob(), filename: named?.[1] ?? 'taasheera-application.json' }
+}
+
 // Duplicating for another country (US 78). Mirrors backend/app/applications/records.py.
 export type DuplicateChoice = {
   destination: string
