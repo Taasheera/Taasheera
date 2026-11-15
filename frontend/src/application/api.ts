@@ -183,6 +183,32 @@ export async function recordDecision(id: string, status: RecordedStatus | 'ANSWE
   return response.json()
 }
 
+// Duplicating for another country (US 78). Mirrors backend/app/applications/records.py.
+export type DuplicateChoice = {
+  destination: string
+  visa_type: string
+  title: string
+  destination_label: string
+  visa_label: string
+  place_prompt: string | null
+  places: Option[]
+}
+
+export async function getDuplicateChoices(id: string): Promise<DuplicateChoice[]> {
+  const response = await protectedFetch(`/applications/${id}/duplicate`, { cache: 'no-store', silent: true })
+  if (!response.ok) throw new Error(await detail(response, 'Could not load where the copy can be for.'))
+  return response.json()
+}
+
+export async function duplicateApplication(id: string, choice: DuplicateChoice, place: string | null): Promise<ApplicationSummary> {
+  const response = await protectedFetch(`/applications/${id}/duplicate`, {
+    method: 'POST', headers: json, cache: 'no-store', silent: true,
+    body: JSON.stringify({ destination: choice.destination, visa_type: choice.visa_type, place }),
+  })
+  if (!response.ok) throw new Error(await detail(response, 'Could not duplicate the application.'))
+  return response.json()
+}
+
 export async function deleteApplication(id: string): Promise<void> {
   const response = await protectedFetch(`/applications/${id}`, { method: 'DELETE', cache: 'no-store', silent: true })
   // Already gone counts as deleted: the traveler wanted it removed.

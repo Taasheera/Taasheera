@@ -327,3 +327,53 @@ test('a recorded application opened in the chat is read-only', async () => {
   assert.equal(container.querySelector('.chat-answer'), null)
   assert.match(container.querySelector('.apps-sidebar').textContent, /Submitted/)
 })
+
+// Duplicating for another country (US 78, CMPS271-84).
+const NEW = 'd'.repeat(32)
+const choices = [{
+  destination: 'SCHENGEN', visa_type: 'short_stay', title: 'Schengen short-stay visa (type C)',
+  destination_label: 'Schengen area', visa_label: 'Short stay (type C)',
+  place_prompt: 'Which Schengen country is your main destination?',
+  places: [{ value: 'DEU', label: 'Germany' }, { value: 'ITA', label: 'Italy' }],
+}]
+
+test('duplicate asks for another country, creates the copy and opens it', async () => {
+  let posted
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+    [`POST /applications/${APP}/duplicate`]: options => {
+      posted = JSON.parse(options.body)
+      return json(summary({ id: NEW, place: 'Italy' }), 201)
+    },
+    [`GET /applications/${NEW}`]: () => json(detail({ id: NEW, place: 'Italy' })),
+  })
+  const router = await render('/dashboard')
+  await click(button('Duplicate'))
+  const select = container.querySelector('.dash-duplicate select')
+  assert.deepEqual([...select.options].map(option => option.textContent), ['Choose a country', 'Germany', 'Italy'])
+  assert.equal(document.activeElement, select)
+  assert.equal(button('Create copy').disabled, true)
+
+  await act(async () => {
+    select.value = 'ITA'
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.equal(button('Create copy').disabled, false)
+  await click(button('Create copy'))
+  assert.deepEqual(posted, { destination: 'SCHENGEN', visa_type: 'short_stay', place: 'ITA' })
+  assert.equal(router.state.location.pathname, `/apply/${NEW}`)
+})
+
+test('cancelling a duplicate creates nothing', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+  })
+  await render('/dashboard')
+  await click(button('Duplicate'))
+  await click(button('Cancel'))
+  assert.equal(container.querySelector('.dash-duplicate'), null)
+  assert.ok(button('Duplicate'))
+  assert.ok(!calls.includes(`POST /applications/${APP}/duplicate`))
+})

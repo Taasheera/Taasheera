@@ -88,9 +88,12 @@ def add_lifecycle_routes(
     today: Callable[[], date] = date.today,
 ) -> None:
     from ..auth import check_origin
+    from .records import add_record_routes
 
     SessionDep = Annotated[Session, Depends(get_session)]
     TravelerDep = Annotated[Traveler, Depends(current_traveler)]
+    # Duplicate and export (US 78, US 80) live in their own file.
+    add_record_routes(router, get_session, current_traveler, today=today)
 
     def owned(session: Session, traveler: Traveler, application_id: str) -> Application:
         application = session.get(Application, application_id)

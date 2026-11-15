@@ -189,6 +189,28 @@
   font-weight: 600;
 }
 
+.dash-duplicate {
+  flex-basis: 100%;
+}
+
+.dash-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.dash-field select {
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+}
+
 .dash-decision {
   display: flex;
   flex-wrap: wrap;

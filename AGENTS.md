@@ -185,3 +185,5 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     manual dev/bootstrap still builds locally. Owner setup: `deploy/aws/README.md`; no stored AWS keys.
 40. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
     agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
+41. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
+    questionnaire/country, re-checked by the engine (dependent dates dropped too); provenance kept, original untouched.

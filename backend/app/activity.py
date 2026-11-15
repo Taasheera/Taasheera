@@ -44,6 +44,7 @@ Control = Literal[
     "dashboard-link", "dashboard-filter", "application-details", "application-archive", "application-restore",
     "application-delete", "application-delete-confirm", "application-delete-cancel",
     "application-decision", "application-decision-confirm", "application-decision-cancel",
+    "application-duplicate", "application-duplicate-confirm", "application-duplicate-cancel",
 ]
 
 

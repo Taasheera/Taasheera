@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteApplication, setArchived, type ApplicationSummary } from '../application/api'
+import DuplicateAction from './DuplicateAction'
 import { applicationLabel, applicationName } from './helpers'
 
 type Props = {
@@ -57,6 +58,7 @@ export default function ApplicationActions({ application, onArchiveChange, onDel
   const confirmId = `dash-confirm-${application.id}`
   return <div className="dash-actions-wrap">
     <div className="dash-actions">
+      <DuplicateAction application={application} disabled={busy || confirming} />
       <button type="button" className="button button-secondary dash-small" disabled={busy || confirming}
         data-activity-id={archived ? 'application-restore' : 'application-archive'}
         aria-label={`${archived ? 'Restore' : 'Archive'} ${label}`}
