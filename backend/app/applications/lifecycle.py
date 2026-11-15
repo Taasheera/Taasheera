@@ -42,10 +42,13 @@ class NextStep(BaseModel):
 
 
 class DecisionRequest(BaseModel):
-    """What the traveler records (US 55). ANSWERS_COMPLETE takes back a submission recorded by mistake."""
+    """What the traveler records (US 55). ANSWERS_COMPLETE takes back a submission recorded by mistake.
+
+    Named `record`, not `status`: request bodies outside /admin never carry a field called status or role.
+    """
 
     model_config = ConfigDict(extra="forbid")
-    status: Literal["SUBMITTED", "APPROVED", "REFUSED", "ANSWERS_COMPLETE"]
+    record: Literal["SUBMITTED", "APPROVED", "REFUSED", "ANSWERS_COMPLETE"]
 
 
 # Where each status can go next. Submitting needs every question answered; a decision needs a
@@ -62,6 +65,8 @@ DECISION_REFUSED = {
     "REFUSED": "Record that you submitted this application before recording the embassy's decision.",
     "ANSWERS_COMPLETE": "This application isn't recorded as submitted.",
 }
+WITHDRAW_REFUSED = ("This application's answers no longer pass today's checks (for example, the trip date has "
+                    "passed), so it stays recorded as submitted. Duplicate it to start again from these answers.")
 
 
 class Timeline(BaseModel):
@@ -106,9 +111,11 @@ def add_lifecycle_routes(
         return {row.question_id: row for row in rows}
 
     def summary(session: Session, application: Application) -> ApplicationSummary:
-        answers = {key: row.value for key, row in stored_rows(session, application).items()}
-        return ApplicationSummary(**_summary(application, flow.load_questionnaire(application.questionnaire_id),
-                                             answers))
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        stored = {key: row.value for key, row in stored_rows(session, application).items()}
+        # As the page shows them: re-checked against today, or frozen once recorded.
+        answers, _ = current_answers(questionnaire, application, stored, today())
+        return ApplicationSummary(**_summary(application, questionnaire, answers))
 
     def set_archived(application_id: str, traveler: Traveler, session: Session, response: Response,
                      archived: bool) -> ApplicationSummary:
@@ -148,24 +155,29 @@ def add_lifecycle_routes(
         previous = application.status
         current = previous if is_recorded(application) else status_today(session, application)
         response.headers["Cache-Control"] = "private, no-store"
-        if data.status == previous and is_recorded(application):
+        target = data.record
+        if target == previous and is_recorded(application) or (target == "ANSWERS_COMPLETE" and not is_recorded(application)
+                                                                and current == "ANSWERS_COMPLETE"):
             # Recording the same thing twice (a double click) changes nothing.
             return summary(session, application)
-        if data.status not in DECISION_STEPS.get(current, set()):
-            raise HTTPException(status_code=409, detail=DECISION_REFUSED[data.status])
+        if target not in DECISION_STEPS.get(current, set()):
+            raise HTTPException(status_code=409, detail=DECISION_REFUSED[target])
 
         now = datetime.now(timezone.utc)
-        if data.status == "ANSWERS_COMPLETE":
-            # Taken back: answering resumes, re-checked against today like any other read.
-            application.status = status_today(session, application)
+        if target == "ANSWERS_COMPLETE":
+            # Taken back: answering resumes. Only while the answers still pass today's checks (Finding 3):
+            # otherwise the submission couldn't be recorded again and its date would be lost.
+            if status_today(session, application) != "ANSWERS_COMPLETE":
+                raise HTTPException(status_code=409, detail=WITHDRAW_REFUSED)
+            application.status = "ANSWERS_COMPLETE"
             application.submitted_at = application.decided_at = None
-        elif data.status == "SUBMITTED":
+        elif target == "SUBMITTED":
             # From a decision this clears only the decision: the submission date stays.
             if previous not in ("APPROVED", "REFUSED"):
                 application.submitted_at = now
             application.status, application.decided_at = "SUBMITTED", None
         else:
-            application.status, application.decided_at = data.status, now
+            application.status, application.decided_at = target, now
         # `updated_at` stays as it is: it means the last change to the answers, as for archiving.
         notify_status_change(session, application, previous)
         session.add(application)
@@ -216,7 +228,9 @@ def add_lifecycle_routes(
 
         current = flow.next_question(questionnaire, answers)
         if application.archived_at:
-            next_step = NextStep(kind="archived", text="This application is archived. Restore it to pick up where you left off.")
+            next_step = NextStep(kind="archived", text="This application is archived. Restore it to see it on your "
+                                                       "dashboard again." if recorded else
+                                 "This application is archived. Restore it to pick up where you left off.")
         elif application.status == "SUBMITTED":
             next_step = NextStep(kind="submitted", text="Waiting for the embassy's decision. When you hear back, record "
                                                         "whether the visa was approved or refused.")

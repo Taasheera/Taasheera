@@ -177,7 +177,7 @@ export async function setArchived(id: string, archived: boolean): Promise<Applic
 // back a submission recorded by mistake. Mirrors POST /applications/{id}/decision.
 export async function recordDecision(id: string, status: RecordedStatus | 'ANSWERS_COMPLETE'): Promise<ApplicationSummary> {
   const response = await protectedFetch(`/applications/${id}/decision`, {
-    method: 'POST', headers: json, cache: 'no-store', silent: true, body: JSON.stringify({ status }),
+    method: 'POST', headers: json, cache: 'no-store', silent: true, body: JSON.stringify({ record: status }),
   })
   if (!response.ok) throw new Error(await detail(response, 'Could not record that. Please try again.'))
   return response.json()

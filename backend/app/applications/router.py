@@ -157,6 +157,17 @@ def current_answers(questionnaire: flow.Questionnaire, application: Application,
     return flow.reconcile(questionnaire, stored, today)
 
 
+def check_day(application: Application, today: date) -> date:
+    """The day to run the completeness check for (US 13).
+
+    A recorded application is checked as it stood the day it was submitted, so a trip
+    date that has passed since then doesn't turn into "not answered yet".
+    """
+    if is_recorded(application) and application.submitted_at:
+        return _utc(application.submitted_at).date()
+    return today
+
+
 def _summary(application: Application, questionnaire: flow.Questionnaire,
              answers: flow.Answers) -> dict[str, Any]:
     progress = flow.progress(questionnaire, answers)
@@ -222,7 +233,7 @@ def application_context(session: Session, traveler_id: int, application_id: str,
     today = today or date.today()
     answers, _ = current_answers(questionnaire, application, answers, today)
     progress = flow.progress(questionnaire, answers)
-    report = completeness.check(questionnaire, answers, today, latest_passport=latest_passport,
+    report = completeness.check(questionnaire, answers, check_day(application, today), latest_passport=latest_passport,
                                 profile=saved_profile(session, traveler_id))
     return "\n\n".join([
         flow.describe(questionnaire, answers, application.group_size),
@@ -248,7 +259,7 @@ def application_proposal(session: Session, traveler_id: int, application_id: str
             raise flow.InvalidAnswer("This application is archived. Restore it from your dashboard before changing it.")
         if is_recorded(application):
             raise flow.InvalidAnswer(RECORDED_READ_ONLY)
-    return actions.propose(questionnaire, answers, name, args, today or date.today(),
+    return actions.propose(questionnaire, answers, name, args, check_day(application, today or date.today()),
                            latest_passport=latest_passport, profile=saved_profile(session, traveler_id))
 
 
@@ -405,7 +416,8 @@ def create_applications_router(
         questionnaire = flow.load_questionnaire(application.questionnaire_id)
         answers, _ = save(session, application, stored_answers(session, application), questionnaire)
         response.headers["Cache-Control"] = "private, no-store"
-        return completeness.check(questionnaire, answers, today(), latest_passport=load_latest_passport(traveler.id),
+        return completeness.check(questionnaire, answers, check_day(application, today()),
+                                  latest_passport=load_latest_passport(traveler.id),
                                   profile=saved_profile(session, traveler.id))
 
     @router.put("/{application_id}/answers/{question_id}", response_model=ApplicationState,

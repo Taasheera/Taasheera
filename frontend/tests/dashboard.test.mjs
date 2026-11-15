@@ -270,7 +270,7 @@ test('a complete application asks before recording that the traveler submitted i
 
   await click(button("I've submitted it"))
   await click(button('Yes, record it'))
-  assert.deepEqual(posted, { status: 'SUBMITTED' })
+  assert.deepEqual(posted, { record: 'SUBMITTED' })
   // The page loads again, so the status, the timeline and the buttons follow the record.
   assert.match(container.querySelector('.dash-chip').textContent, /Submitted/)
   assert.equal(button('Review answers'), undefined)
@@ -300,7 +300,7 @@ test('a submitted application records the decision and shows it in the timeline'
   assert.match(text(), /Waiting for the embassy's decision/)
   assert.equal(button('Resume'), undefined)
   await click(button('Visa refused'))
-  assert.deepEqual(posted, { status: 'REFUSED' })
+  assert.deepEqual(posted, { record: 'REFUSED' })
   assert.match(container.querySelector('.dash-chip').textContent, /Refused/)
   assert.ok(container.querySelector('.dash-next-refused'))
   assert.match([...container.querySelectorAll('.dash-event')].at(-1).textContent, /embassy refused it/)

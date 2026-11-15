@@ -107,8 +107,8 @@ def test_a_submitted_application_copies_without_its_record_or_past_dates(api):
     client, app, headers, _ = api
     original = start(client, headers[0])["id"]
     answer_all(client, headers[0], original)
-    client.post(f"/applications/{original}/decision", headers=headers[0], json={"status": "SUBMITTED"})
-    client.post(f"/applications/{original}/decision", headers=headers[0], json={"status": "REFUSED"})
+    client.post(f"/applications/{original}/decision", headers=headers[0], json={"record": "SUBMITTED"})
+    client.post(f"/applications/{original}/decision", headers=headers[0], json={"record": "REFUSED"})
     # The refused trip has passed.
     past = (date.today() - timedelta(days=40)).isoformat()
     with Session(app.state.engine) as session:

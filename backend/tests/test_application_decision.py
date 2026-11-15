@@ -1,6 +1,6 @@
 """Recording submission and the embassy's decision (US 55, CMPS271-80)."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from sqlmodel import Session, select
@@ -14,7 +14,7 @@ TITLE = "Schengen short-stay visa (type C)"
 
 
 def record(client, headers, application_id, status):
-    return client.post(f"/applications/{application_id}/decision", headers=headers, json={"status": status})
+    return client.post(f"/applications/{application_id}/decision", headers=headers, json={"record": status})
 
 
 def timeline(client, headers, application_id):
@@ -174,7 +174,8 @@ def test_archived_and_other_travelers_applications_are_refused(api):
     assert client.post(f"/applications/{application_id}/archive", headers=headers[0]).status_code == 200
 
 
-@pytest.mark.parametrize("body", [{}, {"status": "DRAFT"}, {"status": "submitted"}, {"status": "SUBMITTED", "at": "x"}])
+@pytest.mark.parametrize("body", [{}, {"record": "DRAFT"}, {"record": "submitted"}, {"record": "SUBMITTED", "at": "x"},
+                                  {"status": "SUBMITTED"}])
 def test_decision_bodies_are_strict(api, body):
     client, _, headers, _ = api
     application_id = complete(client, headers[0])
@@ -193,6 +194,66 @@ def test_deleting_a_recorded_application_removes_it(api):
 def test_cross_site_decisions_are_rejected(api):
     client, _, headers, _ = api
     application_id = complete(client, headers[0])
-    response = client.post(f"/applications/{application_id}/decision", json={"status": "SUBMITTED"},
+    response = client.post(f"/applications/{application_id}/decision", json={"record": "SUBMITTED"},
                            headers={**headers[0], "Origin": "https://evil.example"})
     assert response.status_code == 403
+
+
+def _age_trip(app, application_id, days_ago=40):
+    past = (date.today() - timedelta(days=days_ago)).isoformat()
+    with Session(app.state.engine) as session:
+        for question_id in ("arrival_date", "departure_date"):
+            row = session.get(ApplicationAnswer, (application_id, question_id))
+            row.value = past
+            session.add(row)
+        session.commit()
+
+
+def test_a_recorded_application_is_checked_as_it_was_submitted(api):
+    """QA: after the trip, the check and the assistant must not call the frozen dates missing."""
+    client, app, headers, _ = api
+    application_id = complete(client, headers[0])
+    record(client, headers[0], application_id, "SUBMITTED")
+    # Submitted 50 days ago for a trip that started 40 days ago.
+    _age_trip(app, application_id)
+    with Session(app.state.engine) as session:
+        stored = session.get(Application, application_id)
+        stored.submitted_at = datetime.now(timezone.utc) - timedelta(days=50)
+        session.add(stored)
+        session.commit()
+    report = client.get(f"/applications/{application_id}/check", headers=headers[0]).json()
+    assert report["ready"] is True
+    assert not [issue for issue in report["issues"] if issue["severity"] == "blocking"]
+    with Session(app.state.engine) as session:
+        traveler_id = session.get(Application, application_id).traveler_id
+        assert "Not answered yet" not in application_context(session, traveler_id, application_id)
+        proposal = application_proposal(session, traveler_id, application_id, "run_completeness_check", {})
+        assert proposal.report.ready is True
+
+
+def test_a_submission_whose_trip_has_passed_cannot_be_taken_back(api):
+    """QA: taking it back would lose the record with no way to record it again."""
+    client, app, headers, _ = api
+    application_id = complete(client, headers[0])
+    submitted = record(client, headers[0], application_id, "SUBMITTED").json()
+    _age_trip(app, application_id)
+    response = record(client, headers[0], application_id, "ANSWERS_COMPLETE")
+    assert response.status_code == 409
+    assert "stays recorded as submitted" in response.json()["detail"]
+    with Session(app.state.engine) as session:
+        stored = session.get(Application, application_id)
+        assert stored.status == "SUBMITTED" and stored.submitted_at is not None
+    assert client.get(f"/applications/{application_id}", headers=headers[0]).json()["submitted_at"] == submitted["submitted_at"]
+
+
+def test_taking_back_twice_is_a_no_op_and_the_summary_is_consistent(api):
+    client, _, headers, _ = api
+    application_id = complete(client, headers[0])
+    record(client, headers[0], application_id, "SUBMITTED")
+    first = record(client, headers[0], application_id, "ANSWERS_COMPLETE")
+    second = record(client, headers[0], application_id, "ANSWERS_COMPLETE")
+    assert first.status_code == second.status_code == 200
+    assert second.json()["status"] == "ANSWERS_COMPLETE"
+    assert second.json()["answered"] == second.json()["total"]
+    notifications = client.get("/notifications", headers=headers[0]).json()
+    assert len([item for item in notifications if item["application_id"] == application_id]) == 3
