@@ -29,14 +29,15 @@ test('sign-in refuses a wrong password, then signs in, survives a reload and log
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill('Not-the-password-1!')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.getByRole('alert').first()).toBeVisible()
+  // The refusal arrives first, so the "not signed in" check after it means something.
+  await expect(page.locator('#auth-status')).toHaveText('Invalid email or password.')
   await expect(page.getByRole('heading', { name: 'Welcome, Critical Sign In' })).toHaveCount(0)
 
   await signIn(page, email, 'Critical Sign In')
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Welcome, Critical Sign In' })).toBeVisible()
   await page.getByRole('button', { name: 'Log out', exact: true }).first().click()
-  await expect(page.getByRole('link', { name: 'Log in', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible()
   expect((await context.cookies()).some(cookie => cookie.name === 'taasheera_refresh')).toBe(false)
   await page.goto('/dashboard')
   await expect(page.getByText('Please sign in to see your applications.')).toBeVisible()
@@ -84,13 +85,13 @@ test('passport upload, the application chat and the dashboard work end to end', 
   await page.getByRole('button', { name: "Yes, that's right" }).click()
   await page.getByLabel('When was your passport issued?').fill(day(-700))
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
-  await expect(page.getByText('Did you have a different surname at birth?', { exact: false })).toBeVisible()
+  await expect(page.getByLabel(/Did you have a different surname at birth\?/)).toBeVisible()
 
   // Every answer is saved as it is given: a reload resumes at the same question.
   await page.reload()
   await expect(page.locator('.chat-log')).toContainText('France')
   await expect(page.locator('.chat-log')).toContainText('Tourism')
-  await expect(page.getByText('Did you have a different surname at birth?', { exact: false })).toBeVisible()
+  await expect(page.getByLabel(/Did you have a different surname at birth\?/)).toBeVisible()
 
   // The remaining answers through the same API the chat uses, signed in as the same traveler.
   const api = await playwrightRequest.newContext({ baseURL: 'http://127.0.0.1:5273' })
@@ -136,7 +137,7 @@ test('passport upload, the application chat and the dashboard work end to end', 
   await expect(page.locator('.dash-timeline')).toContainText('You recorded that the embassy approved it')
 
   // Export (US 80): a JSON file the traveler keeps.
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download the record of France/ }).click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download record of France/ }).click()])
   expect(download.suggestedFilename()).toMatch(/^taasheera-france-\d{4}-\d{2}-\d{2}\.json$/)
   const record = JSON.parse(await readFile((await download.path())!, 'utf-8'))
   expect(record.application.status).toBe('APPROVED')
@@ -151,18 +152,22 @@ test('passport upload, the application chat and the dashboard work end to end', 
   expect(page.url()).not.toContain(applicationId)
   await expect(page.locator('.chat-log')).toContainText('Italy')
   await expect(page.locator('.chat-log')).toContainText('Tourism')
+  await expect(page.getByRole('group', { name: 'Where will you stay?' })).toBeVisible()
 
   await page.goto('/dashboard')
   await expect(page.locator('.dash-card')).toHaveCount(2)
   await expect(page.locator('.dash-card').filter({ hasText: 'France' })).toContainText('Approved')
   const copy = page.locator('.dash-card').filter({ hasText: 'Italy' })
-  await expect(copy).toContainText('Answers complete')
+  // Where the traveler stays belongs to France, so the copy asks it again.
+  await expect(copy).toContainText('In progress')
 
   // Archive hides the copy until it is restored (US 79).
   await copy.getByRole('button', { name: /^Archive Italy/ }).click()
   await expect(page.locator('.dash-card')).toHaveCount(1)
   await page.getByRole('button', { name: 'Archived', exact: true }).click()
   await page.locator('.dash-card').filter({ hasText: 'Italy' }).getByRole('button', { name: /^Restore Italy/ }).click()
+  // Saved before switching tabs, so the active list is read after the restore.
+  await expect(page.locator('.dash-card')).toHaveCount(0)
   await page.getByRole('button', { name: 'Active', exact: true }).click()
   await expect(page.locator('.dash-card')).toHaveCount(2)
 })
