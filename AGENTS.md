@@ -41,7 +41,8 @@ The backlog and plan are guides, not permanent assignments. Update this section 
 Ahmad Zeid leads deployment and AWS operations from November 2; administrative access must be
 handed over/verified separately from the existing AWS account and GitHub repository ownership.
 
-- `main` is production; tested sprint work integrates on `dev` before release to `main`.
+- `main` is production; tested sprint work integrates on `dev` before release to `main`. Both should be
+  protected: CI `backend`/`frontend`/`browser`/`container` and one approval (`docs/BRANCH_PROTECTION.md`; admin applies).
 - Feature branches start from `dev` and PR back to `dev`. Existing names use
   `<name>_<feature>_sprint<N>` (for example `zeid_chat_history_sprint3`).
 - Keep PRs focused, reference ticket/story numbers and explain why. Set the rotation's reviewer.
