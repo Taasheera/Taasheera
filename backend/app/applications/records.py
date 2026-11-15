@@ -25,7 +25,7 @@ from sqlmodel import Session, select
 from ..activity import record_activity
 from ..models import Application, ApplicationAnswer, Traveler
 from . import flow
-from .router import ApplicationSummary, _status, _summary, _utc, current_answers
+from .router import ApplicationSummary, _status, _summary, _utc, current_answers, is_recorded
 
 
 class DuplicateChoice(BaseModel):
@@ -75,7 +75,7 @@ class ExportedRecord(BaseModel):
     questionnaire_version: int
     answers: list[ExportedAnswer]
     # The same entries and next step as the timeline on the application's page (US 20).
-    timeline: Any
+    timeline: dict[str, Any]
 
 
 def _label(question: flow.Question, value: Any) -> str | None:
@@ -92,6 +92,11 @@ def export_filename(summary: ApplicationSummary, today: date) -> str:
     return f"taasheera-{name[:40]}-{today.isoformat()}.json"
 
 
+# Answers about the old country, asked again in a copy: where the traveler stays and who hosts them.
+# Kept here rather than in the question files (Ahmad Zeid's), which this feature only reads.
+COUNTRY_SPECIFIC = frozenset({"accommodation", "accommodation_details", "host_details"})
+
+
 def _place_question(questionnaire: flow.Questionnaire) -> flow.Question | None:
     return questionnaire.question(questionnaire.summary.place) if questionnaire.summary.place else None
 
@@ -100,7 +105,9 @@ def _choices(source: flow.Questionnaire, source_place: str | None) -> list[Dupli
     choices = []
     for target in flow.available_questionnaires():
         question = _place_question(target)
-        places = [option for option in (question.options or []) if question.type == "choice"] if question else []
+        if question is not None and question.type != "choice":
+            continue  # No list of countries to choose from: the copy can't be offered yet.
+        places = list(question.options or []) if question else []
         if target.id == source.id:
             # The same visa only makes sense for another country.
             places = [option for option in places if option.value != source_place]
@@ -115,9 +122,11 @@ def _choices(source: flow.Questionnaire, source_place: str | None) -> list[Dupli
 
 
 def copy_answers(source: flow.Questionnaire, target: flow.Questionnaire, answers: flow.Answers,
-                 place: str | None, today: date) -> flow.Answers:
+                 place: str | None, today: date, *, stored: frozenset[str] = frozenset()) -> flow.Answers:
     """The answers that still apply in the target questionnaire, with the new country.
 
+    `stored` names every answer the original has saved, including ones `answers` already left
+    out (a trip date now in the past), so answers checked against those are dropped as well.
     Raises flow.InvalidAnswer when the country isn't one the target questionnaire offers.
     """
     place_question = _place_question(target)
@@ -126,6 +135,8 @@ def copy_answers(source: flow.Questionnaire, target: flow.Questionnaire, answers
         new, old = target.question(question_id), source.question(question_id)
         if new is None or old is None or new.type != old.type or (place_question and question_id == place_question.id):
             continue
+        if question_id in COUNTRY_SPECIFIC:
+            continue
         copied[question_id] = value
     if place_question is not None:
         copied[place_question.id] = flow.check_answer(place_question, place, {}, today)
@@ -133,7 +144,7 @@ def copy_answers(source: flow.Questionnaire, target: flow.Questionnaire, answers
     kept, _ = flow.reconcile(target, copied, today)
     # A date checked against another answer (leaving after arriving) can't be checked once that answer
     # is gone, so the engine would keep it unchecked. Drop it too, and ask both again.
-    lost = (set(answers) | set(copied)) - set(kept)
+    lost = (set(stored) | set(answers) | set(copied)) - set(kept)
     while True:
         dependent = {question.id for question in target.questions() if question.id in kept
                      and any(rule.ref.partition(".")[0] in lost for rule in question.rules)}
@@ -167,11 +178,15 @@ def add_record_routes(router: APIRouter, get_session, current_traveler, *,
         from .lifecycle import build_timeline
 
         application = owned(session, traveler, application_id)
+        day = today()  # One day for the answers, the timeline and the file name.
         questionnaire = flow.load_questionnaire(application.questionnaire_id)
         rows = stored_rows(session, application)
         # As the page shows them: re-checked against today, or frozen once recorded. Read only.
-        answers, _ = current_answers(questionnaire, application, {key: row.value for key, row in rows.items()}, today())
+        answers, _ = current_answers(questionnaire, application, {key: row.value for key, row in rows.items()}, day)
         summary = ApplicationSummary(**_summary(application, questionnaire, answers))
+        if not is_recorded(application):
+            # An archived application's stored status isn't updated; the file says what its answers give.
+            summary.status = _status(questionnaire, answers)
         record = ExportedRecord(
             exported_at=datetime.now(timezone.utc), notice=EXPORT_NOTICE, application=summary,
             questionnaire_id=questionnaire.id, questionnaire_version=application.questionnaire_version,
@@ -180,13 +195,13 @@ def add_record_routes(router: APIRouter, get_session, current_traveler, *,
                                     label=_label(question, answers[question.id]), source=rows[question.id].source,
                                     answered_at=_utc(rows[question.id].answered_at))
                      for question in flow.visible_questions(questionnaire, answers) if question.id in answers],
-            timeline=build_timeline(session, application, today()).model_dump(mode="json"),
+            timeline=build_timeline(session, application, day).model_dump(mode="json"),
         )
         # Written before the file leaves, like passport access: no record, no download.
         if record_activity(session, request.app.state.activity_directory, traveler.id,
                            "application_export", "application", "success") is None:
             raise HTTPException(status_code=401, detail="Your account is no longer available.")
-        filename = export_filename(summary, today())
+        filename = export_filename(summary, day)
         return Response(content=record.model_dump_json(indent=2), media_type="application/json", headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Cache-Control": "private, no-store",
@@ -227,7 +242,7 @@ def add_record_routes(router: APIRouter, get_session, current_traveler, *,
         # Read only: what the original shows today (frozen if recorded as submitted).
         answers, _ = current_answers(source, application, stored, today())
         try:
-            copied = copy_answers(source, target, answers, data.place, today())
+            copied = copy_answers(source, target, answers, data.place, today(), stored=frozenset(stored))
         except flow.InvalidAnswer:
             raise HTTPException(status_code=422, detail="Choose one of the countries offered.") from None
 

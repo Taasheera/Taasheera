@@ -379,11 +379,15 @@ test('cancelling a duplicate creates nothing', async () => {
 })
 
 // Exporting the record (US 80, CMPS271-83).
+const realObjectUrls = [URL.createObjectURL, URL.revokeObjectURL]
+afterEach(() => { [URL.createObjectURL, URL.revokeObjectURL] = realObjectUrls })
+
 test('the detail page downloads the record as a named JSON file', async () => {
   const saved = []
   const created = []
+  const revoked = []
   URL.createObjectURL = blob => { created.push(blob); return 'blob:record' }
-  URL.revokeObjectURL = () => {}
+  URL.revokeObjectURL = url => revoked.push(url)
   const click = window.HTMLAnchorElement.prototype.click
   window.HTMLAnchorElement.prototype.click = function () { saved.push([this.download, this.getAttribute('href')]) }
   try {
@@ -400,6 +404,8 @@ test('the detail page downloads the record as a named JSON file', async () => {
     assert.deepEqual(saved, [['taasheera-france-2026-11-15.json', 'blob:record']])
     assert.equal(await created[0].text(), '{"format":"taasheera.application-record"}')
     assert.equal(container.querySelector('a[download]'), null)
+    await act(() => new Promise(resolve => setTimeout(resolve, 1100)))
+    assert.deepEqual(revoked, ['blob:record'])
   } finally {
     window.HTMLAnchorElement.prototype.click = click
   }
@@ -417,4 +423,18 @@ test('a failed export says so and saves nothing', async () => {
   await click(button('Download record'))
   assert.equal(saved, false)
   assert.equal(button('Download record').disabled, false)
+})
+
+test('archive and delete wait while a duplicate is open', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+  })
+  await render('/dashboard')
+  await click(button('Duplicate'))
+  assert.equal(button('Archive').disabled, true)
+  assert.equal(button('Delete').disabled, true)
+  await click(button('Cancel'))
+  assert.equal(button('Archive').disabled, false)
+  assert.equal(button('Delete').disabled, false)
 })

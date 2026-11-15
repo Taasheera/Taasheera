@@ -4,11 +4,16 @@ import { toast } from 'sonner'
 import { duplicateApplication, getDuplicateChoices, type ApplicationSummary, type DuplicateChoice } from '../application/api'
 import { applicationLabel, applicationName } from './helpers'
 
-type Props = { application: ApplicationSummary; disabled?: boolean }
+type Props = {
+  application: ApplicationSummary
+  disabled?: boolean
+  // Open or copying: the other actions wait, so the original can't be deleted mid-copy.
+  onActiveChange?: (active: boolean) => void
+}
 
 // A new application for another country with the answers that still apply (US 78). The server
 // works out which answers carry over; the original is not changed. Opens the copy in the chat.
-export default function DuplicateAction({ application, disabled = false }: Props) {
+export default function DuplicateAction({ application, disabled = false, onActiveChange }: Props) {
   const navigate = useNavigate()
   const id = useId()
   // null while closed; 'loading' while the choices load.
@@ -18,8 +23,11 @@ export default function DuplicateAction({ application, disabled = false }: Props
   const [busy, setBusy] = useState(false)
   const openButton = useRef<HTMLButtonElement>(null)
   const firstField = useRef<HTMLSelectElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
   const label = applicationLabel(application)
-  useEffect(() => { if (Array.isArray(choices)) firstField.current?.focus() }, [choices])
+  // The first field, or Cancel when there is nothing to choose, so focus never drops to the page.
+  useEffect(() => { if (Array.isArray(choices)) (firstField.current ?? cancelButton.current)?.focus() }, [choices])
+  useEffect(() => { onActiveChange?.(choices !== null || busy) }, [choices, busy, onActiveChange])
 
   async function open() {
     setChoices('loading')
@@ -82,7 +90,7 @@ export default function DuplicateAction({ application, disabled = false }: Props
     <div className="dash-actions">
       {choice && <button type="submit" className="button button-primary dash-small" disabled={busy || !ready} aria-busy={busy}
         data-activity-id="application-duplicate-confirm">{busy ? 'Copying…' : 'Create copy'}</button>}
-      <button type="button" className="button button-secondary dash-small" disabled={busy}
+      <button ref={cancelButton} type="button" className="button button-secondary dash-small" disabled={busy}
         data-activity-id="application-duplicate-cancel" onClick={close}>Cancel</button>
     </div>
   </form>

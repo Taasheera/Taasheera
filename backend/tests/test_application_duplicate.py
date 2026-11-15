@@ -37,12 +37,16 @@ def test_a_copy_for_another_country_keeps_the_answers_that_still_apply(api):
     assert response.headers["cache-control"] == "private, no-store"
     copy = response.json()
     assert copy["id"] != original
-    assert copy["place"] == "Italy" and copy["status"] == "ANSWERS_COMPLETE"
+    # Where the traveler stays belongs to the old country, so it is asked again.
+    assert copy["place"] == "Italy" and copy["status"] == "DRAFT"
     assert copy["submitted_at"] is None and copy["archived_at"] is None
     copied = answers_of(app, copy["id"])
     assert copied["main_destination"] == ("ITA", "traveler")
-    assert {key: value for key, value in copied.items() if key != "main_destination"} == \
-        {key: value for key, value in before.items() if key != "main_destination"}
+    asked_again = {"main_destination", "accommodation", "host_details"}
+    assert {key: value for key, value in copied.items() if key not in asked_again} == \
+        {key: value for key, value in before.items() if key not in asked_again}
+    assert "accommodation" not in copied and "host_details" not in copied
+    assert client.get(f"/applications/{copy['id']}", headers=headers[0]).json()["current"]["id"] == "accommodation"
     # The original is unchanged.
     assert answers_of(app, original) == before
     assert client.get(f"/applications/{original}", headers=headers[0]).json()["place"] == "France"
@@ -161,3 +165,34 @@ def test_only_matching_questions_of_the_same_type_are_copied():
     assert copied["purpose"] == "tourism"
     with pytest.raises(flow.InvalidAnswer):
         copy_answers(source, target, answers, "MARS", date.today())
+
+
+def test_a_departure_date_is_not_copied_without_its_arrival(api):
+    """QA: the original's arrival date has passed, so the copy asks for both dates again."""
+    client, app, headers, _ = api
+    original = start(client, headers[0])["id"]
+    answer_all(client, headers[0], original)
+    with Session(app.state.engine) as session:
+        row = session.get(ApplicationAnswer, (original, "arrival_date"))
+        row.value = (date.today() - timedelta(days=5)).isoformat()
+        session.add(row)
+        session.commit()
+    copy = duplicate(client, headers[0], original, place="ITA").json()
+    copied = answers_of(app, copy["id"])
+    assert "arrival_date" not in copied and "departure_date" not in copied
+    assert copied["occupation"] == ("retired", "traveler")
+
+
+def test_visas_without_a_list_of_countries_are_not_offered(api, monkeypatch):
+    client, _, headers, _ = api
+    original = start(client, headers[0])["id"]
+    raw = json.loads(QUESTIONNAIRE.read_text(encoding="utf-8"))
+    raw.update(id="test-country-place", visa_type="test_visa")
+    place = dict(raw["steps"][0]["questions"][0], type="country")
+    place.pop("options")
+    raw["steps"][0]["questions"][0] = place
+    other = flow.Questionnaire.model_validate(raw)
+    real = flow.available_questionnaires()
+    monkeypatch.setattr(flow, "available_questionnaires", lambda: [*real, other])
+    choices = client.get(f"/applications/{original}/duplicate", headers=headers[0]).json()
+    assert [choice["visa_type"] for choice in choices] == ["short_stay"]

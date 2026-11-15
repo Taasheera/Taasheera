@@ -1,12 +1,12 @@
 """Exporting an application record as a file (US 80, CMPS271-83)."""
 
-from datetime import date
+from datetime import date, timedelta
 import json
 
 from sqlmodel import Session, select
 
 from app.applications.records import export_filename
-from app.models import ActivityEvent, Application
+from app.models import ActivityEvent, Application, ApplicationAnswer
 from test_applications_api import ANSWERS, answer_all, api, start  # noqa: F401 (api is a fixture)
 
 
@@ -80,13 +80,33 @@ def test_a_new_or_archived_application_exports_too(api):
     assert "taasheera-schengen-area-" in export(client, headers[0], application_id).headers["content-disposition"]
 
 
-def test_exporting_changes_nothing(api):
+def _rows(app, application_id):
+    with Session(app.state.engine) as session:
+        application = session.get(Application, application_id).model_dump()
+        answers = [row.model_dump() for row in session.exec(
+            select(ApplicationAnswer).where(ApplicationAnswer.application_id == application_id))]
+    return application, sorted(answers, key=lambda row: row["question_id"])
+
+
+def test_exporting_changes_nothing_and_the_file_agrees_with_itself(api):
     client, app, headers, _ = api
     application_id = start(client, headers[0])["id"]
-    answer_all(client, headers[0], application_id, stop_at="passport")
-    before = client.get(f"/applications/{application_id}", headers=headers[0]).json()
-    export(client, headers[0], application_id)
-    assert client.get(f"/applications/{application_id}", headers=headers[0]).json() == before
+    answer_all(client, headers[0], application_id)
+    client.post(f"/applications/{application_id}/archive", headers=headers[0])
+    # A trip date that has passed: exporting must not clear it from the archived application.
+    with Session(app.state.engine) as session:
+        row = session.get(ApplicationAnswer, (application_id, "arrival_date"))
+        row.value = (date.today() - timedelta(days=5)).isoformat()
+        session.add(row)
+        session.commit()
+    before = _rows(app, application_id)
+    record = json.loads(export(client, headers[0], application_id).content)
+    assert _rows(app, application_id) == before
+    # QA: the stale stored status isn't exported; the file says what its answers give.
+    assert before[0]["status"] == "ANSWERS_COMPLETE"
+    assert record["application"]["status"] == "DRAFT"
+    assert "arrival_date" not in {answer["question_id"] for answer in record["answers"]}
+    assert "complete" not in [event["kind"] for event in record["timeline"]["events"]]
 
 
 def test_filenames_are_plain_ascii():

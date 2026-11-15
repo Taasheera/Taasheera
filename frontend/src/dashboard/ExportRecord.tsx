@@ -30,6 +30,6 @@ export default function ExportRecord({ application }: { application: Application
   }
 
   return <button type="button" className="button button-secondary dash-small" disabled={busy} aria-busy={busy}
-    data-activity-id="application-export" aria-label={`Download the record of ${applicationLabel(application)}`}
+    data-activity-id="application-export" aria-label={`Download record of ${applicationLabel(application)}`}
     onClick={() => void download()}>{busy ? 'Preparing…' : 'Download record'}</button>
 }
