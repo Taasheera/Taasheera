@@ -453,6 +453,24 @@ test('a question to the assistant keeps the traveler on the same step', async ()
   assert.ok(button('Yes') && button('No'))
 })
 
+test("the navigation panel's Assistant button goes to this page's ask box", async () => {
+  handlers = signedIn({ [`GET /applications/${APP}`]: () => json(state([[PURPOSE, 'tourism']], LONG_STAY)) })
+  await render(`/apply/${APP}`)
+  // The side panel stays off this page; its assistant is the ask box under the questions.
+  assert.ok(!$('.assistant-panel'), 'no side assistant panel on this page')
+  const box = $('#chat-ask-input')
+  assert.ok(document.activeElement !== box, 'the ask box starts unfocused')
+  await click($('nav[aria-label="Your sections"] .section-nav-assistant'))
+  assert.ok(document.activeElement === box, 'the Assistant button puts the cursor in the ask box')
+})
+
+test('starting an application shows no Assistant button, since there is no assistant there yet', async () => {
+  handlers = signedIn({ 'GET /applications/options': () => json([OPTION]) })
+  await render('/apply')
+  assert.ok($('nav[aria-label="Your sections"]'), 'the navigation panel is shown')
+  assert.ok(!$('.section-nav-assistant'), 'no Assistant button that would do nothing')
+})
+
 test('a completed application says so', async () => {
   handlers = signedIn({ [`GET /applications/${APP}`]: () => json(state([[PURPOSE, 'tourism']], null)) })
   await render(`/apply/${APP}`)
