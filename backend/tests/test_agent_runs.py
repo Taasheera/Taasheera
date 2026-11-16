@@ -40,7 +40,26 @@ def agent(client, headers, application_id, path="", method="get"):
 
 
 def work(app, tmp_path, browser):
-    return run_once(app.state.engine, AgentFiles(tmp_path / "passports"), browser)
+    @contextmanager
+    def shared():
+        yield browser
+
+    return run_once(app.state.engine, AgentFiles(tmp_path / "passports"), shared)
+
+
+def test_a_browser_that_will_not_start_fails_the_run(api, tmp_path):
+    client, app, headers, _ = api
+    application_id = ready_application(client, headers[0])
+    agent(client, headers[0], application_id, "/runs", "post")
+
+    @contextmanager
+    def broken():
+        raise RuntimeError("no browser")
+        yield
+
+    assert run_once(app.state.engine, AgentFiles(tmp_path / "passports"), broken) is True
+    [run] = agent(client, headers[0], application_id).json()["runs"]
+    assert run["status"] == "failed" and "browser didn't start" in run["message"]
 
 
 def test_the_agent_starts_only_on_a_complete_application(api):

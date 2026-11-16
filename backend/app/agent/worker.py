@@ -83,13 +83,21 @@ def process(session: Session, files: AgentFiles, run: AgentRun, browser) -> Outc
     return outcome
 
 
-def run_once(engine, files: AgentFiles, browser) -> bool:
-    """Process one queued run if there is one. True if it did."""
+def run_once(engine, files: AgentFiles, open_browser: BrowserFactory) -> bool:
+    """Process one queued run if there is one. True if it did.
+
+    The browser starts only for a run and closes after it: measured at about 230 MB idle and
+    430 MB while filling (scripts/measure_agent_memory.py), too much to keep on a small server.
+    """
     with Session(engine) as session:
         run = queue.claim(session)
         if run is None:
             return False
-        process(session, files, run, browser)
+        try:
+            with open_browser() as browser:
+                process(session, files, run, browser)
+        except Exception as error:  # noqa: BLE001 - a browser that won't start fails this run, not the worker
+            queue.finish(session, run.id, "failed", f"the agent's browser didn't start ({type(error).__name__})")
         return True
 
 
@@ -98,7 +106,6 @@ def serve(engine, files: AgentFiles, open_browser: BrowserFactory, *, stop: Call
         recovered = queue.recover_stale(session)
     if recovered:
         log.warning("recovered interrupted agent runs", extra={"count": recovered})
-    with open_browser() as browser:
-        while not stop():
-            if not run_once(engine, files, browser):
-                time.sleep(POLL_SECONDS)
+    while not stop():
+        if not run_once(engine, files, open_browser):
+            time.sleep(POLL_SECONDS)
