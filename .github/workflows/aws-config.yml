@@ -26,15 +26,15 @@ jobs:
       - name: Validate CloudFormation and shell configuration
         run: |
           python -m pip install cfn-lint==1.57.2
-          cfn-lint deploy/aws/stack.yaml deploy/aws/github-role.yaml
-          bash -n deploy/aws/*.sh
+          cfn-lint deploy/aws/stack.yaml deploy/aws/github-role.yaml deploy/aws/image-repositories.yaml
+          for script in deploy/aws/*.sh; do bash -n "$script"; done
       - name: Check workflow syntax with verified actionlint
         run: |
           cd "$RUNNER_TEMP"
           curl --fail --location https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz -o actionlint.tar.gz
           printf '%s  actionlint.tar.gz\n' 023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757 | sha256sum -c -
           tar -xzf actionlint.tar.gz actionlint
-          ./actionlint "$GITHUB_WORKSPACE/.github/workflows/aws-config.yml" "$GITHUB_WORKSPACE/.github/workflows/deploy-dev-aws.yml"
+          ./actionlint "$GITHUB_WORKSPACE/.github/workflows/aws-config.yml" "$GITHUB_WORKSPACE/.github/workflows/deploy-dev-aws.yml" "$GITHUB_WORKSPACE/.github/workflows/deploy-main-aws.yml"
       - name: Generate the actual bootstrap configuration with SES
         run: |
           python - <<'PY'
@@ -60,12 +60,19 @@ jobs:
       - name: Check readiness through the frontend proxy
         run: |
           python - <<'PY'
-          import json, os, urllib.request
+          import json, os, urllib.error, urllib.request
           from pathlib import Path
           settings = dict(line.split('=', 1) for line in Path(os.environ['TAASHEERA_WEB_ENV_FILE']).read_text().splitlines())
           request = urllib.request.Request('http://127.0.0.1/health/ready', headers={'X-Taasheera-Origin': settings['ORIGIN_TOKEN']})
           with urllib.request.urlopen(request, timeout=10) as response:
               assert response.status == 200 and json.load(response) == {'status': 'ok'}
+          # /admin-api reaches the backend's /admin routes (signed out: 401), not the dashboard's HTML.
+          request = urllib.request.Request('http://127.0.0.1/admin-api/me', headers={'X-Taasheera-Origin': settings['ORIGIN_TOKEN']})
+          try:
+              urllib.request.urlopen(request, timeout=10)
+              raise AssertionError('/admin-api/me answered without authentication')
+          except urllib.error.HTTPError as error:
+              assert error.code == 401 and error.headers['Cache-Control'] == 'no-store', error.code
           print('Production readiness passed with generated SES configuration; no real email sent.')
           PY
       - name: Capture startup errors

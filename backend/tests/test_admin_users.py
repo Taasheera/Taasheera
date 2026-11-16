@@ -1,7 +1,9 @@
 """US 133: the admin user-management API and what suspension does to sign-in."""
 
+import io
 import json
 import time
+import zipfile
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -15,7 +17,7 @@ import app.admin_api as admin_api
 from app.admin_api import FORBIDDEN
 from app.auth import COOKIE_NAME
 from app.main import create_app
-from app.models import ActivityEvent, AuthSession, GoogleIdentity, Traveler
+from app.models import ActivityEvent, Application, AuthSession, GoogleIdentity, Traveler
 
 
 PASSWORD = "Staff-password-123"
@@ -427,11 +429,16 @@ def test_overview_counts_users_new_this_week_and_suspended(api):
             row.created_at = created
             session.add(row)
         session.commit()
+        # Every application counts as started, whatever its status.
+        for index, (key, status) in enumerate([("maya", "DRAFT"), ("maya", "ANSWERS_COMPLETE"), ("omar", "INELIGIBLE")]):
+            session.add(Application(id=f"{index:032x}", traveler_id=api.ids[key], questionnaire_id="schengen_c",
+                                    questionnaire_version=1, destination="schengen", visa_type="C", status=status))
+        session.commit()
     assert suspend(api, "omar").status_code == 200
     response = api.client.get("/admin/overview", headers=api.admin)
     assert response.status_code == 200
     # Maya, Omar and Sara joined in the last 7 days; Adam earlier; Rana's sign-up time is unknown.
-    assert response.json() == {"total_users": 5, "new_last_7_days": 3, "suspended": 1, "applications_started": None}
+    assert response.json() == {"total_users": 5, "new_last_7_days": 3, "suspended": 1, "applications_started": 3}
 
 
 def test_new_accounts_record_their_sign_up_time(api):
@@ -476,9 +483,75 @@ def test_admin_schemas_forbid_extra_input_and_carry_no_passport_fields(api):
             if body is not None:
                 bodies += 1
                 assert components[body["schema"]["$ref"].rsplit("/", 1)[-1]]["additionalProperties"] is False
+            if method == "delete":
+                assert {"202", "204"} <= set(operation["responses"])
+                continue
             response = operation["responses"]["200"]["content"]["application/json"]["schema"]
             # The upload count is the one passport-related number the API reports.
             names = set(schema_properties(response, components)) - {"passport_uploads"}
             assert names, (method, path)
             assert not [name for name in names if any(word in name for word in PASSPORT_WORDS)], (method, path)
-    assert bodies == 1
+    assert bodies == 4
+
+
+@pytest.mark.parametrize("google", [False, True])
+def test_add_admin_by_email_requires_exact_confirmation_and_supports_both_methods(api, google):
+    if google:
+        with Session(api.app.state.engine) as session:
+            owner = session.get(Traveler, api.ids["maya"])
+            owner.auth_type = "google"; owner.password_hash = ""; owner.sso_email = owner.email
+            session.add(owner)
+            session.add(GoogleIdentity(subject="maya-google", traveler_id=owner.id)); session.commit()
+    email = "MAYA@EXAMPLE.COM"
+    found = api.client.post("/admin/admins/lookup", headers=api.admin, json={"email": email})
+    assert found.status_code == 200 and found.json()["id"] == api.ids["maya"]
+    assert traveler(api, "maya").role == "traveler"  # Lookup cannot grant access.
+    response = api.client.post("/admin/admins", headers=api.admin,
+        json={"email": email, "expected_user_id": api.ids["maya"]})
+    assert response.status_code == 200 and response.json()["role"] == "admin"
+    assert traveler(api, "maya").auth_type == ("google" if google else "email_password")
+    assert admin_events(api) == [(api.ids["maya"], "role_change", f"admin:{api.ids['admin']}:traveler->admin", "success")]
+
+
+def test_admin_email_grant_rejects_unknown_ambiguous_stale_suspended_and_existing_admin(api):
+    def grant(email, target):
+        return api.client.post("/admin/admins", headers=api.admin, json={"email": email, "expected_user_id": target})
+    assert api.client.post("/admin/admins/lookup", headers=api.admin, json={"email": "missing@example.com"}).status_code == 404
+    assert grant("omar@example.com", api.ids["maya"]).status_code == 409
+    assert grant("rana@example.com", api.ids["other_admin"]).status_code == 409
+    assert suspend(api, "maya").status_code == 200
+    assert grant("maya@example.com", api.ids["maya"]).status_code == 409
+    with Session(api.app.state.engine) as session:
+        other = session.get(Traveler, api.ids["omar"]); other.sso_email = "maya@example.com"
+        session.add(other); session.commit()
+    assert grant("maya@example.com", api.ids["maya"]).status_code == 409
+    assert traveler(api, "maya").role == "traveler"
+
+
+@pytest.mark.parametrize("path,body", [("/admin/admins/lookup", {"email": "maya@example.com"}),
+    ("/admin/admins", {"email": "maya@example.com", "expected_user_id": 3})])
+def test_admin_email_endpoints_are_admin_only_origin_checked_and_forbid_extra_fields(api, path, body):
+    assert api.client.post(path, json=body).status_code == 401
+    for email in ["maya@example.com", "sara@example.com"]:
+        headers = bearer(login(api, email))
+        assert api.client.post(path, headers=headers, json=body).status_code == 403
+    assert api.client.post(path, headers={**api.admin, "Origin": "https://evil.example"}, json=body).status_code == 403
+    response = api.client.post(path, headers=api.admin, json={**body, "role": "admin"})
+    assert response.status_code == 422
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_the_travelers_data_download_shows_staff_changes_without_the_staff_id(api):
+    """US 87: the download says an admin changed the account, never which staff account did."""
+    maya = api.ids["maya"]
+    assert api.client.post(f"/admin/users/{maya}/suspend", headers=api.admin).status_code == 200
+    assert api.client.post(f"/admin/users/{maya}/reactivate", headers=api.admin).status_code == 200
+    response = api.client.get("/auth/account/export", headers=bearer(login(api, "maya@example.com")))
+    assert response.status_code == 200, response.text
+    data = json.loads(zipfile.ZipFile(io.BytesIO(response.content)).read("data.json"))
+    changes = [event["identifier"] for event in data["activityevent"] if event["identifier"].startswith("admin")]
+    assert changes == ["admin:active->suspended", "admin:suspended->active"]
+    # The audit trail itself still records who made each change.
+    assert [identifier for _, _, identifier, _ in events(api, maya) if identifier.startswith("admin")] == [
+        f"admin:{api.ids['admin']}:active->suspended", f"admin:{api.ids['admin']}:suspended->active"]
+

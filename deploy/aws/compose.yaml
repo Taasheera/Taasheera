@@ -1,6 +1,7 @@
 name: taasheera
 services:
   migrate:
+    image: ${TAASHEERA_API_IMAGE:-taasheera-api}
     build:
       context: ../../backend
     env_file: ${TAASHEERA_ENV_FILE:-/etc/taasheera/app.env}
@@ -9,6 +10,7 @@ services:
     command: [python, migrate.py, upgrade]
     restart: "no"
   api:
+    image: ${TAASHEERA_API_IMAGE:-taasheera-api}
     build:
       context: ../../backend
     env_file: ${TAASHEERA_ENV_FILE:-/etc/taasheera/app.env}
@@ -23,7 +25,37 @@ services:
       options:
         max-size: 5m
         max-file: "2"
+  # The form-filling agent (CMPS271-236): the API's image with another command, in its own container so
+  # a slow embassy site or the browser's memory never affects the API. Idle it is a ~40 MB Python loop;
+  # Chromium starts only for a run (about 430 MB at peak, measured), capped below by mem_limit.
+  worker:
+    image: ${TAASHEERA_API_IMAGE:-taasheera-api}
+    env_file: ${TAASHEERA_ENV_FILE:-/etc/taasheera/app.env}
+    volumes:
+      - ${TAASHEERA_DATA_DIR:-/srv/taasheera}:/app/storage
+    command: [python, agent_worker.py]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # Reaps the browser's child processes.
+    init: true
+    # Healthy while the worker loop keeps touching its heartbeat file. A run may take minutes,
+    # so allow 20; `docker compose up --wait` (CI and bootstrap.sh) needs a health check to wait on.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(time.time() - os.path.getmtime('/tmp/taasheera-agent-alive') > 1200)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    mem_limit: 640m
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
   web:
+    image: ${TAASHEERA_WEB_IMAGE:-taasheera-web}
     env_file: ${TAASHEERA_WEB_ENV_FILE:-/etc/taasheera/web.env}
     environment:
       NGINX_ENVSUBST_FILTER: ORIGIN_TOKEN

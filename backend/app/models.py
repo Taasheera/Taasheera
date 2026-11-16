@@ -1,10 +1,10 @@
 from datetime import date, datetime, timezone
-from typing import Annotated, Literal, get_args
+from typing import Annotated, Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, EmailStr, SecretStr, StringConstraints, field_validator
 from pydantic import Field as SchemaField
 from sqlmodel import Field, SQLModel
-from sqlalchemy import CheckConstraint, Text
+from sqlalchemy import JSON, CheckConstraint, Column, Text
 
 
 # Stored as plain strings guarded by named CHECK constraints (portable; no database enum types).
@@ -62,6 +62,38 @@ class TravelerProfile(SQLModel, table=True):
     address_country: str | None = Field(default=None, max_length=3, repr=False)
 
 
+class Application(SQLModel, table=True):
+    # Random hex ids, like passport uploads, so ids can't be guessed or counted.
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    # Which question file (and version) the answers belong to.
+    questionnaire_id: str = Field(max_length=60)
+    questionnaire_version: int
+    destination: str = Field(max_length=20)
+    visa_type: str = Field(max_length=40)
+    # How many people travel together, counting the traveler (US 4). Recorded only, for now:
+    # each application is for one person until group applications (US 81).
+    group_size: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
+    # DRAFT while answering, INELIGIBLE when an answer stops the flow, ANSWERS_COMPLETE when nothing is left.
+    status: str = Field(default="DRAFT", max_length=20)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Set when the traveler archives it (US 79): hidden from the dashboard, kept until they delete it.
+    archived_at: datetime | None = None
+
+
+class ApplicationAnswer(SQLModel, table=True):
+    """One answer, saved as soon as it is given. A copy, so later passport or profile edits don't change it."""
+
+    application_id: str = Field(primary_key=True, foreign_key="application.id", max_length=32)
+    question_id: str = Field(primary_key=True, max_length=40)
+    value: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
+    # "traveler" (typed or chosen in the chat), "passport_upload" (a passport confirmed for this
+    # application), or "passport" / "profile" (a saved passport or profile the traveler confirmed here).
+    source: str = Field(max_length=20)
+    answered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class ActivityEvent(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     traveler_id: int = Field(foreign_key="traveler.id", index=True)
@@ -109,9 +141,12 @@ class RegisterRequest(PasswordInput):
         return value.lower()
 
 
-class GoogleLinkRequest(PasswordInput):
+class GoogleLinkLoginRequest(PasswordInput):
     model_config = ConfigDict(extra="forbid")
     id_token: SecretStr = SchemaField(min_length=1, max_length=8192)
+
+
+class GoogleLinkRequest(GoogleLinkLoginRequest):
     expected_traveler_id: int = SchemaField(gt=0)
 
 
@@ -225,3 +260,111 @@ class ResetRateLimit(SQLModel, table=True):
     key: str = Field(primary_key=True, max_length=100)
     expires_at: int = Field(index=True)
     count: int = 1
+
+
+class AssistantMessage(SQLModel, table=True):
+    """One turn of a traveler's chat with the assistant (US 111), so it reloads on the next visit.
+
+    Kept per traveler and per application (none for chats outside an application). Holds what the
+    traveler typed, which may mention passport details, so reads are owner-scoped like the rest.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str | None = Field(default=None, foreign_key="application.id", max_length=32, index=True)
+    role: str = Field(max_length=10)  # "user" or "assistant"
+    content: str = Field(sa_type=Text, repr=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Notification(SQLModel, table=True):
+    """An in-app message for one traveler (US 28), listed in the notification centre (US 107).
+
+    Plain sentences about their own applications: never passport fields or answer values.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str | None = Field(default=None, foreign_key="application.id", max_length=32, index=True)
+    kind: str = Field(max_length=30)  # "status_changed", "agent_finished" or "agent_stopped"
+    message: str = Field(max_length=300)
+    link: str | None = Field(default=None, max_length=200)  # A page on this site, such as /dashboard/<id>
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    read_at: datetime | None = None
+
+
+class SupportingDocument(SQLModel, table=True):
+    """A file uploaded for one of an application's document requirements (CMPS271-29).
+
+    The file sits in the traveler's private storage folder; this row says what it is for.
+    The display name is the traveler's own file name, cleaned, and is never used in a path.
+    """
+
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    requirement: str = Field(max_length=40)
+    filename: str = Field(max_length=120, repr=False)
+    content_type: str = Field(max_length=40)
+    size_bytes: int
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AgentRun(SQLModel, table=True):
+    """One attempt by the form-filling agent at an embassy's online form (CMPS271-236, CMPS271-67).
+
+    The API queues it when the traveler asks; the separate worker process claims it, fills the form
+    in a headless browser and stops before submitting. Status: queued, running, ready (filled and
+    waiting for the traveler), stopped (CAPTCHA, unknown field, site problem), failed or cancelled.
+    """
+
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    site: str = Field(max_length=40)
+    status: str = Field(default="queued", max_length=20, index=True)
+    # A fixed explanation for the traveler, never a value typed into the form.
+    message: str | None = Field(default=None, max_length=300)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class AgentFieldEntry(SQLModel, table=True):
+    """One field the agent typed (CMPS271-70, US 75): what, where and when, so the traveler can check it."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    run_id: str = Field(foreign_key="agentrun.id", max_length=32, index=True)
+    page: int
+    page_title: str = Field(max_length=100)
+    field: str = Field(max_length=120)
+    value: str = Field(sa_type=Text, repr=False)
+    entered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AgentScreenshot(SQLModel, table=True):
+    """A screenshot of one form page after the agent filled it; the file is in the owner's private folder."""
+
+    id: str = Field(primary_key=True, max_length=32)
+    run_id: str = Field(foreign_key="agentrun.id", max_length=32, index=True)
+    page: int
+    page_title: str = Field(max_length=100)
+    taken_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
+
+
+class DocumentAccess(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    actor_id: int = Field(foreign_key="traveler.id", index=True)
+    upload_id: str = Field(max_length=32)
+    purpose: str = Field(max_length=30)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+
+
+class AccountErasure(SQLModel, table=True):
+    # Durable work item: failed file/database cleanup is retried, never reported as complete.
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,0 +1,266 @@
+/* Supporting documents checklist (CMPS271-29). Sits on the application detail page. */
+.docs {
+  margin-top: 40px;
+}
+
+.docs h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.docs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.docs-lede,
+.docs-note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.docs-note {
+  margin-bottom: 12px;
+}
+
+.docs-progress {
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.docs-progress.is-complete {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.docs-list,
+.docs-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-list {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.docs-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.docs-item + .docs-item {
+  border-top: 1px solid var(--border);
+}
+
+.docs-mark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  place-items: center;
+  border: 2px solid var(--field-border);
+  border-radius: 50%;
+  color: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.docs-item.is-done .docs-mark {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+
+.docs-body h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+}
+
+.docs-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.docs-help {
+  margin: 4px 0 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.docs-pick {
+  margin-top: 10px;
+}
+
+.docs-files {
+  margin-top: 10px;
+}
+
+.docs-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 0;
+}
+
+.docs-file + .docs-file {
+  border-top: 1px dashed var(--border);
+}
+
+.docs-file-kind {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--brand-muted);
+  color: var(--brand);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.docs-file-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.docs-file-size {
+  color: var(--fg-dim);
+  font-size: 13px;
+}
+
+.docs-file-actions,
+.docs-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.docs-confirm span {
+  font-size: 14px;
+}
+
+.docs-file-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.docs-other {
+  margin-top: 24px;
+}
+
+.docs-other h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+@media (max-width: 600px) {
+  .docs-item {
+    padding: 14px;
+  }
+
+  .docs-file-actions,
+  .docs-confirm {
+    margin-left: 0;
+  }
+}
+
+.docs-error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+/* Consistency check (CMPS271-50) */
+.xcheck {
+  margin-top: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--fg-dim);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.xcheck.is-ok {
+  border-left-color: var(--ok);
+}
+
+.xcheck.is-warn {
+  border-left-color: var(--warn);
+}
+
+.xcheck h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.xcheck-summary {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.xcheck-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.xcheck-list li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+}
+
+.xcheck-field {
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.xcheck-message {
+  grid-column: 1 / -1;
+  font-size: 14px;
+}
+
+.xcheck-disclaimer {
+  margin: 0;
+  font-size: 12px;
+}

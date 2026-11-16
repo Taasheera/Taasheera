@@ -68,6 +68,7 @@ google-genai==2.28.0
 greenlet==3.5.6
     # via
     #   -r requirements.lock
+    #   playwright
     #   sqlalchemy
 h11==0.16.0
     # via
@@ -149,6 +150,12 @@ pygments==2.21.0
     # via pytest
 pyjwt==2.15.1
     # via -r requirements.lock
+playwright==1.56.0
+    # via -r requirements.lock
+pyee==13.0.1
+    # via playwright
+pypdf==6.21.4
+    # via -r requirements.lock
 pytesseract==0.3.13
     # via -r requirements.lock
 pytest==9.1.1
@@ -221,3 +228,8 @@ jmespath==1.1.0
 python-dateutil==2.9.0.post0
 s3transfer==0.19.2
 six==1.17.0
+
+# Owner request serialization and opt-in privacy-filtered monitoring.
+filelock==3.20.3
+sentry-sdk==2.43.0
+psutil==7.1.3

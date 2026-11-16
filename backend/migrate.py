@@ -74,9 +74,35 @@ def upgrade() -> None:
                         ("add_column", "authsession", "created_at"),
                         ("add_column", "authsession", "last_active_at"),
                     }
-                    # Unversioned databases predate migrations, so none has the columns added since.
+                    # Unversioned databases predate migrations, so none has the columns or tables added since.
                     migrated_only = {("add_column", "traveler", "role"), ("add_column", "traveler", "status"),
-                                     ("add_column", "traveler", "created_at")}
+                                     ("add_column", "traveler", "created_at"),
+                                     ("add_table", "application"),
+                                     ("add_index", "ix_application_traveler_id"),
+                                     ("add_table", "applicationanswer"),
+                                     ("add_table", "documentaccess"),
+                                     ("add_index", "ix_documentaccess_traveler_id"),
+                                     ("add_index", "ix_documentaccess_actor_id"),
+                                     ("add_index", "ix_documentaccess_occurred_at"),
+                                     ("add_table", "accounterasure"),
+                                     ("add_table", "assistantmessage"),
+                                     ("add_index", "ix_assistantmessage_traveler_id"),
+                                     ("add_index", "ix_assistantmessage_application_id"),
+                                     ("add_table", "notification"),
+                                     ("add_index", "ix_notification_traveler_id"),
+                                     ("add_index", "ix_notification_application_id"),
+                                     ("add_index", "ix_notification_created_at"),
+                                     ("add_table", "supportingdocument"),
+                                     ("add_index", "ix_supportingdocument_traveler_id"),
+                                     ("add_index", "ix_supportingdocument_application_id"),
+                                     ("add_table", "agentrun"),
+                                     ("add_index", "ix_agentrun_traveler_id"),
+                                     ("add_index", "ix_agentrun_application_id"),
+                                     ("add_index", "ix_agentrun_status"),
+                                     ("add_table", "agentfieldentry"),
+                                     ("add_index", "ix_agentfieldentry_run_id"),
+                                     ("add_table", "agentscreenshot"),
+                                     ("add_index", "ix_agentscreenshot_run_id")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

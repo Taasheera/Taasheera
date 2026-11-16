@@ -1,0 +1,235 @@
+{
+  "id": "us-b2-tourist",
+  "version": 1,
+  "destination": "USA",
+  "visa_type": "b2_tourist",
+  "title": "US B-2 tourist visa",
+  "destination_label": "United States",
+  "destination_description": "All 50 states, for a visit",
+  "visa_label": "B-2 tourist",
+  "visa_description": "For tourism, visiting family or friends, or medical treatment. A consular interview is part of the process.",
+  "summary": {"place": null, "date": "arrival_date"},
+  "source": "Form DS-160, Online Nonimmigrant Visa Application (US Department of State)",
+  "steps": [
+    {
+      "id": "eligibility",
+      "title": "Eligibility",
+      "questions": [
+        {
+          "id": "purpose",
+          "type": "choice",
+          "prompt": "What's the main purpose of your trip to the United States?",
+          "options": [
+            {"value": "tourism", "label": "Tourism or a holiday"},
+            {"value": "family_friends", "label": "Visiting family or friends"},
+            {"value": "medical", "label": "Medical treatment"},
+            {"value": "business", "label": "Business meetings or a conference"},
+            {"value": "work_or_study", "label": "Working or studying"}
+          ]
+        },
+        {
+          "id": "purpose_stop",
+          "type": "yes_no",
+          "prompt": "Is the trip only for business meetings or a conference, with no tourism?",
+          "help": "A B-1/B-2 visa covers both, but Ta'asheera prepares the tourist (B-2) side for now.",
+          "show_if": {"question": "purpose", "in": ["business"]},
+          "stop_if": {
+            "in": [true],
+            "message": "A business-only trip needs a B-1 visa, which Ta'asheera can't prepare yet. If you'll also travel for tourism, answer no."
+          }
+        },
+        {
+          "id": "work_or_study_stop",
+          "type": "yes_no",
+          "prompt": "Will you work or take a course for credit in the United States?",
+          "show_if": {"question": "purpose", "in": ["work_or_study"]},
+          "stop_if": {
+            "in": [true],
+            "message": "Work and study need a different US visa (such as H, F or J), which Ta'asheera can't prepare yet."
+          }
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "title": "Passport",
+      "questions": [
+        {
+          "id": "passport",
+          "type": "passport",
+          "prefill": "passport",
+          "prompt": "Let's add your passport. You can upload a photo of its details page and confirm what we read, or type the details yourself."
+        },
+        {
+          "id": "passport_issue_date",
+          "type": "date",
+          "prompt": "When was your passport issued?",
+          "rules": [
+            {"op": "<=", "ref": "today", "message": "The issue date can't be in the future."}
+          ]
+        },
+        {
+          "id": "lost_passport",
+          "type": "yes_no",
+          "prompt": "Have you ever lost a passport or had one stolen?"
+        }
+      ]
+    },
+    {
+      "id": "personal",
+      "title": "About you",
+      "questions": [
+        {
+          "id": "place_of_birth",
+          "type": "text",
+          "prompt": "Which city or town were you born in?",
+          "max_length": 100
+        },
+        {
+          "id": "country_of_birth",
+          "type": "country",
+          "prompt": "And which country is that in?"
+        },
+        {
+          "id": "marital_status",
+          "type": "choice",
+          "prompt": "What's your marital status?",
+          "options": [
+            {"value": "single", "label": "Single"},
+            {"value": "married", "label": "Married"},
+            {"value": "civil_union", "label": "Civil union or domestic partnership"},
+            {"value": "divorced", "label": "Divorced"},
+            {"value": "separated", "label": "Legally separated"},
+            {"value": "widowed", "label": "Widowed"}
+          ]
+        },
+        {
+          "id": "home_address",
+          "type": "address",
+          "prefill": "profile.address",
+          "prompt": "What's your home address?"
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "prefill": "profile.phone",
+          "prompt": "What's your main phone number?",
+          "help": "Include the country code, for example +961 71 123 456."
+        },
+        {
+          "id": "occupation",
+          "type": "choice",
+          "prompt": "What's your primary occupation?",
+          "options": [
+            {"value": "employed", "label": "Employed"},
+            {"value": "self_employed", "label": "Self-employed or business owner"},
+            {"value": "student", "label": "Student"},
+            {"value": "retired", "label": "Retired"},
+            {"value": "homemaker", "label": "Homemaker"},
+            {"value": "unemployed", "label": "Not working"}
+          ]
+        },
+        {
+          "id": "employer",
+          "type": "text",
+          "prompt": "What's the name and address of your employer or business, and your job title?",
+          "max_length": 300,
+          "show_if": {"question": "occupation", "in": ["employed", "self_employed"]}
+        },
+        {
+          "id": "school",
+          "type": "text",
+          "prompt": "Which school or university do you attend?",
+          "max_length": 200,
+          "show_if": {"question": "occupation", "in": ["student"]}
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "title": "Your trip",
+      "questions": [
+        {
+          "id": "arrival_date",
+          "type": "date",
+          "prompt": "When do you plan to arrive in the United States?",
+          "help": "Interview wait times can be long, so an estimate is fine.",
+          "rules": [
+            {"op": ">=", "ref": "today", "days": 1, "message": "Your arrival date needs to be in the future."}
+          ]
+        },
+        {
+          "id": "departure_date",
+          "type": "date",
+          "prompt": "And when do you plan to leave?",
+          "rules": [
+            {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},
+            {"op": "<=", "ref": "arrival_date", "months": 6, "message": "A visitor is usually admitted for up to 6 months. A longer stay needs a different visa."},
+            {"op": "<=", "ref": "passport.expiry_date", "message": "Your passport must be valid for your whole stay. Many nationalities need 6 more months beyond it."}
+          ]
+        },
+        {
+          "id": "us_address",
+          "type": "text",
+          "prompt": "Where will you stay in the United States? Give the name and address.",
+          "max_length": 300
+        },
+        {
+          "id": "us_contact",
+          "type": "text",
+          "prompt": "Who's your contact in the United States? Give their name, relationship to you and phone number, or the hotel's.",
+          "max_length": 300
+        },
+        {
+          "id": "funding",
+          "type": "choice",
+          "prompt": "Who's paying for the trip?",
+          "options": [
+            {"value": "self", "label": "I am"},
+            {"value": "family", "label": "A family member"},
+            {"value": "employer", "label": "My employer"},
+            {"value": "other", "label": "Someone else"}
+          ]
+        },
+        {
+          "id": "payer_details",
+          "type": "text",
+          "prompt": "Who's paying, and how are they related to you?",
+          "max_length": 300,
+          "show_if": {"question": "funding", "in": ["family", "employer", "other"]}
+        },
+        {
+          "id": "travel_companions",
+          "type": "yes_no",
+          "prompt": "Is anyone travelling with you?"
+        },
+        {
+          "id": "previous_us_visit",
+          "type": "yes_no",
+          "prompt": "Have you ever been to the United States?"
+        },
+        {
+          "id": "previous_us_visa",
+          "type": "yes_no",
+          "prompt": "Have you ever been issued a US visa?"
+        },
+        {
+          "id": "refused_us_visa",
+          "type": "yes_no",
+          "prompt": "Have you ever been refused a US visa or entry to the United States?",
+          "help": "Answer honestly: the consulate sees earlier refusals, and a false answer can make you permanently ineligible."
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {"id": "photo", "label": "Digital photo", "help": "Square, at least 600 x 600 pixels, colour, plain white background, taken in the last six months, no glasses.", "crosscheck": false},
+    {"id": "bank_statements", "label": "Bank statements", "help": "Recent statements showing you can pay for the trip. Bring them to the interview too."},
+    {"id": "employment_letter", "label": "Letter from your employer", "help": "Your role, salary and approved leave: it helps show you'll return home.", "show_if": {"question": "occupation", "in": ["employed"]}},
+    {"id": "business_registration", "label": "Business registration", "help": "Your business registration and recent tax returns.", "show_if": {"question": "occupation", "in": ["self_employed"]}},
+    {"id": "enrolment_letter", "label": "Proof of enrolment", "help": "A letter from your school or university confirming you're enrolled.", "show_if": {"question": "occupation", "in": ["student"]}},
+    {"id": "sponsor_letter", "label": "Letter from whoever is paying", "help": "A signed letter saying they'll pay, with their recent bank statements.", "show_if": {"question": "funding", "in": ["family", "employer", "other"]}},
+    {"id": "itinerary", "label": "Travel plans", "help": "Your planned itinerary or hotel bookings. Optional, but useful at the interview.", "required": false},
+    {"id": "travel_history", "label": "Previous visas", "help": "Copies of earlier US or other visas, if you have them.", "required": false}
+  ]
+}
