@@ -40,6 +40,7 @@ from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
 from .notifications import create_notifications_router
 from .documents.router import create_documents_router
+from .documents.review import completeness_issues
 from .documents.storage import DocumentStorage
 
 
@@ -140,17 +141,29 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         for document_id in document_ids:
             document_storage.delete(owner, document_id)
 
+    def document_issues(session, application, answers):
+        # Until the documents feature is released, the checks stay exactly as they were.
+        if not app.state.feature_flags.is_on("supporting_documents"):
+            return []
+        from .applications.router import saved_profile
+        return completeness_issues(session, document_storage, application, answers,
+                                   latest_passport=passport_storage.latest_review(application.traveler_id, purpose="consistency_check"),
+                                   profile=saved_profile(session, application.traveler_id))
+
+    app.state.document_issues = document_issues
+
     app.include_router(create_applications_router(get_session, current_traveler,
         lambda owner, upload: passport_storage.load_review(owner, upload, purpose="application_prefill"),
         load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="application_prefill"),
-        remove_document_files=remove_document_files))
+        remove_document_files=remove_document_files, document_issues=document_issues))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
             record_activity(session, app.state.activity_directory, traveler_id, event_type, requirement, "success")
 
     app.include_router(create_documents_router(get_session, current_traveler, document_storage,
-                                               record_event=record_document_activity))
+                                               record_event=record_document_activity,
+                                               load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check")))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:
@@ -170,7 +183,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     def load_application_context(traveler_id: int, application_id: str) -> str | None:
         with Session(engine) as session:
             return application_context(session, traveler_id, application_id,
-                                       latest_passport=passport_storage.latest_review(traveler_id))
+                                       latest_passport=passport_storage.latest_review(traveler_id),
+                                       document_issues=document_issues)
 
     def stored_history(traveler_id: int, application_id: str | None) -> list[dict]:
         with Session(engine) as session:
@@ -183,7 +197,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     def propose_action(traveler_id: int, application_id: str, name: str, args: dict):
         with Session(engine) as session:
             return application_proposal(session, traveler_id, application_id, name, args,
-                                        latest_passport=passport_storage.latest_review(traveler_id))
+                                        latest_passport=passport_storage.latest_review(traveler_id),
+                                        document_issues=document_issues)
 
     app.include_router(create_assistant_router(
         get_session, current_traveler_id, passport_storage.latest_review, assistant_ask,

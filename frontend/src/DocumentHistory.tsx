@@ -3,7 +3,8 @@ import { loadDocumentAccess, type AccessPage } from './privacy'
 
 const purposes: Record<string, string> = { image_view: 'Viewed passport image', extraction: 'Read for passport extraction',
   review_read: 'Read confirmed details', review_update: 'Read for review update', assistant_context: 'Read for assistant context',
-  application_prefill: 'Read for application prefill' }
+  application_prefill: 'Read for application prefill', consistency_check: 'Read to cross-check your documents',
+  document_view: 'Opened a supporting document', document_check: 'Read a supporting document for the cross-check' }
 
 export default function DocumentHistory() {
   const [opened, setOpened] = useState(false)

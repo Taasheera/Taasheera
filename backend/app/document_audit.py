@@ -11,7 +11,9 @@ from .models import DocumentAccess, Traveler
 
 PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update", "assistant_context", "application_prefill",
                       # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
-                      "document_view", "document_check"})
+                      "document_view", "document_check",
+                      # The passport read by the document cross-check (CMPS271-50).
+                      "consistency_check"})
 
 
 def record_document_access(engine, directory, owner_id: int, upload_id: str, purpose: str):
