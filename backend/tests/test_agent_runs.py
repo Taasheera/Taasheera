@@ -199,3 +199,16 @@ def test_values_are_never_logged(api, tmp_path, browser, caplog):
     with caplog.at_level("DEBUG"):
         work(app, tmp_path, browser)
     assert "ERIKSSON" not in caplog.text and "L898902C3" not in caplog.text
+
+
+def test_the_worker_loop_keeps_its_heartbeat_fresh(api, tmp_path, monkeypatch):
+    """The container's health check reads this file (deploy/aws/compose.yaml)."""
+    from app.agent import worker
+
+    _, app, _, _ = api
+    heartbeat = tmp_path / "alive"
+    monkeypatch.setattr(worker, "HEARTBEAT", heartbeat)
+    monkeypatch.setattr(worker, "POLL_SECONDS", 0)
+    loops = iter([False, False, True])
+    worker.serve(app.state.engine, AgentFiles(tmp_path / "passports"), None, stop=lambda: next(loops))
+    assert heartbeat.is_file()

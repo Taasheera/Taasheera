@@ -6,7 +6,9 @@ and the browser's memory lives in its own container. Each run gets a fresh brows
 """
 
 import logging
+import os
 import time
+from pathlib import Path
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from datetime import date
@@ -23,6 +25,8 @@ from .values import VALUE_BUILDERS
 
 log = logging.getLogger("taasheera.agent")
 POLL_SECONDS = 3
+# Touched on every loop; the container's health check fails if it goes stale (deploy/aws/compose.yaml).
+HEARTBEAT = Path(os.environ.get("AGENT_HEARTBEAT_FILE", "/tmp/taasheera-agent-alive"))
 PAGE_LOAD_TIMEOUT_MS = 45_000
 
 # Opens a browser and yields it; the worker asks it for a new page per run.
@@ -107,5 +111,6 @@ def serve(engine, files: AgentFiles, open_browser: BrowserFactory, *, stop: Call
     if recovered:
         log.warning("recovered interrupted agent runs", extra={"count": recovered})
     while not stop():
+        HEARTBEAT.touch()
         if not run_once(engine, files, open_browser):
             time.sleep(POLL_SECONDS)
