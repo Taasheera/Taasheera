@@ -437,8 +437,10 @@ def test_the_completeness_check_lists_what_is_missing_and_is_owner_scoped(api):
     assert client.get(f"/applications/{application_id}/check").status_code == 401
 
 
-def test_the_completeness_check_compares_the_passport_with_the_profile(api):
-    client, _, headers, _ = api
+def test_the_completeness_check_compares_the_passport_with_the_profile(api, monkeypatch):
+    client, app, headers, _ = api
+    # Only the answers here: with supporting documents on, missing uploads would be reported too.
+    monkeypatch.setattr(app.state, "feature_flags", type(app.state.feature_flags)(frozenset()))
     assert client.put("/profile", headers=headers[0], json={**PROFILE, "surname": "ERIKSEN"}).status_code == 200
     application_id = start(client, headers[0])["id"]
     answer_all(client, headers[0], application_id)
