@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlmodel import Session, delete, select
 
-from ..models import Application, ApplicationAnswer, AssistantMessage, Traveler
+from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, Traveler
 from . import flow
 from .router import ApplicationSummary, _status, _summary, _utc
 
@@ -47,6 +47,7 @@ class Timeline(BaseModel):
 def delete_application(session: Session, application: Application) -> None:
     """Remove the conversation and answers before their application (foreign keys on both)."""
     session.exec(delete(AssistantMessage).where(AssistantMessage.application_id == application.id))
+    session.exec(delete(Notification).where(Notification.application_id == application.id))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
     session.delete(application)
 

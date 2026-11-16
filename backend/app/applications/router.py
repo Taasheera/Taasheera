@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlmodel import Session, select
 
 from ..models import Application, ApplicationAnswer, Traveler, TravelerProfile
+from ..notifications import notify_status_change
 from ..profile import ProfileFields
 from . import actions, completeness, flow
 
@@ -248,7 +249,8 @@ def create_applications_router(
             session.delete(rows.pop(question_id))
         status = _status(questionnaire, answers)
         if cleared or status != application.status:
-            application.status = status
+            previous, application.status = application.status, status
+            notify_status_change(session, application, previous)
             application.updated_at = datetime.now(timezone.utc)
             session.add(application)
         session.commit()
