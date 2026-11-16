@@ -275,7 +275,7 @@
     }
   ],
   "documents": [
-    {"id": "photo", "label": "Passport photo", "help": "A recent colour photo, 35 x 45 mm, on a plain light background, taken in the last six months."},
+    {"id": "photo", "label": "Passport photo", "help": "A recent colour photo, 35 x 45 mm, on a plain light background, taken in the last six months.", "crosscheck": false},
     {"id": "travel_insurance", "label": "Travel medical insurance", "help": "Valid in every Schengen country for your whole stay, covering at least EUR 30,000 of medical costs and repatriation."},
     {"id": "flight_booking", "label": "Flight reservation", "help": "A return or onward booking showing your entry and exit dates. A reservation is enough; you don't need to buy the ticket yet."},
     {"id": "accommodation_proof", "label": "Accommodation booking", "help": "Hotel or rental bookings covering every night of the trip.", "show_if": {"question": "accommodation", "in": ["hotel", "rental", "other"]}},

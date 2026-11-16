@@ -92,6 +92,8 @@ class DocumentRequirement(_Strict):
     help: str | None = None
     required: bool = True
     show_if: Condition | None = None
+    # False for documents with no text about the traveler to compare, such as a photo (CMPS271-50).
+    crosscheck: bool = True
 
 
 class Step(_Strict):

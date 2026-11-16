@@ -22,10 +22,11 @@ def document_cross_check(session: Session, storage: DocumentStorage, application
                          answers: flow.Answers, *, latest_passport: dict | None, profile: dict | None) -> Report:
     questionnaire = flow.load_questionnaire(application.questionnaire_id)
     labels = {document.id: document.label for document in questionnaire.documents}
+    skipped = {document.id for document in questionnaire.documents if not document.crosscheck}
     texts = [DocumentText(id=document.id, requirement=document.requirement,
                           label=labels.get(document.requirement, "Document"), filename=document.filename,
                           text=storage.load_text(application.traveler_id, document.id, purpose="document_check"))
-             for document in _documents(session, application)]
+             for document in _documents(session, application) if document.requirement not in skipped]
     passport = answers.get("passport") if isinstance(answers.get("passport"), dict) else None
     return cross_check(passport, latest_passport=latest_passport, profile=profile, documents=texts)
 

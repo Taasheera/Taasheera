@@ -49,7 +49,7 @@ def test_a_document_that_disagrees_with_the_passport_is_a_warning(api):
     body = crosscheck.json()
     assert body["reference"] == "application"
     assert [(f["field"], f["requirement"], f["found"]) for f in body["findings"]] == [("name", "flight_booking", "ERICSSON")]
-    assert len(body["checked"]) == 6 and body["unreadable"] == []
+    assert len(body["checked"]) == 5 and body["unreadable"] == []  # the photo is not compared
 
     # The assistant's view of the application carries the same warning.
     with Session(app.state.engine) as session:
@@ -71,12 +71,16 @@ def test_reading_documents_for_the_check_is_audited(api):
     client, app, headers, _ = api
     application_id = start(client, headers[0])["id"]
     answer_all(client, headers[0], application_id)
-    document = upload(client, headers[0], application_id, "photo", make_png()).json()
+    document = upload(client, headers[0], application_id, "bank_statements", make_png()).json()
+    photo = upload(client, headers[0], application_id, "photo", make_png()).json()
     client.get(f"/applications/{application_id}/documents/crosscheck", headers=headers[0])
     with Session(app.state.engine) as session:
         purposes = [row.purpose for row in session.exec(select(DocumentAccess)
                                                         .where(DocumentAccess.upload_id == document["id"]))]
     assert purposes == ["document_check"]
+    # A photo has no text to compare, so it isn't read at all.
+    with Session(app.state.engine) as session:
+        assert session.exec(select(DocumentAccess).where(DocumentAccess.upload_id == photo["id"])).all() == []
 
 
 def test_with_the_flag_off_the_completeness_check_is_unchanged(api, monkeypatch):
