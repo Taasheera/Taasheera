@@ -45,10 +45,13 @@ class Timeline(BaseModel):
 
 
 def delete_application(session: Session, application: Application) -> list[str]:
-    """Remove the conversation, answers and documents before their application (foreign keys on all).
+    """Remove the conversation, answers, documents and agent runs before their application (foreign keys on all).
 
     Returns the ids of the deleted supporting documents, whose files go once the deletion is committed.
     """
+    from ..agent.queue import delete_application_runs
+
+    delete_application_runs(session, application.id)
     document_ids = list(session.exec(select(SupportingDocument.id)
                                      .where(SupportingDocument.application_id == application.id)).all())
     session.exec(delete(SupportingDocument).where(SupportingDocument.application_id == application.id))
@@ -66,6 +69,7 @@ def add_lifecycle_routes(
     *,
     today: Callable[[], date] = date.today,
     remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
+    remove_agent_files: Callable[[int, str], None] = lambda traveler_id, application_id: None,
 ) -> None:
     from ..auth import check_origin
 
@@ -114,6 +118,7 @@ def add_lifecycle_routes(
         document_ids = delete_application(session, owned(session, traveler, application_id))
         session.commit()
         remove_document_files(traveler.id, document_ids)
+        remove_agent_files(traveler.id, application_id)
         return Response(status_code=204, headers={"Cache-Control": "private, no-store"})
 
     @router.get("/{application_id}/timeline", response_model=Timeline)

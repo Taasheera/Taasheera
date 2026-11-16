@@ -231,6 +231,7 @@ def create_applications_router(
     today: Callable[[], date] = date.today,
     remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
     document_issues: DocumentIssues = no_document_issues,
+    remove_agent_files: Callable[[int, str], None] = lambda traveler_id, application_id: None,
 ) -> APIRouter:
     from ..auth import check_origin
     from .lifecycle import add_lifecycle_routes
@@ -433,5 +434,5 @@ def create_applications_router(
 
     # Archive, delete and the timeline (US 79, US 20) live in their own file.
     add_lifecycle_routes(router, get_session, current_traveler, today=today,
-                         remove_document_files=remove_document_files)
+                         remove_document_files=remove_document_files, remove_agent_files=remove_agent_files)
     return router

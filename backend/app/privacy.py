@@ -23,6 +23,7 @@ from .google_auth import verify_google_token
 from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, GoogleIdentity,
                      Notification, PasswordResetChallenge, PasswordResetToken, RefreshToken, ResetRateLimit, SupportingDocument,
                      Traveler, TravelerProfile, Application, ApplicationAnswer)
+from .agent.queue import delete_traveler_runs
 from .security import throttle
 
 log = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ def complete_erasure(session: Session, traveler_id: int, storage, directory: Pat
     session.execute(delete(Notification).where(Notification.traveler_id == traveler_id))
     # Their files went with the owner folder above.
     session.execute(delete(SupportingDocument).where(SupportingDocument.traveler_id == traveler_id))
+    delete_traveler_runs(session, traveler_id)
     application_ids = select(Application.id).where(Application.traveler_id == traveler_id)
     session.execute(delete(ApplicationAnswer).where(ApplicationAnswer.application_id.in_(application_ids)))
     session_ids = select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)
