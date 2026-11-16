@@ -310,6 +310,48 @@ class SupportingDocument(SQLModel, table=True):
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class AgentRun(SQLModel, table=True):
+    """One attempt by the form-filling agent at an embassy's online form (CMPS271-236, CMPS271-67).
+
+    The API queues it when the traveler asks; the separate worker process claims it, fills the form
+    in a headless browser and stops before submitting. Status: queued, running, ready (filled and
+    waiting for the traveler), stopped (CAPTCHA, unknown field, site problem), failed or cancelled.
+    """
+
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    site: str = Field(max_length=40)
+    status: str = Field(default="queued", max_length=20, index=True)
+    # A fixed explanation for the traveler, never a value typed into the form.
+    message: str | None = Field(default=None, max_length=300)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class AgentFieldEntry(SQLModel, table=True):
+    """One field the agent typed (CMPS271-70, US 75): what, where and when, so the traveler can check it."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    run_id: str = Field(foreign_key="agentrun.id", max_length=32, index=True)
+    page: int
+    page_title: str = Field(max_length=100)
+    field: str = Field(max_length=120)
+    value: str = Field(sa_type=Text, repr=False)
+    entered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AgentScreenshot(SQLModel, table=True):
+    """A screenshot of one form page after the agent filled it; the file is in the owner's private folder."""
+
+    id: str = Field(primary_key=True, max_length=32)
+    run_id: str = Field(foreign_key="agentrun.id", max_length=32, index=True)
+    page: int
+    page_title: str = Field(max_length=100)
+    taken_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
 
 
