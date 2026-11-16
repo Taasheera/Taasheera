@@ -9,7 +9,7 @@ Hidden behind the `supporting_documents` feature flag until it passes testing.
 import re
 import unicodedata
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import PurePath
 from typing import Annotated
 
@@ -21,7 +21,9 @@ from ..applications import flow
 from ..features import require_feature
 from ..models import Application, ApplicationAnswer, SupportingDocument, Traveler
 from ..passport.images import MAX_UPLOAD_BYTES
+from .crosscheck import Report as CrossCheckReport
 from .files import InvalidDocumentError, check_document, read_text
+from .review import document_cross_check
 from .storage import DocumentStorage
 
 # Enough for a few months of statements per requirement; stops one application filling the disk.
@@ -85,7 +87,9 @@ def create_documents_router(
     *,
     record_event: Callable[[int, str, str], None] | None = None,
     reader: Callable = read_text,
+    load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
 ) -> APIRouter:
+    from ..applications.router import saved_profile
     from ..auth import check_origin
 
     router = APIRouter(prefix="/applications/{application_id}/documents", tags=["Supporting documents"],
@@ -148,6 +152,17 @@ def create_documents_router(
     def list_documents(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
         response.headers["Cache-Control"] = "private, no-store"
         return checklist(session, owned(session, traveler, application_id))
+
+    @router.get("/crosscheck", response_model=CrossCheckReport)
+    def crosscheck(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
+        """Where the name, date of birth or passport number disagrees with the passport (CMPS271-50)."""
+        application = owned(session, traveler, application_id)
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        given, _ = flow.reconcile(questionnaire, answers(session, application), date.today())
+        response.headers["Cache-Control"] = "private, no-store"
+        return document_cross_check(session, storage, application, given,
+                                    latest_passport=load_latest_passport(traveler.id),
+                                    profile=saved_profile(session, traveler.id))
 
     @router.post("", response_model=DocumentPublic, status_code=201, dependencies=[Depends(check_origin)])
     def upload(application_id: str, requirement: Annotated[str, Form(max_length=40)], file: UploadFile,

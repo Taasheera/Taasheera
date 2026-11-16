@@ -85,3 +85,22 @@ export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+// The cross-check (CMPS271-50). Mirrors backend/app/documents/crosscheck.py.
+export type Finding = {
+  field: 'name' | 'birth_date' | 'document_number'
+  source: 'passport' | 'profile' | 'document'
+  where: string
+  expected: string
+  found: string
+  message: string
+  document_id: string | null
+  requirement: string | null
+}
+export type CrossCheck = { reference: 'application' | 'passport' | null; checked: string[]; unreadable: string[]; findings: Finding[] }
+
+export async function getCrossCheck(applicationId: string): Promise<CrossCheck> {
+  const response = await protectedFetch(`${base(applicationId)}/crosscheck`, { cache: 'no-store' })
+  if (!response.ok) throw new Error('Could not cross-check your documents.')
+  return response.json()
+}

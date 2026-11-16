@@ -71,8 +71,13 @@ def _passport_issues(questionnaire: flow.Questionnaire, answers: flow.Answers,
 
 
 def check(questionnaire: flow.Questionnaire, answers: flow.Answers, today: date, *,
-          latest_passport: dict | None = None, profile: dict | None = None) -> Report:
-    """What is missing or inconsistent in an application, and whether it is ready to submit."""
+          latest_passport: dict | None = None, profile: dict | None = None,
+          document_issues: list[Issue] | None = None) -> Report:
+    """What is missing or inconsistent in an application, and whether it is ready to submit.
+
+    `document_issues` are the supporting documents' own issues (CMPS271-50), worked out by the caller,
+    which reads the files: documents not uploaded yet and documents that disagree with the passport.
+    """
     answers, _ = flow.reconcile(questionnaire, answers, today)
     issues: list[Issue] = []
     stopped = flow.stop_message(questionnaire, answers)
@@ -86,6 +91,7 @@ def check(questionnaire: flow.Questionnaire, answers: flow.Answers, today: date,
                          question_id=question.id, step_id=questionnaire.step_of(question.id).id)
                    for question in flow.visible_questions(questionnaire, answers) if question.id not in answers]
     issues += _passport_issues(questionnaire, answers, latest_passport, profile)
+    issues += document_issues or []
     progress = flow.progress(questionnaire, answers)
     return Report(ready=not any(issue.severity == "blocking" for issue in issues),
                   answered=progress.answered, total=progress.total, issues=issues)

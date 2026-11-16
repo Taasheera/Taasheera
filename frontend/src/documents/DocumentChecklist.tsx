@@ -3,6 +3,7 @@ import {
   checkDocumentFile, deleteDocument, DOCUMENT_TYPES, formatSize, getChecklist, openDocument, replaceDocument,
   uploadDocument, type Checklist, type Requirement, type UploadedDocument,
 } from './api'
+import CrossCheckPanel from './CrossCheckPanel'
 import './documents.css'
 
 // The supporting documents an application needs (CMPS271-29): a checklist the answers decide,
@@ -50,6 +51,7 @@ export default function DocumentChecklist({ applicationId, version }: { applicat
       {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
         requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}
     </ul>
+    <CrossCheckPanel applicationId={applicationId} version={`${version ?? ''}-${attempt}`} />
     {checklist.other.length > 0 && <div className="docs-other">
       <h3>No longer needed</h3>
       <p className="docs-note">Your answers changed, so the embassy no longer asks for these. Delete them if they don't belong here.</p>
