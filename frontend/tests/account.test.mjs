@@ -176,7 +176,7 @@ test('a server failure gives a general error without losing entered values', asy
 test('welcome links to account and does not duplicate its sections', async () => {
   mockApi()
   await mount(false)
-  assert.equal(document.querySelector('a[href="/account"]').textContent, 'Edit your account details')
+  assert.equal(document.querySelector('.sign-in-card a[href="/account"]').textContent, 'Edit your account details')
   assert.equal(document.getElementById('profile-heading'), null)
   assert.equal(document.getElementById('sign-in-methods-heading'), null)
   assert.equal(document.getElementById('change-password-heading'), null)

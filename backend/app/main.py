@@ -41,6 +41,7 @@ from .privacy import create_privacy_router, retry_erasures
 from .notifications import create_notifications_router
 from .documents.router import create_documents_router
 from .documents.storage import DocumentStorage
+from .personal_data import create_data_export_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
@@ -109,6 +110,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_activity_router(get_session, current_traveler))
     app.include_router(create_document_audit_router(get_session, current_traveler))
     app.include_router(create_privacy_router(get_session, current_traveler, passport_storage))
+    app.include_router(create_data_export_router(get_session, current_traveler, passport_storage))
     app.include_router(create_auth_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
     app.include_router(create_sessions_router(get_session, current_traveler))

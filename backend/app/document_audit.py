@@ -9,7 +9,8 @@ from sqlmodel import Session, func, select
 from .activity import record_activity
 from .models import DocumentAccess, Traveler
 
-PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update", "assistant_context", "application_prefill",
+PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update", "assistant_context",
+                      "application_prefill", "data_export",
                       # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
                       "document_view", "document_check"})
 
