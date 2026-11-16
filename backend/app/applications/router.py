@@ -215,6 +215,7 @@ def create_applications_router(
     *,
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
     today: Callable[[], date] = date.today,
+    remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
 ) -> APIRouter:
     from ..auth import check_origin
     from .lifecycle import add_lifecycle_routes
@@ -415,5 +416,6 @@ def create_applications_router(
         return state(session, traveler, application, questionnaire, answers, rows, cleared)
 
     # Archive, delete and the timeline (US 79, US 20) live in their own file.
-    add_lifecycle_routes(router, get_session, current_traveler, today=today)
+    add_lifecycle_routes(router, get_session, current_traveler, today=today,
+                         remove_document_files=remove_document_files)
     return router
