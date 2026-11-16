@@ -39,6 +39,8 @@ from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
 from .notifications import create_notifications_router
+from .documents.router import create_documents_router
+from .documents.storage import DocumentStorage
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
@@ -131,9 +133,24 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         uploads_enabled=uploads_setting == "true",
     ))
 
+    # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
+    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+
+    def remove_document_files(owner: int, document_ids: list[str]):
+        for document_id in document_ids:
+            document_storage.delete(owner, document_id)
+
     app.include_router(create_applications_router(get_session, current_traveler,
         lambda owner, upload: passport_storage.load_review(owner, upload, purpose="application_prefill"),
-        load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="application_prefill")))
+        load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="application_prefill"),
+        remove_document_files=remove_document_files))
+
+    def record_document_activity(traveler_id: int, event_type: str, requirement: str):
+        with Session(engine) as session:
+            record_activity(session, app.state.activity_directory, traveler_id, event_type, requirement, "success")
+
+    app.include_router(create_documents_router(get_session, current_traveler, document_storage,
+                                               record_event=record_document_activity))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:
