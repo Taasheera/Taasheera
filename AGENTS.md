@@ -207,16 +207,16 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     visible CAPTCHA, unknown required field, missing answer or changed form; never clicks submit or the
     declaration. Only the local harmonised-form copy is wired: VIDEX is long-stay only, Swiss iVIS2 refuses
     online applications from Lebanon, France-Visas needs the traveler's account. Behind `agent_form_filling`.
-40. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
+43. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
     nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
     *Rejected: a flag service or database table (flags change only with a deploy), build-time frontend
     variables (the same web image serves every environment).*
-41. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
+44. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
     agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
-42. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
+45. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
     questionnaire/country, re-checked by the engine (dependent dates dropped too); accommodation/host answers are
     asked again (`COUNTRY_SPECIFIC`); provenance kept, original untouched.
-43. **Export record (US 80).** Owner-only `GET /applications/{id}/export`: answers as shown, status and the shared
+46. **Export record (US 80).** Owner-only `GET /applications/{id}/export`: answers as shown, status and the shared
     `build_timeline` as `taasheera.application-record` v1 JSON; no-store, audited before the file leaves.
