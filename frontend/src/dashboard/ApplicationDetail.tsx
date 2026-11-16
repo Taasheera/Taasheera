@@ -5,6 +5,7 @@ import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../appli
 import ApplicationActions from './ApplicationActions'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
+import AgentPanel from '../agent/AgentPanel'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -97,6 +98,10 @@ function Detail({ applicationId }: { applicationId: string }) {
 
     <Feature name="supporting_documents">
       <DocumentChecklist applicationId={application.id} version={application.updated_at} />
+    </Feature>
+
+    <Feature name="agent_form_filling">
+      <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
     </Feature>
 
     <div className="dash-detail-grid">

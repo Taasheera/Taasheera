@@ -17,6 +17,7 @@ const controls = new Set([
   'application-use-suggestion', 'application-change-suggestion', 'application-check',
   'assistant-proposal-confirm', 'assistant-proposal-dismiss', 'assistant-proposal-go',
   'document-upload', 'document-open', 'document-replace', 'document-delete', 'document-delete-confirm',
+  'agent-start', 'agent-cancel', 'agent-screenshot',
 ])
 
 export default function ActivityTracker() {

@@ -44,6 +44,7 @@ Control = Literal[
     "dashboard-link", "dashboard-filter", "application-details", "application-archive", "application-restore",
     "application-delete", "application-delete-confirm", "application-delete-cancel",
     "document-upload", "document-open", "document-replace", "document-delete", "document-delete-confirm",
+    "agent-start", "agent-cancel", "agent-screenshot",
 ]
 
 
