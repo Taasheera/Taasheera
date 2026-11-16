@@ -25,6 +25,7 @@ from .auth import check_origin, create_auth_router, create_current_traveler
 from .sessions import create_sessions_router
 from .google_auth import create_google_auth_router
 from .config import AuthSettings, RuntimeSettings
+from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
 from .observability import install_private_no_store, install_request_logging
 from .mailer import MailSettings, ResetSender, SesResetSender, SmtpResetSender
@@ -46,6 +47,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     async def lifespan(app: FastAPI):
         app.state.auth_settings = AuthSettings.from_environment()
         app.state.runtime_settings = RuntimeSettings.from_environment()
+        app.state.feature_flags = FeatureFlags.from_environment()
         app.state.activity_directory = activity_directory_from_environment()
         app.state.account_lock_directory = app.state.activity_directory.parent / ".account-locks"
         app.state.mail_settings = MailSettings.from_environment()
@@ -100,6 +102,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
             engine, app.state.activity_directory, owner, upload, purpose),
     )
     app.state.passport_storage = passport_storage
+    app.include_router(create_features_router())
     app.include_router(create_activity_router(get_session, current_traveler))
     app.include_router(create_document_audit_router(get_session, current_traveler))
     app.include_router(create_privacy_router(get_session, current_traveler, passport_storage))
