@@ -1,0 +1,244 @@
+{
+  "id": "uk-standard-visitor",
+  "version": 1,
+  "destination": "GBR",
+  "visa_type": "standard_visitor",
+  "title": "UK Standard Visitor visa",
+  "destination_label": "United Kingdom",
+  "destination_description": "England, Scotland, Wales and Northern Ireland",
+  "visa_label": "Standard Visitor",
+  "visa_description": "Up to 6 months for tourism, visiting family or friends, business meetings or a short course.",
+  "summary": {"place": null, "date": "arrival_date"},
+  "source": "GOV.UK Standard Visitor visa online application and Appendix V: Immigration Rules for Visitors",
+  "steps": [
+    {
+      "id": "eligibility",
+      "title": "Eligibility",
+      "questions": [
+        {
+          "id": "purpose",
+          "type": "choice",
+          "prompt": "What's the main reason for your visit to the UK?",
+          "options": [
+            {"value": "tourism", "label": "Tourism or a holiday"},
+            {"value": "family_friends", "label": "Visiting family or friends"},
+            {"value": "business", "label": "Business meetings or a conference"},
+            {"value": "study", "label": "A short course (up to 6 months)"},
+            {"value": "medical", "label": "Private medical treatment"},
+            {"value": "other", "label": "Something else"}
+          ]
+        },
+        {
+          "id": "work_in_uk",
+          "type": "yes_no",
+          "prompt": "Will you do paid or unpaid work for a UK company while you're there?",
+          "help": "Attending meetings, conferences or training counts as a visit. Doing the job itself, or being paid by a UK organisation, does not.",
+          "stop_if": {
+            "in": [true],
+            "message": "Visitors can't work in the UK. You'll need a work visa, which Ta'asheera can't prepare yet."
+          }
+        },
+        {
+          "id": "stay_over_6_months",
+          "type": "yes_no",
+          "prompt": "Will you stay in the UK for more than 6 months?",
+          "stop_if": {
+            "in": [true],
+            "message": "A Standard Visitor visa covers stays of up to 6 months. A longer stay needs a different visa, which Ta'asheera can't prepare yet."
+          }
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "title": "Passport",
+      "questions": [
+        {
+          "id": "passport",
+          "type": "passport",
+          "prefill": "passport",
+          "prompt": "Let's add your passport. You can upload a photo of its details page and confirm what we read, or type the details yourself."
+        },
+        {
+          "id": "passport_issue_date",
+          "type": "date",
+          "prompt": "When was your passport issued?",
+          "help": "It's printed on the details page, usually next to the expiry date.",
+          "rules": [
+            {"op": "<=", "ref": "today", "message": "The issue date can't be in the future."}
+          ]
+        },
+        {
+          "id": "other_nationality",
+          "type": "yes_no",
+          "prompt": "Do you hold any other nationality or citizenship?"
+        },
+        {
+          "id": "other_nationality_country",
+          "type": "country",
+          "prompt": "Which other country are you a citizen of?",
+          "show_if": {"question": "other_nationality", "in": [true]}
+        }
+      ]
+    },
+    {
+      "id": "personal",
+      "title": "About you",
+      "questions": [
+        {
+          "id": "place_of_birth",
+          "type": "text",
+          "prompt": "Which city or town were you born in?",
+          "max_length": 100
+        },
+        {
+          "id": "country_of_birth",
+          "type": "country",
+          "prompt": "And which country is that in?"
+        },
+        {
+          "id": "relationship_status",
+          "type": "choice",
+          "prompt": "What's your relationship status?",
+          "options": [
+            {"value": "single", "label": "Single"},
+            {"value": "married", "label": "Married or in a civil partnership"},
+            {"value": "unmarried_partner", "label": "Unmarried partner"},
+            {"value": "divorced", "label": "Divorced or dissolved civil partnership"},
+            {"value": "separated", "label": "Separated"},
+            {"value": "widowed", "label": "Widowed"}
+          ]
+        },
+        {
+          "id": "home_address",
+          "type": "address",
+          "prefill": "profile.address",
+          "prompt": "What's your home address?"
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "prefill": "profile.phone",
+          "prompt": "What phone number can UK Visas and Immigration reach you on?",
+          "help": "Include the country code, for example +961 71 123 456."
+        },
+        {
+          "id": "employment",
+          "type": "choice",
+          "prompt": "What's your employment status?",
+          "options": [
+            {"value": "employed", "label": "Employed"},
+            {"value": "self_employed", "label": "Self-employed"},
+            {"value": "student", "label": "Student"},
+            {"value": "retired", "label": "Retired"},
+            {"value": "unemployed", "label": "Not working"}
+          ]
+        },
+        {
+          "id": "employer",
+          "type": "text",
+          "prompt": "What's the name and address of your employer or business?",
+          "max_length": 300,
+          "show_if": {"question": "employment", "in": ["employed", "self_employed"]}
+        },
+        {
+          "id": "monthly_income",
+          "type": "text",
+          "prompt": "Roughly how much do you earn or receive each month after tax, and in which currency?",
+          "help": "For example 1,500 USD. Include a pension or allowance if you have one.",
+          "max_length": 60
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "title": "Your trip",
+      "questions": [
+        {
+          "id": "arrival_date",
+          "type": "date",
+          "prompt": "When do you plan to arrive in the UK?",
+          "rules": [
+            {"op": ">=", "ref": "today", "days": 1, "message": "Your arrival date needs to be in the future."},
+            {"op": "<=", "ref": "today", "months": 3, "message": "You can apply at most 3 months before you travel. Come back closer to the date."}
+          ]
+        },
+        {
+          "id": "departure_date",
+          "type": "date",
+          "prompt": "And when will you leave?",
+          "rules": [
+            {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},
+            {"op": "<=", "ref": "arrival_date", "months": 6, "message": "A Standard Visitor visa covers stays of up to 6 months."},
+            {"op": "<=", "ref": "passport.expiry_date", "message": "Your passport must be valid for your whole stay in the UK."}
+          ]
+        },
+        {
+          "id": "uk_address",
+          "type": "text",
+          "prompt": "Where will you stay in the UK? Give the name and address.",
+          "help": "A hotel, a rental or the person you'll stay with.",
+          "max_length": 300
+        },
+        {
+          "id": "host",
+          "type": "yes_no",
+          "prompt": "Will you stay with family or friends?"
+        },
+        {
+          "id": "host_details",
+          "type": "text",
+          "prompt": "Who are they, and how do you know them?",
+          "max_length": 300,
+          "show_if": {"question": "host", "in": [true]}
+        },
+        {
+          "id": "trip_cost",
+          "type": "text",
+          "prompt": "Roughly how much will the whole trip cost, and in which currency?",
+          "help": "Flights, accommodation and spending money together, for example 2,000 GBP.",
+          "max_length": 60
+        },
+        {
+          "id": "funding",
+          "type": "choice",
+          "prompt": "Who's paying for the trip?",
+          "options": [
+            {"value": "self", "label": "I am"},
+            {"value": "sponsor", "label": "Someone else (a sponsor)"}
+          ]
+        },
+        {
+          "id": "sponsor_details",
+          "type": "text",
+          "prompt": "Who's paying, and how are they related to you?",
+          "max_length": 300,
+          "show_if": {"question": "funding", "in": ["sponsor"]}
+        },
+        {
+          "id": "previous_uk_visit",
+          "type": "yes_no",
+          "prompt": "Have you been to the UK in the last 10 years?"
+        },
+        {
+          "id": "refused_visa",
+          "type": "yes_no",
+          "prompt": "Have you ever been refused a visa or entry to any country, including the UK?",
+          "help": "Answer honestly: UK Visas and Immigration checks, and a false answer can lead to a 10-year ban."
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {"id": "bank_statements", "label": "Bank statements", "help": "Your last 6 months of statements, showing you can pay for the trip without working in the UK."},
+    {"id": "accommodation_proof", "label": "Accommodation booking", "help": "Hotel or rental bookings for your stay.", "show_if": {"question": "host", "in": [false]}},
+    {"id": "invitation_letter", "label": "Invitation from your host", "help": "A letter from the person you'll stay with: their address, immigration status in the UK and how they know you.", "show_if": {"question": "host", "in": [true]}},
+    {"id": "sponsor_letter", "label": "Sponsor's letter and bank statements", "help": "A signed letter saying they'll pay for your trip, with their recent bank statements.", "show_if": {"question": "funding", "in": ["sponsor"]}},
+    {"id": "employment_letter", "label": "Letter from your employer", "help": "Your role, salary, start date and the leave approved for the trip.", "show_if": {"question": "employment", "in": ["employed"]}},
+    {"id": "business_registration", "label": "Business registration", "help": "Your business registration and recent tax returns or accounts.", "show_if": {"question": "employment", "in": ["self_employed"]}},
+    {"id": "enrolment_letter", "label": "Proof of enrolment", "help": "A letter from your school or university confirming you're enrolled and have permission to travel.", "show_if": {"question": "employment", "in": ["student"]}},
+    {"id": "pension_statement", "label": "Pension statements", "help": "Your recent pension payments.", "show_if": {"question": "employment", "in": ["retired"]}},
+    {"id": "travel_history", "label": "Previous visas and passports", "help": "Copies of earlier visas or passport stamps. They help show you return home after trips.", "required": false},
+    {"id": "itinerary", "label": "Travel plans", "help": "A flight reservation or itinerary. UK Visas and Immigration advise not buying tickets until you have the visa.", "required": false}
+  ]
+}
