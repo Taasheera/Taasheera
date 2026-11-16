@@ -4,6 +4,8 @@ python-multipart>=0.0.18,<0.1
 pillow>=11,<13
 # Needs the Tesseract program installed (macOS: brew install tesseract).
 pytesseract>=0.3.13,<0.4
+# Reads the text of supporting documents uploaded as PDFs (CMPS271-29, CMPS271-50).
+pypdf>=6.21,<7
 sqlmodel>=0.0.47,<0.1
 alembic>=1.16,<2
 psycopg[binary]>=3.2,<4
