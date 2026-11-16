@@ -177,6 +177,22 @@ image releases supply both again. Local `taasheera-api`/`taasheera-web` tags als
 images so existing operator/backup commands keep using the current release after setup exits.
 See [AWS's repository-scoped push permissions](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-push-iam.html).
 
+## Form-filling agent worker (CMPS271-236)
+
+`compose.yaml` runs a `worker` container from the API image with `python agent_worker.py`. It shares the
+API's environment file and storage volume, polls the `agentrun` table, and starts headless Chromium only
+while a run is in progress, so idle it is a ~40 MB Python loop. Agent routes stay hidden until
+`FEATURE_AGENT_FORM_FILLING=true` is set in `app.env`, so no runs reach it before then.
+
+Memory, measured with `backend/scripts/measure_agent_memory.py` and inside the production image:
+about 230 MB with the browser idle and 380–430 MB at peak while filling. `mem_limit: 640m` keeps a
+runaway browser from starving the API. The current `t3.micro` (1 GB) holds the idle worker beside the
+API and nginx, but **switch the stack to `t3.small` (2 GB) before enabling the flag** so a run and normal
+API traffic fit together. Change `InstanceType` in the `taasheera` stack; this restarts the instance.
+
+Check it on the host with `docker compose -f deploy/aws/compose.yaml logs --tail 50 worker`. Logs carry
+run ids and statuses only, never form values.
+
 ## External features and checks
 
 Google SSO and email OTP recovery use the configuration described in

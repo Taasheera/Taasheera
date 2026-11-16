@@ -49,8 +49,6 @@ handed over/verified separately from the existing AWS account and GitHub reposit
 - **Alembic has one head.** Before merge, point a new migration at the current `dev` head.
 - End other sessions through `revoke_other_sessions` in `backend/app/auth.py`. The suspended-user
   check belongs in the single current-traveler loader, not duplicate endpoint checks.
-- Pending Sprint 3 work is tested together on `zeid_sprint3_integration`; merging branches there
-  does not merge their PRs to `dev`. Its migration order is privacy → archive → chat history.
 
 ## Stack and layout
 
@@ -64,13 +62,15 @@ handed over/verified separately from the existing AWS account and GitHub reposit
 | Assistant | Backend-only official `google-genai` SDK, `gemini-3.5-flash-lite`, function calling | Provider behind adapters; no keys in browser |
 | Frontend | React 19, TypeScript, Vite, React Router data router, sonner | TanStack Query proposed |
 | Styling | Plain CSS/custom properties in `src/index.css`, DM Sans + Space Grotesk | No Tailwind; auth styles are scoped |
-| Hosting | EC2 in `us-east-1`, Docker Compose API + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
+| Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
+| Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
 | Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry/uptime tooling | Sentry/uptime opt in; metadata allowlists omit private data |
 | Backups | Nightly systemd/S3 backup and restore tooling | Provision private bucket/host permissions; see `docs/BACKUPS.md` |
 
-Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires),
-`backend/alembic/`, `backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`,
+Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires,
+`documents/` uploads and cross-check, `agent/` form sites, filler, queue and worker), `backend/alembic/`,
+`backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`, `backend/agent_worker.py`,
 `backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
 Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
 (the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant button calls `openAssistant()`, which every
@@ -79,7 +79,8 @@ Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live i
 ## Local commands and routing
 
 From `backend/`: create `.venv`, install `requirements-dev.lock`, run `python dev.py setup` once,
-then `python dev.py run` (migrates before API on port 8000). From `frontend/`: `npm ci`, `npm run dev`
+then `python dev.py run` (migrates before API on port 8000). Agent runs need `python agent_worker.py` with the same
+environment (once: `python -m playwright install chromium-headless-shell`). From `frontend/`: `npm ci`, `npm run dev`
 (port 5173). Use **http://127.0.0.1:5173**; local auth rejects an unconfigured `localhost` origin.
 Windows instructions: the backend/frontend READMEs. OCR requires Tesseract on `PATH`.
 
@@ -194,6 +195,16 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     manual runs. Actions publishes immutable SHA-tagged API/web images to private EC2-specific ECR repos;
     the host pulls digests, verifies revision labels, preserves secrets, backs up SQLite and migrates. Old
     manual dev/bootstrap still builds locally. Owner setup: `deploy/aws/README.md`; no stored AWS keys.
+40. **Supporting documents (CMPS271-29/50).** Each questionnaire lists its documents with answer-driven `show_if`.
+    Files sit in the owner's passport folder (erased with it); PDFs are kept as uploaded but only downloaded,
+    images re-encoded. A pure cross-check compares name/birth date/passport number with document text; missing
+    required uploads block and mismatches warn in the completeness check. Behind `supporting_documents`.
+41. **Destinations.** Schengen, UK Standard Visitor, US B-2 and Canada visitor questionnaires; data files only.
+42. **Form-filling agent (CMPS271-236/67/70).** API queues `agentrun` rows; `agent_worker.py` claims them, fills
+    a site described as data (`agent/sites.py`) and records each typed field plus page screenshots. Stops on a
+    visible CAPTCHA, unknown required field, missing answer or changed form; never clicks submit or the
+    declaration. Only the local harmonised-form copy is wired: VIDEX is long-stay only, Swiss iVIS2 refuses
+    online applications from Lebanon, France-Visas needs the traveler's account. Behind `agent_form_filling`.
 40. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
