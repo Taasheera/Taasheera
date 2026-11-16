@@ -257,3 +257,13 @@ def test_taking_back_twice_is_a_no_op_and_the_summary_is_consistent(api):
     assert second.json()["answered"] == second.json()["total"]
     notifications = client.get("/notifications", headers=headers[0]).json()
     assert len([item for item in notifications if item["application_id"] == application_id]) == 3
+
+
+def test_archive_responses_agree_with_their_own_answer_count(api):
+    """QA: a passed trip date makes the stored "complete" status stale; the response says what the answers give."""
+    client, app, headers, _ = api
+    application_id = complete(client, headers[0])
+    _age_trip(app, application_id)
+    archived = client.post(f"/applications/{application_id}/archive", headers=headers[0]).json()
+    assert archived["answered"] < archived["total"]
+    assert archived["status"] == "DRAFT"

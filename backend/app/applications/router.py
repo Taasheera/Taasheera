@@ -163,8 +163,9 @@ def check_day(application: Application, today: date) -> date:
     A recorded application is checked as it stood the day it was submitted, so a trip
     date that has passed since then doesn't turn into "not answered yet".
     """
-    if is_recorded(application) and application.submitted_at:
-        return _utc(application.submitted_at).date()
+    if is_recorded(application):
+        # Every recorded row has submitted_at; the last change to the answers is the fallback for older rows.
+        return _utc(application.submitted_at or application.updated_at).date()
     return today
 
 

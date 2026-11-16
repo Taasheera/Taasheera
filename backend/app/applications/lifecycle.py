@@ -66,7 +66,8 @@ DECISION_REFUSED = {
     "ANSWERS_COMPLETE": "This application isn't recorded as submitted.",
 }
 WITHDRAW_REFUSED = ("This application's answers no longer pass today's checks (for example, the trip date has "
-                    "passed), so it stays recorded as submitted. Duplicate it to start again from these answers.")
+                    "passed), so it stays recorded as submitted. Start a new application, or duplicate this one for "
+                    "another country.")
 
 
 class Timeline(BaseModel):
@@ -184,7 +185,11 @@ def add_lifecycle_routes(
         stored = {key: row.value for key, row in stored_rows(session, application).items()}
         # As the page shows them: re-checked against today, or frozen once recorded.
         answers, _ = current_answers(questionnaire, application, stored, today())
-        return ApplicationSummary(**_summary(application, questionnaire, answers))
+        result = ApplicationSummary(**_summary(application, questionnaire, answers))
+        if not is_recorded(application):
+            # The status those answers give, so it agrees with the count (an archived row isn't re-saved).
+            result.status = _status(questionnaire, answers)
+        return result
 
     def set_archived(application_id: str, traveler: Traveler, session: Session, response: Response,
                      archived: bool) -> ApplicationSummary:
