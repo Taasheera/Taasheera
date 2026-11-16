@@ -86,7 +86,9 @@ for (const [path, current] of [['/dashboard', 'Applications'], ['/apply', 'Appli
     assert.equal(container.querySelectorAll('nav[aria-label="Your sections"]').length, 1)
     assert.deepEqual([...panel().querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]), [
       ['Applications', '/dashboard'], ['Passport & documents', '/passport'], ['Account', '/account']])
-    assert.ok(button('Assistant'), 'the panel has an Assistant button')
+    // Starting an application has no assistant yet (tests/application.test.mjs), so no button that does nothing.
+    if (path === '/apply') assert.ok(!button('Assistant'), 'no Assistant button when starting an application')
+    else assert.ok(button('Assistant'), 'the panel has an Assistant button')
     const marked = [...panel().querySelectorAll('[aria-current="page"]')].map(a => a.textContent)
     assert.deepEqual(marked, current ? [current] : [])
     assert.equal(panel().querySelector('.section-nav-toggle').textContent, current ?? 'Your sections')

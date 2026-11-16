@@ -18,6 +18,9 @@ type SectionNavProps = {
 export default function SectionNav({ pathname, routed = false }: SectionNavProps) {
   const [open, setOpen] = useState(false)
   const current = currentSection(pathname)
+  // Starting an application (/apply) has no assistant yet: the side panel stays off the application
+  // pages, and the ask box only appears once an application is open (/apply/<id>).
+  const hasAssistant = !/^\/apply\/?$/.test(pathname)
   const close = () => setOpen(false)
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key === 'Escape') setOpen(false)
@@ -44,10 +47,10 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
               : <a href={section.href} {...props}>{section.label}</a>}
           </li>
         })}
-        <li>
+        {hasAssistant && <li>
           <button type="button" className="section-nav-link section-nav-assistant" data-activity-id="assistant-open"
             onClick={() => { close(); openAssistant() }}>Assistant</button>
-        </li>
+        </li>}
       </ul>
       {/* Outside the list, so the bell and its count stay visible when the list folds away on a phone. */}
       <NotificationBell pathname={pathname} routed={routed} />
