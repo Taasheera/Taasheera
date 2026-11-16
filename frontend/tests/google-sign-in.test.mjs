@@ -23,6 +23,8 @@ beforeEach(() => {
     disableAutoSelect() { disabledAutoSelect++ },
   } } }
   globalThis.fetch = async (url, options) => {
+    // Once signed in, the navigation panel's notification bell asks for its count; that is not part of these sign-in flows.
+    if (url === '/notifications/unread-count') return response({ status: 200, body: { unread: 0 } })
     calls.push({ url, ...options })
     assert.equal(options.credentials, 'same-origin')
     assert.equal(options.cache, 'no-store')
