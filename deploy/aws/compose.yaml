@@ -25,6 +25,29 @@ services:
       options:
         max-size: 5m
         max-file: "2"
+  # The form-filling agent (CMPS271-236): the API's image with another command, in its own container so
+  # a slow embassy site or the browser's memory never affects the API. Idle it is a ~40 MB Python loop;
+  # Chromium starts only for a run (about 430 MB at peak, measured), capped below by mem_limit.
+  worker:
+    image: ${TAASHEERA_API_IMAGE:-taasheera-api}
+    env_file: ${TAASHEERA_ENV_FILE:-/etc/taasheera/app.env}
+    volumes:
+      - ${TAASHEERA_DATA_DIR:-/srv/taasheera}:/app/storage
+    command: [python, agent_worker.py]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # Reaps the browser's child processes; the image's API health check doesn't apply here.
+    init: true
+    healthcheck:
+      disable: true
+    mem_limit: 640m
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
   web:
     image: ${TAASHEERA_WEB_IMAGE:-taasheera-web}
     env_file: ${TAASHEERA_WEB_ENV_FILE:-/etc/taasheera/web.env}
