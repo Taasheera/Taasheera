@@ -45,6 +45,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y tesseract-ocr fonts-dejavu-core
           python -m pip install -r backend/requirements-dev.lock
+      - name: Install the agent's headless browser
+        # The form-filling agent tests (CMPS271-67) drive a real Chromium; without it they skip.
+        run: python -m playwright install --with-deps chromium-headless-shell
       - name: Test API, OCR, and migrations
         working-directory: backend
         run: python -m pytest -q
