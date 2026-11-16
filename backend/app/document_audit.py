@@ -13,13 +13,16 @@ PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update"
                       # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
                       "document_view", "document_check",
                       # The passport read by the document cross-check (CMPS271-50).
-                      "consistency_check"})
+                      "consistency_check",
+                      # A screenshot the form-filling agent took of a filled page (CMPS271-70).
+                      "agent_screenshot"})
 
 
 def record_document_access(engine, directory, owner_id: int, upload_id: str, purpose: str):
     if purpose not in PURPOSES:
         raise ValueError("Unknown passport access purpose")
-    category = "supporting_document" if purpose.startswith("document_") else "passport"
+    category = ("supporting_document" if purpose.startswith("document_")
+                else "agent" if purpose.startswith("agent_") else "passport")
     with Session(engine) as session:
         session.add(DocumentAccess(traveler_id=owner_id, actor_id=owner_id,
                                    upload_id=upload_id, purpose=purpose))

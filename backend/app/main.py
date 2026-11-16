@@ -39,6 +39,8 @@ from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
 from .notifications import create_notifications_router
+from .agent.router import create_agent_router
+from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
 from .documents.review import completeness_issues
 from .documents.storage import DocumentStorage
@@ -136,6 +138,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
     document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+    # The agent's screenshots show passport details, so they live there too (CMPS271-70).
+    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
 
     def remove_document_files(owner: int, document_ids: list[str]):
         for document_id in document_ids:
@@ -155,7 +159,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_applications_router(get_session, current_traveler,
         lambda owner, upload: passport_storage.load_review(owner, upload, purpose="application_prefill"),
         load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="application_prefill"),
-        remove_document_files=remove_document_files, document_issues=document_issues))
+        remove_document_files=remove_document_files, document_issues=document_issues,
+        remove_agent_files=agent_files.remove_application))
+    app.include_router(create_agent_router(get_session, current_traveler, agent_files))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
