@@ -293,6 +293,23 @@ class Notification(SQLModel, table=True):
     read_at: datetime | None = None
 
 
+class SupportingDocument(SQLModel, table=True):
+    """A file uploaded for one of an application's document requirements (CMPS271-29).
+
+    The file sits in the traveler's private storage folder; this row says what it is for.
+    The display name is the traveler's own file name, cleaned, and is never used in a path.
+    """
+
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    requirement: str = Field(max_length=40)
+    filename: str = Field(max_length=120, repr=False)
+    content_type: str = Field(max_length=40)
+    size_bytes: int
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 APPLICATION_STATUSES = ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
 
 

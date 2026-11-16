@@ -91,7 +91,10 @@ def upgrade() -> None:
                                      ("add_table", "notification"),
                                      ("add_index", "ix_notification_traveler_id"),
                                      ("add_index", "ix_notification_application_id"),
-                                     ("add_index", "ix_notification_created_at")}
+                                     ("add_index", "ix_notification_created_at"),
+                                     ("add_table", "supportingdocument"),
+                                     ("add_index", "ix_supportingdocument_traveler_id"),
+                                     ("add_index", "ix_supportingdocument_application_id")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,
