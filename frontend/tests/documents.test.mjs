@@ -39,9 +39,11 @@ globalThis.fetch = async (url, options = {}) => {
   assert.ok(handler, `Unexpected request: ${key}`)
   return handler(options)
 }
+const clean = { reference: 'application', checked: ['Your profile', 'Bank statements (statement.pdf)'], unreadable: [], findings: [] }
 const signedIn = extra => ({
   'POST /auth/refresh': () => json({ access_token: 'token' }),
   'GET /auth/me': () => json({ id: 1, name: 'Anna', email: 'anna@example.com' }),
+  [`GET ${BASE}/crosscheck`]: () => json(clean),
   ...extra,
 })
 
@@ -153,4 +155,38 @@ test('file checks and sizes', () => {
   assert.match(checkDocumentFile(new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'a.pdf', { type: 'application/pdf' })), /10 MB/)
   assert.equal(formatSize(300), '1 KB')
   assert.equal(formatSize(3 * 1024 * 1024), '3.0 MB')
+})
+
+test('the consistency check says when everything matches', async () => {
+  handlers = signedIn({ [`GET ${BASE}`]: () => json(checklist()) })
+  await render()
+  assert.match(container.querySelector('.xcheck').textContent, /match across 2 sources/)
+  assert.ok(container.querySelector('.xcheck').classList.contains('is-ok'))
+})
+
+test('the consistency check lists each mismatch with where it was found, and what it could not read', async () => {
+  handlers = signedIn({
+    [`GET ${BASE}`]: () => json(checklist()),
+    [`GET ${BASE}/crosscheck`]: () => json({ ...clean, unreadable: ['Passport photo (me.jpg)'], findings: [{
+      field: 'name', source: 'document', where: 'Flight reservation (booking.pdf)', expected: 'ERIKSSON', found: 'ERICSSON',
+      message: 'Flight reservation (booking.pdf) spells your surname ERICSSON; your passport says ERIKSSON.',
+      document_id: 'd'.repeat(32), requirement: 'flight_booking',
+    }] }),
+  })
+  await render()
+  const panel = container.querySelector('.xcheck')
+  assert.ok(panel.classList.contains('is-warn'))
+  assert.match(panel.textContent, /1 thing doesn't match your passport/)
+  assert.match(panel.querySelector('.xcheck-list').textContent, /Name.*Flight reservation \(booking\.pdf\).*spells your surname ERICSSON/)
+  assert.match(panel.textContent, /couldn't read the text of Passport photo \(me\.jpg\)/)
+  assert.match(panel.textContent, /isn't legal or immigration advice/)
+})
+
+test('without a passport there is nothing to check against yet', async () => {
+  handlers = signedIn({
+    [`GET ${BASE}`]: () => json(checklist()),
+    [`GET ${BASE}/crosscheck`]: () => json({ reference: null, checked: [], unreadable: [], findings: [] }),
+  })
+  await render()
+  assert.match(container.querySelector('.xcheck').textContent, /Add your passport to the application/)
 })
