@@ -149,6 +149,8 @@ pygments==2.21.0
     # via pytest
 pyjwt==2.15.1
     # via -r requirements.lock
+pypdf==6.21.4
+    # via -r requirements.lock
 pytesseract==0.3.13
     # via -r requirements.lock
 pytest==9.1.1

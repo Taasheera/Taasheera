@@ -26,7 +26,8 @@ from sqlmodel import Session, SQLModel, select
 from .activity import record_activity
 from .models import (AccountErasure, ActivityEvent, Application, ApplicationAnswer, AssistantMessage, AuthSession,
                      DocumentAccess, GoogleIdentity, Notification, PasswordResetChallenge, PasswordResetToken,
-                     RefreshToken, Traveler, TravelerProfile)
+                     RefreshToken, SupportingDocument, Traveler, TravelerProfile)
+from .documents.storage import DocumentStorage
 from .security import throttle
 
 
@@ -53,6 +54,7 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(Notification, "traveler", True),
     Holding(ActivityEvent, "traveler", True),
     Holding(DocumentAccess, "traveler", True, omit=("actor_id",)),
+    Holding(SupportingDocument, "traveler", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
@@ -110,6 +112,8 @@ data.json        Everything we hold about you, one section per kind of record:
                  notifications, account activity, and who opened your passport files.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
+documents/       Each supporting document you uploaded (.pdf or .jpg), named by
+                 its id in data.json's supportingdocument section.
 
 Left out on purpose: your password (we only keep a hash of it), and the hashed
 sign-in and reset tokens that keep your account secure. Nothing here belongs to
@@ -138,6 +142,12 @@ def build_archive(session: Session, traveler: Traveler, passport_storage) -> byt
             review = passport_storage.load_review(traveler.id, upload_id, purpose="data_export")
             if review is not None:
                 archive.writestr(f"passport/{upload_id}.json", json.dumps(review, indent=2, ensure_ascii=False))
+        documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+        for document in session.exec(select(SupportingDocument).where(SupportingDocument.traveler_id == traveler.id)):
+            extension = "pdf" if document.content_type == "application/pdf" else "jpg"
+            content = documents.load(traveler.id, document.id, extension, purpose="data_export")
+            if content is not None:
+                archive.writestr(f"documents/{document.id}.{extension}", content)
     return buffer.getvalue()
 
 

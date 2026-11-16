@@ -273,5 +273,19 @@
         }
       ]
     }
+  ],
+  "documents": [
+    {"id": "photo", "label": "Passport photo", "help": "A recent colour photo, 35 x 45 mm, on a plain light background, taken in the last six months."},
+    {"id": "travel_insurance", "label": "Travel medical insurance", "help": "Valid in every Schengen country for your whole stay, covering at least EUR 30,000 of medical costs and repatriation."},
+    {"id": "flight_booking", "label": "Flight reservation", "help": "A return or onward booking showing your entry and exit dates. A reservation is enough; you don't need to buy the ticket yet."},
+    {"id": "accommodation_proof", "label": "Accommodation booking", "help": "Hotel or rental bookings covering every night of the trip.", "show_if": {"question": "accommodation", "in": ["hotel", "rental", "other"]}},
+    {"id": "invitation_letter", "label": "Invitation from your host", "help": "A letter from the person you'll stay with, with their address and a copy of their ID or residence permit.", "show_if": {"question": "accommodation", "in": ["host"]}},
+    {"id": "bank_statements", "label": "Bank statements", "help": "Your last three months of statements, stamped or signed by the bank, showing you can pay for the trip."},
+    {"id": "sponsor_letter", "label": "Sponsor's letter and bank statements", "help": "A signed letter saying they'll pay for your trip, with their last three months of bank statements.", "show_if": {"question": "funding", "in": ["sponsor"]}},
+    {"id": "employment_letter", "label": "Letter from your employer", "help": "On company letterhead: your role, salary, how long you've worked there and the leave approved for the trip.", "show_if": {"question": "occupation", "in": ["employed"]}},
+    {"id": "business_registration", "label": "Business registration", "help": "Your commercial register entry or trade licence, and recent tax returns.", "show_if": {"question": "occupation", "in": ["self_employed"]}},
+    {"id": "enrolment_letter", "label": "Proof of enrolment", "help": "A letter from your school or university confirming you're enrolled and allowed to travel.", "show_if": {"question": "occupation", "in": ["student"]}},
+    {"id": "pension_statement", "label": "Pension statements", "help": "Your last three months of pension payments.", "show_if": {"question": "occupation", "in": ["retired"]}},
+    {"id": "cover_letter", "label": "Cover letter", "help": "A short signed letter explaining the purpose of your trip and your plans. Optional, but many consulates expect one.", "required": false}
   ]
 }

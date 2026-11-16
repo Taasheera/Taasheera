@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { getApplication, getTimeline, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
 import ApplicationActions from './ApplicationActions'
+import Feature from '../Feature'
+import DocumentChecklist from '../documents/DocumentChecklist'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -92,6 +94,10 @@ function Detail({ applicationId }: { applicationId: string }) {
           onDeleted={() => navigate('/dashboard', { replace: true })} />
       </div>
     </div>
+
+    <Feature name="supporting_documents">
+      <DocumentChecklist applicationId={application.id} version={application.updated_at} />
+    </Feature>
 
     <div className="dash-detail-grid">
       <section aria-labelledby="answers-title">
