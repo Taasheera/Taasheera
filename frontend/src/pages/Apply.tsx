@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { restoreSession, type Traveler } from '../auth'
 import { askAssistant, getHistory, type ChatTurn, type Proposal } from '../assistant/api'
+import { OPEN_ASSISTANT_EVENT } from '../assistant/openAssistant'
 import ProposalCard from '../assistant/ProposalCard'
 import AnswerInput from '../application/AnswerInput'
 import ApplicationsSidebar from '../application/ApplicationsSidebar'
@@ -99,7 +100,19 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   const [asking, setAsking] = useState(false)
   const [askError, setAskError] = useState('')
   const current = useRef<HTMLLIElement>(null)
+  const askBox = useRef<HTMLTextAreaElement>(null)
   const upload = returnedPassport(location.search)
+
+  // This page's assistant is the ask box under the questions, so the navigation panel's
+  // Assistant button (US 15) brings the traveler there instead of opening a side panel.
+  useEffect(() => {
+    const goToAskBox = () => {
+      askBox.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      askBox.current?.focus()
+    }
+    window.addEventListener(OPEN_ASSISTANT_EVENT, goToAskBox)
+    return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, goToAskBox)
+  }, [])
 
   useEffect(() => { document.title = 'Your application | Taasheera' }, [])
 
@@ -292,7 +305,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
     <form className="chat-ask" onSubmit={ask}>
       <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>
       <div className="answer-row">
-        <textarea id="chat-ask-input" rows={1} maxLength={1000} value={draft} placeholder="Ask a question…"
+        <textarea ref={askBox} id="chat-ask-input" rows={1} maxLength={1000} value={draft} placeholder="Ask a question…"
           onChange={event => setDraft(event.target.value)} onKeyDown={askOnEnter} />
         <button type="submit" className="button button-secondary" disabled={asking || !draft.trim()}
           aria-busy={asking || undefined} data-activity-id="application-ask">{asking ? 'Asking…' : 'Ask'}</button>

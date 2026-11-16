@@ -1,0 +1,212 @@
+{
+  "id": "canada-visitor",
+  "version": 1,
+  "destination": "CAN",
+  "visa_type": "visitor",
+  "title": "Canada visitor visa",
+  "destination_label": "Canada",
+  "destination_description": "All provinces and territories",
+  "visa_label": "Visitor visa (temporary resident visa)",
+  "visa_description": "Usually up to 6 months, for tourism, visiting family or friends, or business visits.",
+  "summary": {"place": null, "date": "arrival_date"},
+  "source": "IMM 5257, Application for Visitor Visa (Temporary Resident Visa), Immigration, Refugees and Citizenship Canada",
+  "steps": [
+    {
+      "id": "eligibility",
+      "title": "Eligibility",
+      "questions": [
+        {
+          "id": "purpose",
+          "type": "choice",
+          "prompt": "What's the main purpose of your visit to Canada?",
+          "options": [
+            {"value": "tourism", "label": "Tourism"},
+            {"value": "family_friends", "label": "Visiting family or friends"},
+            {"value": "business", "label": "Business visit"},
+            {"value": "other", "label": "Something else"}
+          ]
+        },
+        {
+          "id": "work_or_study",
+          "type": "yes_no",
+          "prompt": "Will you work or study for more than 6 months in Canada?",
+          "stop_if": {
+            "in": [true],
+            "message": "Working, or studying for more than 6 months, needs a work or study permit, which Ta'asheera can't prepare yet."
+          }
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "title": "Passport",
+      "questions": [
+        {
+          "id": "passport",
+          "type": "passport",
+          "prefill": "passport",
+          "prompt": "Let's add your passport. You can upload a photo of its details page and confirm what we read, or type the details yourself."
+        },
+        {
+          "id": "passport_issue_date",
+          "type": "date",
+          "prompt": "When was your passport issued?",
+          "rules": [
+            {"op": "<=", "ref": "today", "message": "The issue date can't be in the future."}
+          ]
+        },
+        {
+          "id": "country_of_residence",
+          "type": "country",
+          "prompt": "Which country do you live in now?"
+        }
+      ]
+    },
+    {
+      "id": "personal",
+      "title": "About you",
+      "questions": [
+        {
+          "id": "place_of_birth",
+          "type": "text",
+          "prompt": "Which city or town were you born in?",
+          "max_length": 100
+        },
+        {
+          "id": "country_of_birth",
+          "type": "country",
+          "prompt": "And which country is that in?"
+        },
+        {
+          "id": "marital_status",
+          "type": "choice",
+          "prompt": "What's your marital status?",
+          "options": [
+            {"value": "single", "label": "Single"},
+            {"value": "married", "label": "Married"},
+            {"value": "common_law", "label": "Common-law partner"},
+            {"value": "divorced", "label": "Divorced"},
+            {"value": "separated", "label": "Separated"},
+            {"value": "widowed", "label": "Widowed"}
+          ]
+        },
+        {
+          "id": "home_address",
+          "type": "address",
+          "prefill": "profile.address",
+          "prompt": "What's your home address?"
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "prefill": "profile.phone",
+          "prompt": "What phone number can Immigration Canada reach you on?",
+          "help": "Include the country code, for example +961 71 123 456."
+        },
+        {
+          "id": "occupation",
+          "type": "choice",
+          "prompt": "What do you currently do?",
+          "options": [
+            {"value": "employed", "label": "I'm employed"},
+            {"value": "self_employed", "label": "I'm self-employed"},
+            {"value": "student", "label": "I'm a student"},
+            {"value": "retired", "label": "I'm retired"},
+            {"value": "unemployed", "label": "I'm not working"}
+          ]
+        },
+        {
+          "id": "employer",
+          "type": "text",
+          "prompt": "What's the name of your employer or business, and your job title?",
+          "max_length": 300,
+          "show_if": {"question": "occupation", "in": ["employed", "self_employed"]}
+        },
+        {
+          "id": "education",
+          "type": "choice",
+          "prompt": "What's the highest level of education you've completed?",
+          "options": [
+            {"value": "secondary", "label": "Secondary school"},
+            {"value": "trade", "label": "Trade or vocational school"},
+            {"value": "bachelor", "label": "Bachelor's degree"},
+            {"value": "postgraduate", "label": "Master's or doctorate"},
+            {"value": "none", "label": "None of these"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "title": "Your trip",
+      "questions": [
+        {
+          "id": "arrival_date",
+          "type": "date",
+          "prompt": "When do you plan to arrive in Canada?",
+          "rules": [
+            {"op": ">=", "ref": "today", "days": 1, "message": "Your arrival date needs to be in the future."}
+          ]
+        },
+        {
+          "id": "departure_date",
+          "type": "date",
+          "prompt": "And when will you leave?",
+          "rules": [
+            {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},
+            {"op": "<=", "ref": "arrival_date", "months": 6, "message": "Visitors usually stay up to 6 months. A longer stay needs a different application."},
+            {"op": "<=", "ref": "passport.expiry_date", "message": "Your passport must be valid for your whole stay: a visa can't outlast it."}
+          ]
+        },
+        {
+          "id": "funds",
+          "type": "text",
+          "prompt": "How much money will you have for the trip, and in which currency?",
+          "help": "For example 4,000 CAD. Include what a host or sponsor will cover.",
+          "max_length": 60
+        },
+        {
+          "id": "canada_address",
+          "type": "text",
+          "prompt": "Where will you stay in Canada? Give the name and address.",
+          "max_length": 300
+        },
+        {
+          "id": "host",
+          "type": "yes_no",
+          "prompt": "Will you stay with family or friends in Canada?"
+        },
+        {
+          "id": "host_details",
+          "type": "text",
+          "prompt": "Who are they, how are they related to you, and are they a Canadian citizen or permanent resident?",
+          "max_length": 300,
+          "show_if": {"question": "host", "in": [true]}
+        },
+        {
+          "id": "previous_refusal",
+          "type": "yes_no",
+          "prompt": "Have you ever been refused a visa or permit, or been refused entry to or ordered to leave any country?",
+          "help": "Answer honestly: misrepresentation can bar you from Canada for 5 years."
+        },
+        {
+          "id": "recent_travel",
+          "type": "yes_no",
+          "prompt": "Have you travelled outside your country of residence in the last 10 years?"
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {"id": "photo", "label": "Digital photo", "help": "A recent photo that meets Canada's visa photo specifications, plain light background.", "crosscheck": false},
+    {"id": "bank_statements", "label": "Proof of funds", "help": "Your last 4 months of bank statements, or other proof you can pay for the trip."},
+    {"id": "invitation_letter", "label": "Invitation letter", "help": "From your host: who they are, their status in Canada, and where you'll stay.", "show_if": {"question": "host", "in": [true]}},
+    {"id": "accommodation_proof", "label": "Accommodation booking", "help": "Hotel or rental bookings for your stay.", "show_if": {"question": "host", "in": [false]}},
+    {"id": "employment_letter", "label": "Letter from your employer", "help": "Your role, salary and approved leave.", "show_if": {"question": "occupation", "in": ["employed"]}},
+    {"id": "business_registration", "label": "Business registration", "help": "Your business registration and recent tax returns.", "show_if": {"question": "occupation", "in": ["self_employed"]}},
+    {"id": "enrolment_letter", "label": "Proof of enrolment", "help": "A letter from your school or university confirming you're enrolled.", "show_if": {"question": "occupation", "in": ["student"]}},
+    {"id": "pension_statement", "label": "Pension statements", "help": "Your recent pension payments.", "show_if": {"question": "occupation", "in": ["retired"]}},
+    {"id": "itinerary", "label": "Travel itinerary", "help": "Flight reservations and your plans in Canada.", "required": false},
+    {"id": "travel_history", "label": "Travel history", "help": "Copies of earlier visas and passport stamps from the last 10 years.", "required": false}
+  ]
+}

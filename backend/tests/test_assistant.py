@@ -131,7 +131,7 @@ def test_prompt_states_what_is_built_and_where_chat_data_goes():
 
     # Product questions get true answers: one destination, planned features named as planned,
     # and the fact that messages reach Google's Gemini service rather than "staying in the app".
-    assert "only the Schengen short-stay visa" in prompt
+    assert "the UK Standard Visitor visa, the US B-2 tourist visa and the Canada visitor visa" in prompt
     assert "cover letters" in prompt and "planned" in prompt
     assert "sent to Google's Gemini AI service" in prompt
     assert "politely decline" in prompt

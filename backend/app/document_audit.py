@@ -9,17 +9,26 @@ from sqlmodel import Session, func, select
 from .activity import record_activity
 from .models import DocumentAccess, Traveler
 
-PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update", "assistant_context", "application_prefill"})
+PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update", "assistant_context",
+                      "application_prefill", "data_export",
+                      # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
+                      "document_view", "document_check",
+                      # The passport read by the document cross-check (CMPS271-50).
+                      "consistency_check",
+                      # A screenshot the form-filling agent took of a filled page (CMPS271-70).
+                      "agent_screenshot"})
 
 
 def record_document_access(engine, directory, owner_id: int, upload_id: str, purpose: str):
     if purpose not in PURPOSES:
         raise ValueError("Unknown passport access purpose")
+    category = ("supporting_document" if purpose.startswith("document_")
+                else "agent" if purpose.startswith("agent_") else "passport")
     with Session(engine) as session:
         session.add(DocumentAccess(traveler_id=owner_id, actor_id=owner_id,
                                    upload_id=upload_id, purpose=purpose))
         # Commits both entries. Failure deliberately blocks access to the content.
-        if record_activity(session, directory, owner_id, "document_access", "passport", "success") is None:
+        if record_activity(session, directory, owner_id, "document_access", category, "success") is None:
             raise HTTPException(401, "Passport owner is no longer available.")
 
 

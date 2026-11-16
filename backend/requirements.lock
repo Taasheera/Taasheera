@@ -45,7 +45,9 @@ google-auth[requests]==2.59.1
 google-genai==2.28.0
     # via -r requirements.txt
 greenlet==3.5.6
-    # via sqlalchemy
+    # via
+    #   playwright
+    #   sqlalchemy
 h11==0.16.0
     # via
     #   httpcore
@@ -93,6 +95,12 @@ pydantic==2.13.5
 pydantic-core==2.46.5
     # via pydantic
 pyjwt==2.15.1
+    # via -r requirements.txt
+playwright==1.56.0
+    # via -r requirements.txt
+pyee==13.0.1
+    # via playwright
+pypdf==6.21.4
     # via -r requirements.txt
 pytesseract==0.3.13
     # via -r requirements.txt

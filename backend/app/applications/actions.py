@@ -66,12 +66,14 @@ def _raw(question: flow.Question, value: str) -> Any:
 
 
 def propose(questionnaire: flow.Questionnaire, answers: flow.Answers, name: str, args: dict, today: date, *,
-            latest_passport: dict | None = None, profile: dict | None = None) -> Proposal:
+            latest_passport: dict | None = None, profile: dict | None = None,
+            document_issues: list[completeness.Issue] | None = None) -> Proposal:
     """Turn one tool call into a checked proposal, or raise InvalidAnswer with a message for the traveler."""
     answers, _ = flow.reconcile(questionnaire, answers, today)
     if name == "run_completeness_check":
         return Proposal(action="check", report=completeness.check(
-            questionnaire, answers, today, latest_passport=latest_passport, profile=profile))
+            questionnaire, answers, today, latest_passport=latest_passport, profile=profile,
+            document_issues=document_issues))
 
     question = questionnaire.question(str(args.get("question_id", "")))
     current = flow.next_question(questionnaire, answers)

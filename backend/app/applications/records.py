@@ -118,7 +118,9 @@ def _choices(source: flow.Questionnaire, source_place: str | None) -> list[Dupli
             destination_label=target.destination_label, visa_label=target.visa_label,
             place_prompt=question.prompt if question else None, places=places,
         ))
-    return choices
+    # The original's own visa first, so the form opens on "the same visa, another country".
+    return sorted(choices, key=lambda choice: (choice.destination, choice.visa_type) != (source.destination,
+                                                                                       source.visa_type))
 
 
 def copy_answers(source: flow.Questionnaire, target: flow.Questionnaire, answers: flow.Answers,

@@ -220,8 +220,16 @@ def _state_line(application: Application) -> str:
     return recorded.get(application.status, "This application is active.")
 
 
+DocumentIssues = Callable[[Session, Application, flow.Answers], list[completeness.Issue]]
+
+
+def no_document_issues(session: Session, application: Application, answers: flow.Answers) -> list[completeness.Issue]:
+    return []
+
+
 def application_context(session: Session, traveler_id: int, application_id: str, *,
-                        latest_passport: dict | None = None, today: date | None = None) -> str | None:
+                        latest_passport: dict | None = None, today: date | None = None,
+                        document_issues: DocumentIssues = no_document_issues) -> str | None:
     """The assistant's view of one application (US 47), or None if it isn't this traveler's.
 
     Built here on every call, never sent by the browser: the answers, where the traveler
@@ -235,7 +243,8 @@ def application_context(session: Session, traveler_id: int, application_id: str,
     answers, _ = current_answers(questionnaire, application, answers, today)
     progress = flow.progress(questionnaire, answers)
     report = completeness.check(questionnaire, answers, check_day(application, today), latest_passport=latest_passport,
-                                profile=saved_profile(session, traveler_id))
+                                profile=saved_profile(session, traveler_id),
+                                document_issues=document_issues(session, application, answers))
     return "\n\n".join([
         flow.describe(questionnaire, answers, application.group_size),
         _state_line(application),
@@ -246,7 +255,8 @@ def application_context(session: Session, traveler_id: int, application_id: str,
 
 
 def application_proposal(session: Session, traveler_id: int, application_id: str, name: str, args: dict, *,
-                         latest_passport: dict | None = None, today: date | None = None) -> actions.Proposal | None:
+                         latest_passport: dict | None = None, today: date | None = None,
+                         document_issues: DocumentIssues = no_document_issues) -> actions.Proposal | None:
     """A checked proposal for one assistant tool call (US 110), or None if it isn't this traveler's.
 
     Raises flow.InvalidAnswer when the proposal breaks a rule. Saves nothing.
@@ -260,8 +270,12 @@ def application_proposal(session: Session, traveler_id: int, application_id: str
             raise flow.InvalidAnswer("This application is archived. Restore it from your dashboard before changing it.")
         if is_recorded(application):
             raise flow.InvalidAnswer(RECORDED_READ_ONLY)
-    return actions.propose(questionnaire, answers, name, args, check_day(application, today or date.today()),
-                           latest_passport=latest_passport, profile=saved_profile(session, traveler_id))
+    today = today or date.today()
+    issues = document_issues(session, application, current_answers(questionnaire, application, answers, today)[0]) \
+        if name == "run_completeness_check" else None
+    return actions.propose(questionnaire, answers, name, args, check_day(application, today),
+                           latest_passport=latest_passport, profile=saved_profile(session, traveler_id),
+                           document_issues=issues)
 
 
 def create_applications_router(
@@ -271,6 +285,9 @@ def create_applications_router(
     *,
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
     today: Callable[[], date] = date.today,
+    remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
+    document_issues: DocumentIssues = no_document_issues,
+    remove_agent_files: Callable[[int, str], None] = lambda traveler_id, application_id: None,
 ) -> APIRouter:
     from ..auth import check_origin
     from .lifecycle import add_lifecycle_routes
@@ -419,7 +436,8 @@ def create_applications_router(
         response.headers["Cache-Control"] = "private, no-store"
         return completeness.check(questionnaire, answers, check_day(application, today()),
                                   latest_passport=load_latest_passport(traveler.id),
-                                  profile=saved_profile(session, traveler.id))
+                                  profile=saved_profile(session, traveler.id),
+                                  document_issues=document_issues(session, application, answers))
 
     @router.put("/{application_id}/answers/{question_id}", response_model=ApplicationState,
                 dependencies=[Depends(check_origin)])
@@ -476,5 +494,6 @@ def create_applications_router(
         return state(session, traveler, application, questionnaire, answers, rows, cleared)
 
     # Archive, delete and the timeline (US 79, US 20) live in their own file.
-    add_lifecycle_routes(router, get_session, current_traveler, today=today)
+    add_lifecycle_routes(router, get_session, current_traveler, today=today,
+                         remove_document_files=remove_document_files, remove_agent_files=remove_agent_files)
     return router

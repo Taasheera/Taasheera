@@ -61,11 +61,14 @@ def test_the_choices_leave_out_the_original_country(api):
     original = start(client, headers[0])["id"]
     response = client.get(f"/applications/{original}/duplicate", headers=headers[0])
     assert response.status_code == 200
-    [choice] = response.json()
+    choice, *others = response.json()
     assert len(choice["places"]) == 29  # no country chosen yet: all of them
+    # Other destinations can be chosen too; they have no country question of their own.
+    assert {other["destination"] for other in others} == {"CAN", "GBR", "USA"}
+    assert all(other["place_prompt"] is None and other["places"] == [] for other in others)
 
     put(client, headers[0], original, "main_destination", "FRA")
-    [choice] = client.get(f"/applications/{original}/duplicate", headers=headers[0]).json()
+    choice = client.get(f"/applications/{original}/duplicate", headers=headers[0]).json()[0]
     assert choice["visa_type"] == "short_stay" and "main destination" in choice["place_prompt"]
     values = [place["value"] for place in choice["places"]]
     assert "FRA" not in values and "ITA" in values and len(values) == 28
@@ -157,6 +160,9 @@ def test_only_matching_questions_of_the_same_type_are_copied():
         for question in step["questions"]:
             if question.get("show_if", {}).get("question") == "occupation":
                 question.pop("show_if")
+    for document in raw.get("documents", []):
+        if document.get("show_if", {}).get("question") == "occupation":
+            document.pop("show_if")
     target = flow.Questionnaire.model_validate(raw)
     answers, _ = flow.reconcile(source, dict(ANSWERS), date.today())
     copied = copy_answers(source, target, answers, "ITA", date.today())
@@ -195,4 +201,22 @@ def test_visas_without_a_list_of_countries_are_not_offered(api, monkeypatch):
     real = flow.available_questionnaires()
     monkeypatch.setattr(flow, "available_questionnaires", lambda: [*real, other])
     choices = client.get(f"/applications/{original}/duplicate", headers=headers[0]).json()
-    assert [choice["visa_type"] for choice in choices] == ["short_stay"]
+    assert "test_visa" not in [choice["visa_type"] for choice in choices]
+    assert choices[0]["visa_type"] == "short_stay"
+
+
+def test_a_copy_for_another_destination_keeps_the_shared_answers(api):
+    client, app, headers, _ = api
+    original = start(client, headers[0])["id"]
+    answer_all(client, headers[0], original)
+    response = client.post(f"/applications/{original}/duplicate", headers=headers[0],
+                           json={"destination": "USA", "visa_type": "b2_tourist"})
+    assert response.status_code == 201
+    copy = response.json()
+    assert copy["destination"] == "USA" and copy["status"] in ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE")
+    copied = answers_of(app, copy["id"])
+    assert "main_destination" not in copied and "accommodation" not in copied
+    assert copied  # some answers, such as the passport, are asked by both questionnaires
+    # A visa without a country question takes no country.
+    assert client.post(f"/applications/{original}/duplicate", headers=headers[0],
+                       json={"destination": "USA", "visa_type": "b2_tourist", "place": "ITA"}).status_code == 422

@@ -5,6 +5,9 @@ import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../appli
 import ApplicationActions from './ApplicationActions'
 import DecisionActions from './DecisionActions'
 import ExportRecord from './ExportRecord'
+import Feature from '../Feature'
+import DocumentChecklist from '../documents/DocumentChecklist'
+import AgentPanel from '../agent/AgentPanel'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -98,6 +101,14 @@ function Detail({ applicationId }: { applicationId: string }) {
           onDeleted={() => navigate('/dashboard', { replace: true })} />
       </div>
     </div>
+
+    <Feature name="supporting_documents">
+      <DocumentChecklist applicationId={application.id} version={application.updated_at} />
+    </Feature>
+
+    <Feature name="agent_form_filling">
+      <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
+    </Feature>
 
     <div className="dash-detail-grid">
       <section aria-labelledby="answers-title">

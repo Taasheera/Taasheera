@@ -222,13 +222,15 @@ def test_a_recorded_application_is_checked_as_it_was_submitted(api):
         session.add(stored)
         session.commit()
     report = client.get(f"/applications/{application_id}/check", headers=headers[0]).json()
-    assert report["ready"] is True
-    assert not [issue for issue in report["issues"] if issue["severity"] == "blocking"]
+    # Only the supporting documents (none uploaded here) may still be missing, never a frozen answer.
+    assert report["answered"] == report["total"]
+    assert not [issue for issue in report["issues"] if issue["question_id"] is not None and issue["severity"] == "blocking"]
     with Session(app.state.engine) as session:
         traveler_id = session.get(Application, application_id).traveler_id
         assert "Not answered yet" not in application_context(session, traveler_id, application_id)
         proposal = application_proposal(session, traveler_id, application_id, "run_completeness_check", {})
-        assert proposal.report.ready is True
+        assert proposal.report.answered == proposal.report.total
+        assert not [issue for issue in proposal.report.issues if issue.message.startswith("Not answered yet")]
 
 
 def test_a_submission_whose_trip_has_passed_cannot_be_taken_back(api):

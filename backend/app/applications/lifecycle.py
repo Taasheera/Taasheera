@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, delete, select
 
-from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, Traveler
+from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, SupportingDocument, Traveler
 from ..notifications import notify_status_change
 from . import flow
 from .router import ApplicationSummary, _status, _summary, _utc, current_answers, is_recorded
@@ -78,12 +78,22 @@ class Timeline(BaseModel):
     next: NextStep
 
 
-def delete_application(session: Session, application: Application) -> None:
-    """Remove the conversation and answers before their application (foreign keys on both)."""
+def delete_application(session: Session, application: Application) -> list[str]:
+    """Remove the conversation, answers, documents and agent runs before their application (foreign keys on all).
+
+    Returns the ids of the deleted supporting documents, whose files go once the deletion is committed.
+    """
+    from ..agent.queue import delete_application_runs
+
+    delete_application_runs(session, application.id)
+    document_ids = list(session.exec(select(SupportingDocument.id)
+                                     .where(SupportingDocument.application_id == application.id)).all())
+    session.exec(delete(SupportingDocument).where(SupportingDocument.application_id == application.id))
     session.exec(delete(AssistantMessage).where(AssistantMessage.application_id == application.id))
     session.exec(delete(Notification).where(Notification.application_id == application.id))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
     session.delete(application)
+    return document_ids
 
 
 def build_timeline(session: Session, application: Application, today: date) -> Timeline:
@@ -161,6 +171,8 @@ def add_lifecycle_routes(
     current_traveler,
     *,
     today: Callable[[], date] = date.today,
+    remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
+    remove_agent_files: Callable[[int, str], None] = lambda traveler_id, application_id: None,
 ) -> None:
     from ..auth import check_origin
     from .records import add_record_routes
@@ -261,8 +273,10 @@ def add_lifecycle_routes(
     @router.delete("/{application_id}", status_code=204, dependencies=[Depends(check_origin)])
     def remove(application_id: str, traveler: TravelerDep, session: SessionDep):
         # Passport uploads stay: they belong to the passport page, and answers hold their own copy.
-        delete_application(session, owned(session, traveler, application_id))
+        document_ids = delete_application(session, owned(session, traveler, application_id))
         session.commit()
+        remove_document_files(traveler.id, document_ids)
+        remove_agent_files(traveler.id, application_id)
         return Response(status_code=204, headers={"Cache-Control": "private, no-store"})
 
     @router.get("/{application_id}/timeline", response_model=Timeline)

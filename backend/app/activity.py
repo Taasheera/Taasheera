@@ -46,6 +46,8 @@ Control = Literal[
     "application-decision", "application-decision-confirm", "application-decision-cancel",
     "application-duplicate", "application-duplicate-confirm", "application-duplicate-cancel",
     "application-export",
+    "document-upload", "document-open", "document-replace", "document-delete", "document-delete-confirm",
+    "agent-start", "agent-cancel", "agent-screenshot",
 ]
 
 
