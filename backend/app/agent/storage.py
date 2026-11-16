@@ -35,12 +35,13 @@ class AgentFiles:
         with os.fdopen(fd, "wb") as file:
             file.write(png)
 
-    def load(self, owner_id: int, application_id: str, screenshot_id: str) -> bytes | None:
+    def load(self, owner_id: int, application_id: str, screenshot_id: str, *,
+             purpose: str = "agent_screenshot") -> bytes | None:
         path = self._path(owner_id, application_id, screenshot_id)
         if not path.is_file():
             return None
         if self.on_access is not None:
-            self.on_access(owner_id, screenshot_id, "agent_screenshot")
+            self.on_access(owner_id, screenshot_id, purpose)
         return path.read_bytes()
 
     def remove_application(self, owner_id: int, application_id: str) -> None:

@@ -24,7 +24,8 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlmodel import Session, SQLModel, select
 
 from .activity import record_activity
-from .models import (AccountErasure, ActivityEvent, Application, ApplicationAnswer, AssistantMessage, AuthSession,
+from .agent.storage import AgentFiles
+from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
                      DocumentAccess, GoogleIdentity, Notification, PasswordResetChallenge, PasswordResetToken,
                      RefreshToken, SupportingDocument, Traveler, TravelerProfile)
 from .documents.storage import DocumentStorage
@@ -35,7 +36,7 @@ from .security import throttle
 class Holding:
     model: type[SQLModel]
     # How this traveler's rows are found: by traveler id, through their applications, or their sessions.
-    owner: str  # "traveler", "application" or "session"
+    owner: str  # "traveler", "application", "session" or "run" (the form-filling agent's runs)
     exported: bool
     # Columns never exported because they are secrets, not information about the traveler.
     omit: tuple[str, ...] = ()
@@ -55,6 +56,9 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(ActivityEvent, "traveler", True),
     Holding(DocumentAccess, "traveler", True, omit=("actor_id",)),
     Holding(SupportingDocument, "traveler", True),
+    Holding(AgentRun, "traveler", True),
+    Holding(AgentFieldEntry, "run", True),
+    Holding(AgentScreenshot, "run", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
@@ -69,6 +73,9 @@ def owned_rows(session: Session, holding: Holding, traveler_id: int) -> list[SQL
     elif holding.owner == "application":
         query = select(model).where(model.application_id.in_(
             select(Application.id).where(Application.traveler_id == traveler_id)))
+    elif holding.owner == "run":
+        query = select(model).where(model.run_id.in_(
+            select(AgentRun.id).where(AgentRun.traveler_id == traveler_id)))
     elif holding.owner == "session":
         query = select(model).where(model.session_id.in_(
             select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)))
@@ -108,10 +115,12 @@ Downloaded {when} (UTC) for the account {email}.
 
 data.json        Everything we hold about you, one section per kind of record:
                  your account, profile, linked Google account, sign-in sessions,
-                 applications and their answers, assistant conversations,
-                 notifications, account activity, and who opened your passport files.
+                 applications and their answers, supporting documents, what the
+                 form-filling agent typed, assistant conversations, notifications,
+                 account activity, and who opened your passport files.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
+agent/           Each screenshot the form-filling agent took (.png), by application.
 documents/       Each supporting document you uploaded (.pdf or .jpg), named by
                  its id in data.json's supportingdocument section.
 
@@ -148,6 +157,13 @@ def build_archive(session: Session, traveler: Traveler, passport_storage) -> byt
             content = documents.load(traveler.id, document.id, extension, purpose="data_export")
             if content is not None:
                 archive.writestr(f"documents/{document.id}.{extension}", content)
+        screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+        shots = session.exec(select(AgentScreenshot, AgentRun.application_id).join(AgentRun)
+                             .where(AgentRun.traveler_id == traveler.id))
+        for shot, application_id in shots:
+            png = screenshots.load(traveler.id, application_id, shot.id, purpose="data_export")
+            if png is not None:
+                archive.writestr(f"agent/{application_id}/{shot.id}.png", png)
     return buffer.getvalue()
 
 

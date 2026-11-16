@@ -6,9 +6,11 @@ import zipfile
 
 from sqlmodel import Session, SQLModel, select
 
+from app.agent import queue
+from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
-from app.models import (ActivityEvent, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
+from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
                         RefreshToken, Traveler, TravelerProfile)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
@@ -18,6 +20,7 @@ IMAGE = b"\xff\xd8synthetic specimen image\xff\xd9"
 OWNER_TABLES = {"traveler", "application", "authsession"}
 
 
+PNG = b"\x89PNG\r\n\x1a\n synthetic screenshot"
 PDF = b"%PDF-1.4\n% synthetic test document\n%%EOF\n"
 
 
@@ -42,7 +45,14 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(ActivityEvent(traveler_id=traveler_id, event_type="sign_in", identifier="email_password", outcome="success"))
         session.add(DocumentAccess(traveler_id=traveler_id, actor_id=traveler_id, upload_id=upload_id, purpose="review_read"))
         session.commit()
-    return {"application_id": application_id, "upload_id": upload_id, "document_id": document_id}
+        # One agent run that typed a field and took a screenshot of the page.
+        run = queue.enqueue(session, session.get(Application, application_id), "schengen-harmonised")
+        assert queue.claim(session).id == run.id
+        queue.record_entry(session, run.id, page=1, page_title="Personal details", field="1. Surname", value="ERIKSSON")
+        shot_id = queue.record_screenshot(session, run.id, page=1, page_title="Personal details")
+        AgentFiles(storage.root).save(traveler_id, application_id, shot_id, PNG)
+        queue.finish(session, run.id, "ready", "The form is filled and waiting for you to review and submit it.")
+    return {"application_id": application_id, "upload_id": upload_id, "document_id": document_id, "shot_id": shot_id}
 
 
 def download(client, headers):
@@ -66,10 +76,12 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     assert response.headers["content-type"] == "application/zip"
     assert response.headers["content-disposition"].startswith('attachment; filename="taasheera-data-')
     assert response.headers["cache-control"] == "no-store"
-    assert sorted(archive.namelist()) == ["README.txt", "data.json", f"documents/{mine['document_id']}.pdf",
+    assert sorted(archive.namelist()) == ["README.txt", f"agent/{mine['application_id']}/{mine['shot_id']}.png",
+                                          "data.json", f"documents/{mine['document_id']}.pdf",
                                           f"passport/{mine['upload_id']}.jpg", f"passport/{mine['upload_id']}.json"]
     assert archive.read(f"documents/{mine['document_id']}.pdf") == PDF
     assert data["supportingdocument"][0]["filename"] == "insurance.pdf"
+    assert data["agentfieldentry"][0]["value"] == "ERIKSSON" and data["agentrun"][0]["status"] == "ready"
     assert archive.read(f"passport/{mine['upload_id']}.jpg") == IMAGE
     assert json.loads(archive.read(f"passport/{mine['upload_id']}.json"))["surname"] == SPECIMEN["surname"]
 
@@ -114,7 +126,7 @@ def test_downloading_is_recorded_and_the_file_reads_show_in_access_history(api):
         reads = session.exec(select(DocumentAccess).where(DocumentAccess.purpose == "data_export")).all()
     # The passport image and its review, then the supporting document.
     assert [(row.traveler_id, row.actor_id, row.upload_id) for row in reads] == (
-        [(1, 1, mine["upload_id"])] * 2 + [(1, 1, mine["document_id"])])
+        [(1, 1, mine["upload_id"])] * 2 + [(1, 1, mine["document_id"]), (1, 1, mine["shot_id"])])
 
 
 def test_signed_out_requests_and_too_many_downloads_are_refused(api):  # noqa: F811
