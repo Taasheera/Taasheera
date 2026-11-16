@@ -78,8 +78,10 @@ def answer_all(client, headers, application_id, answers=ANSWERS, stop_at=None):
 
 def test_options_list_the_schengen_questionnaire(api):
     client, _, headers, _ = api
-    [option] = client.get("/applications/options", headers=headers[0]).json()
-    assert option["destination"] == "SCHENGEN" and option["visa_type"] == "short_stay"
+    options = client.get("/applications/options", headers=headers[0]).json()
+    assert {(o["destination"], o["visa_type"]) for o in options} == {
+        ("SCHENGEN", "short_stay"), ("GBR", "standard_visitor"), ("USA", "b2_tourist"), ("CAN", "visitor")}
+    [option] = [o for o in options if o["destination"] == "SCHENGEN"]
     assert option["destination_label"] == "Schengen area" and option["visa_label"] == "Short stay (type C)"
     assert "90 days" in option["visa_description"]
 

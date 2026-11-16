@@ -283,3 +283,65 @@ def test_document_checklist_follows_the_answers(schengen):
 def test_broken_document_lists_are_rejected_when_loaded(documents, message):
     with pytest.raises(ValidationError, match=message):
         Questionnaire.model_validate(_file(documents=documents))
+
+
+def _generic_answer(question, today):
+    """A valid, non-stopping answer for any question, so every destination can be walked to the end."""
+    if question.type == "choice":
+        return question.options[0].value
+    if question.type == "yes_no":
+        return False
+    if question.type == "date":
+        days = {"arrival_date": 30, "departure_date": 40}.get(question.id, -700)
+        return (today + __import__("datetime").timedelta(days=days)).isoformat()
+    if question.type == "passport":
+        return SPECIMEN
+    if question.type == "country":
+        return "UTO"
+    if question.type == "phone":
+        return "+96171123456"
+    if question.type == "address":
+        return ANSWERS["home_address"]
+    return "Example"
+
+
+@pytest.mark.parametrize("questionnaire", available_questionnaires(), ids=lambda q: q.id)
+def test_every_destination_can_be_answered_to_the_end(questionnaire):
+    given = {}
+    while (question := next_question(questionnaire, given)) is not None:
+        given[question.id] = check_answer(question, _generic_answer(question, TODAY), given, TODAY)
+    assert stop_message(questionnaire, given) is None
+    assert progress(questionnaire, given).answered == progress(questionnaire, given).total
+    # Every destination asks for its passport, so the completeness and cross-checks have a reference.
+    assert any(q.type == "passport" and q.prefill == "passport" for q in questionnaire.questions())
+    assert required_documents(questionnaire, given), "every destination lists supporting documents"
+
+
+@pytest.mark.parametrize("questionnaire_id, stopper", [
+    ("uk-standard-visitor", "work_in_uk"), ("uk-standard-visitor", "stay_over_6_months"),
+    ("canada-visitor", "work_or_study"),
+])
+def test_new_destinations_stop_for_the_wrong_visa(questionnaire_id, stopper):
+    questionnaire = load_questionnaire(questionnaire_id)
+    given = {}
+    while (question := next_question(questionnaire, given)) is not None and question.id != stopper:
+        given[question.id] = check_answer(question, _generic_answer(question, TODAY), given, TODAY)
+    given[stopper] = True
+    assert stop_message(questionnaire, given) and next_question(questionnaire, given) is None
+
+
+def test_us_business_only_trips_stop_but_mixed_trips_continue():
+    us = load_questionnaire("us-b2-tourist")
+    assert stop_message(us, {"purpose": "business", "purpose_stop": True})
+    assert next_question(us, {"purpose": "business", "purpose_stop": False}).id == "passport"
+    assert next_question(us, {"purpose": "tourism"}).id == "passport"
+
+
+def test_uk_stays_are_limited_to_six_months_and_the_passport():
+    uk = load_questionnaire("uk-standard-visitor")
+    given = {"passport": {**SPECIMEN, "expiry_date": "2027-03-01"}, "arrival_date": "2026-11-20"}
+    with pytest.raises(InvalidAnswer, match="up to 6 months"):
+        check_answer(uk.question("departure_date"), "2027-05-25", given, TODAY)
+    with pytest.raises(InvalidAnswer, match="whole stay"):
+        check_answer(uk.question("departure_date"), "2027-03-02", given, TODAY)
+    assert check_answer(uk.question("departure_date"), "2027-02-28", given, TODAY) == "2027-02-28"
