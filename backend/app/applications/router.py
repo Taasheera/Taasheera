@@ -166,8 +166,16 @@ def _owned_answers(session: Session, traveler_id: int, application_id: str):
     return application, flow.load_questionnaire(application.questionnaire_id), {row.question_id: row.value for row in rows}
 
 
+DocumentIssues = Callable[[Session, Application, flow.Answers], list[completeness.Issue]]
+
+
+def no_document_issues(session: Session, application: Application, answers: flow.Answers) -> list[completeness.Issue]:
+    return []
+
+
 def application_context(session: Session, traveler_id: int, application_id: str, *,
-                        latest_passport: dict | None = None, today: date | None = None) -> str | None:
+                        latest_passport: dict | None = None, today: date | None = None,
+                        document_issues: DocumentIssues = no_document_issues) -> str | None:
     """The assistant's view of one application (US 47), or None if it isn't this traveler's.
 
     Built here on every call, never sent by the browser: the answers, where the traveler
@@ -181,7 +189,8 @@ def application_context(session: Session, traveler_id: int, application_id: str,
     answers, _ = flow.reconcile(questionnaire, answers, today)
     progress = flow.progress(questionnaire, answers)
     report = completeness.check(questionnaire, answers, today, latest_passport=latest_passport,
-                                profile=saved_profile(session, traveler_id))
+                                profile=saved_profile(session, traveler_id),
+                                document_issues=document_issues(session, application, answers))
     return "\n\n".join([
         flow.describe(questionnaire, answers, application.group_size),
         ("This application is archived and read-only. Restore it from the dashboard before changing answers."
@@ -193,7 +202,8 @@ def application_context(session: Session, traveler_id: int, application_id: str,
 
 
 def application_proposal(session: Session, traveler_id: int, application_id: str, name: str, args: dict, *,
-                         latest_passport: dict | None = None, today: date | None = None) -> actions.Proposal | None:
+                         latest_passport: dict | None = None, today: date | None = None,
+                         document_issues: DocumentIssues = no_document_issues) -> actions.Proposal | None:
     """A checked proposal for one assistant tool call (US 110), or None if it isn't this traveler's.
 
     Raises flow.InvalidAnswer when the proposal breaks a rule. Saves nothing.
@@ -204,8 +214,12 @@ def application_proposal(session: Session, traveler_id: int, application_id: str
     application, questionnaire, answers = found
     if application.archived_at and name != "run_completeness_check":
         raise flow.InvalidAnswer("This application is archived. Restore it from your dashboard before changing it.")
-    return actions.propose(questionnaire, answers, name, args, today or date.today(),
-                           latest_passport=latest_passport, profile=saved_profile(session, traveler_id))
+    today = today or date.today()
+    issues = document_issues(session, application, flow.reconcile(questionnaire, answers, today)[0]) \
+        if name == "run_completeness_check" else None
+    return actions.propose(questionnaire, answers, name, args, today,
+                           latest_passport=latest_passport, profile=saved_profile(session, traveler_id),
+                           document_issues=issues)
 
 
 def create_applications_router(
@@ -216,6 +230,7 @@ def create_applications_router(
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
     today: Callable[[], date] = date.today,
     remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
+    document_issues: DocumentIssues = no_document_issues,
 ) -> APIRouter:
     from ..auth import check_origin
     from .lifecycle import add_lifecycle_routes
@@ -361,7 +376,8 @@ def create_applications_router(
         answers, _ = save(session, application, stored_answers(session, application), questionnaire)
         response.headers["Cache-Control"] = "private, no-store"
         return completeness.check(questionnaire, answers, today(), latest_passport=load_latest_passport(traveler.id),
-                                  profile=saved_profile(session, traveler.id))
+                                  profile=saved_profile(session, traveler.id),
+                                  document_issues=document_issues(session, application, answers))
 
     @router.put("/{application_id}/answers/{question_id}", response_model=ApplicationState,
                 dependencies=[Depends(check_origin)])
