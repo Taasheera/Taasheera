@@ -147,10 +147,16 @@ These steps are not run automatically:
    ```bash
    aws cloudformation deploy --region us-east-1 --stack-name taasheera-github-main-role \
      --template-file deploy/aws/github-role.yaml --capabilities CAPABILITY_NAMED_IAM \
-     --parameter-overrides CreateOidcProvider=false TrustedSubject=repo:mhs86/Taasheera:environment:production
+     --parameter-overrides CreateOidcProvider=false \
+       TrustedSubject=repo:mhs86@333701050/Taasheera@1387089236:environment:production
    aws cloudformation describe-stacks --stack-name taasheera-github-main-role \
      --query 'Stacks[0].Outputs' --output table
    ```
+
+   This repository's GitHub tokens use the immutable subject (owner and repository ids). Check it with
+   `gh api repos/mhs86/Taasheera/actions/oidc/customization/sub`: a role trusting the plain
+   `repo:mhs86/Taasheera:...` spelling is refused with "Not authorized to perform
+   sts:AssumeRoleWithWebIdentity". Re-running this command on the existing stack keeps the role's ARN.
 
 3. Create the two private repositories and grant the existing host read-only image access:
 
