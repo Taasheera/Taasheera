@@ -43,6 +43,7 @@ Control = Literal[
     "assistant-proposal-confirm", "assistant-proposal-dismiss", "assistant-proposal-go",
     "dashboard-link", "dashboard-filter", "application-details", "application-archive", "application-restore",
     "application-delete", "application-delete-confirm", "application-delete-cancel",
+    "document-upload", "document-open", "document-replace", "document-delete", "document-delete-confirm",
 ]
 
 
