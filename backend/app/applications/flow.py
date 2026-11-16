@@ -81,6 +81,19 @@ class Question(_Strict):
     prefill: str | None = None
 
 
+class DocumentRequirement(_Strict):
+    """A supporting document the destination asks for (CMPS271-29), such as travel insurance.
+
+    `show_if` works like a question's: an employment letter is only asked of travelers who work.
+    """
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=40)
+    label: str = Field(min_length=1, max_length=100)
+    help: str | None = None
+    required: bool = True
+    show_if: Condition | None = None
+
+
 class Step(_Strict):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     title: str = Field(min_length=1)
@@ -108,6 +121,8 @@ class Questionnaire(_Strict):
     summary: Summary = Summary()
     source: str
     steps: list[Step] = Field(min_length=1)
+    # What to upload besides the passport. Checked after every question, so `show_if` may name any of them.
+    documents: list[DocumentRequirement] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_references(self) -> "Questionnaire":
@@ -135,6 +150,16 @@ class Questionnaire(_Strict):
                 if rule.ref != "today" and name not in seen:
                     raise ValueError(f"{question.id}: rule refers to {rule.ref!r}, which isn't an earlier question.")
             seen[question.id] = question
+        document_ids: set[str] = set()
+        for document in self.documents:
+            if document.id in document_ids:
+                raise ValueError(f"Document id {document.id!r} is used twice.")
+            document_ids.add(document.id)
+            if document.show_if:
+                source = seen.get(document.show_if.question)
+                if source is None:
+                    raise ValueError(f"document {document.id}: show_if must refer to a question.")
+                _check_values(document.id, source, document.show_if.values)
         for ref, types in ((self.summary.place, {"choice", "country"}), (self.summary.date, {"date"})):
             if ref is not None and (ref not in seen or seen[ref].type not in types):
                 raise ValueError(f"summary refers to {ref!r}, which isn't a question of type {sorted(types)}.")
@@ -180,6 +205,12 @@ def is_visible(question: Question, answers: Answers) -> bool:
 
 def visible_questions(questionnaire: Questionnaire, answers: Answers) -> list[Question]:
     return [question for question in questionnaire.questions() if is_visible(question, answers)]
+
+
+def required_documents(questionnaire: Questionnaire, answers: Answers) -> list[DocumentRequirement]:
+    """The documents this traveler should upload, given their answers so far, in file order."""
+    return [document for document in questionnaire.documents
+            if document.show_if is None or answers.get(document.show_if.question) in document.show_if.values]
 
 
 def stop_message(questionnaire: Questionnaire, answers: Answers) -> str | None:

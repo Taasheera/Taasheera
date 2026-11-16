@@ -8,8 +8,8 @@ from pydantic import ValidationError
 
 from app.applications.flow import (
     QUESTIONNAIRE_DIR, InvalidAnswer, Questionnaire, add_months, available_questionnaires, check_answer, date_bounds,
-    load_questionnaire, next_question, prefill_value, progress, reconcile, stop_message, summary_place,
-    visible_questions,
+    load_questionnaire, next_question, prefill_value, progress, reconcile, required_documents, stop_message,
+    summary_place, visible_questions,
 )
 
 TODAY = date(2026, 10, 18)
@@ -256,3 +256,30 @@ def test_summary_place_reads_the_choice_label(schengen):
 def test_visible_questions_hide_unmet_conditions(schengen):
     ids = [question.id for question in visible_questions(schengen, {"occupation": "student"})]
     assert "school" in ids and "employer" not in ids and "host_details" not in ids
+
+
+def test_document_checklist_follows_the_answers(schengen):
+    """The supporting documents asked for depend on the answers, like the questions do (CMPS271-29)."""
+    def ids(answers):
+        return [document.id for document in required_documents(schengen, answers)]
+
+    employed_hotel = ids({"occupation": "employed", "accommodation": "hotel", "funding": "self"})
+    assert employed_hotel == ["photo", "travel_insurance", "flight_booking", "accommodation_proof",
+                              "bank_statements", "employment_letter", "cover_letter"]
+    student_hosted = ids({"occupation": "student", "accommodation": "host", "funding": "sponsor"})
+    assert {"invitation_letter", "sponsor_letter", "enrolment_letter"} <= set(student_hosted)
+    assert "accommodation_proof" not in student_hosted and "employment_letter" not in student_hosted
+    # Before the answers are known, only the documents everyone needs are listed.
+    assert ids({}) == ["photo", "travel_insurance", "flight_booking", "bank_statements", "cover_letter"]
+    assert next(d for d in schengen.documents if d.id == "cover_letter").required is False
+
+
+@pytest.mark.parametrize("documents, message", [
+    ([{"id": "photo", "label": "A"}, {"id": "photo", "label": "B"}], "used twice"),
+    ([{"id": "letter", "label": "A", "show_if": {"question": "nowhere", "in": ["x"]}}], "must refer to a question"),
+    ([{"id": "letter", "label": "A", "show_if": {"question": "funding", "in": ["friend"]}}], "can't have"),
+    ([{"id": "letter", "label": "A", "needed": True}], "Extra inputs"),
+])
+def test_broken_document_lists_are_rejected_when_loaded(documents, message):
+    with pytest.raises(ValidationError, match=message):
+        Questionnaire.model_validate(_file(documents=documents))
