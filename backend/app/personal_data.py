@@ -14,6 +14,7 @@ someone else's passport (staff work) are left out.
 
 import io
 import json
+import re
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -84,10 +85,17 @@ def _value(value: Any) -> Any:
     return value
 
 
+# An admin's change to this account is logged as "admin:<staff account id>:<before>-><after>"
+# (admin_api.apply_change). The download keeps the change but not which staff account made it.
+STAFF_ID = re.compile(r"^admin:\d+:")
+
+
 def _row(holding: Holding, row: SQLModel, traveler_id: int) -> dict:
     data = {column: _value(getattr(row, column)) for column in holding.model.model_fields if column not in holding.omit}
     if holding.model is DocumentAccess:
         data["accessed_by"] = "You" if row.actor_id == traveler_id else "Authorized staff"
+    if holding.model is ActivityEvent:
+        data["identifier"] = STAFF_ID.sub("admin:", data["identifier"])
     return data
 
 

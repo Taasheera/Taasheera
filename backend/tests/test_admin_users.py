@@ -1,7 +1,9 @@
 """US 133: the admin user-management API and what suspension does to sign-in."""
 
+import io
 import json
 import time
+import zipfile
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -537,3 +539,19 @@ def test_admin_email_endpoints_are_admin_only_origin_checked_and_forbid_extra_fi
     response = api.client.post(path, headers=api.admin, json={**body, "role": "admin"})
     assert response.status_code == 422
     assert response.headers["cache-control"] == "no-store"
+
+
+def test_the_travelers_data_download_shows_staff_changes_without_the_staff_id(api):
+    """US 87: the download says an admin changed the account, never which staff account did."""
+    maya = api.ids["maya"]
+    assert api.client.post(f"/admin/users/{maya}/suspend", headers=api.admin).status_code == 200
+    assert api.client.post(f"/admin/users/{maya}/reactivate", headers=api.admin).status_code == 200
+    response = api.client.get("/auth/account/export", headers=bearer(login(api, "maya@example.com")))
+    assert response.status_code == 200, response.text
+    data = json.loads(zipfile.ZipFile(io.BytesIO(response.content)).read("data.json"))
+    changes = [event["identifier"] for event in data["activityevent"] if event["identifier"].startswith("admin")]
+    assert changes == ["admin:active->suspended", "admin:suspended->active"]
+    # The audit trail itself still records who made each change.
+    assert [identifier for _, _, identifier, _ in events(api, maya) if identifier.startswith("admin")] == [
+        f"admin:{api.ids['admin']}:active->suspended", f"admin:{api.ids['admin']}:suspended->active"]
+
