@@ -5,6 +5,7 @@ import { ArrowIcon, MenuIcon } from './icons'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import IdleGuard from './IdleGuard'
+import SectionNav from './SectionNav'
 import { restoreSession, signOut, type Traveler } from './auth'
 import { disableGoogleAutoSelect } from './googleIdentity'
 import { createAccountPath, signInPath } from './paths'
@@ -125,6 +126,7 @@ export default function Layout() {
             <AccountLinks {...account} inMenu />
           </nav>
         )}
+        {traveler && <SectionNav pathname={location.pathname} routed />}
       </header>
 
       {/* Pages read the signed-in traveler from here, e.g. the homepage's main button. */}

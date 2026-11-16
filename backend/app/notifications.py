@@ -16,9 +16,9 @@ answer values or other personal data in them. Email copies wait until the reset 
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select, update
 
 from .applications.flow import load_questionnaire
 from .models import Application, Notification, Traveler
@@ -85,6 +85,10 @@ def notify_agent_run(session: Session, application: Application, stopped_reason:
                   application_id=application.id, link=f"/dashboard/{application.id}")
 
 
+class UnreadCount(BaseModel):
+    unread: int
+
+
 class NotificationPublic(BaseModel):
     id: int
     kind: str
@@ -96,6 +100,8 @@ class NotificationPublic(BaseModel):
 
 
 def create_notifications_router(get_session, current_traveler) -> APIRouter:
+    from .auth import check_origin
+
     router = APIRouter(prefix="/notifications", tags=["Notifications"])
     SessionDep = Annotated[Session, Depends(get_session)]
     TravelerDep = Annotated[Traveler, Depends(current_traveler)]
@@ -111,5 +117,33 @@ def create_notifications_router(get_session, current_traveler) -> APIRouter:
         return [NotificationPublic(id=row.id, kind=row.kind, message=row.message, link=row.link,
                                    application_id=row.application_id, created_at=_utc(row.created_at),
                                    read=row.read_at is not None) for row in rows]
+
+    # The notification centre (US 107): the bell's count, and marking notifications read.
+    @router.get("/unread-count", response_model=UnreadCount)
+    def unread_count(traveler: TravelerDep, session: SessionDep):
+        count = session.exec(select(func.count()).select_from(Notification).where(
+            Notification.traveler_id == traveler.id, Notification.read_at.is_(None))).one()
+        return UnreadCount(unread=count)
+
+    @router.post("/{notification_id}/read", status_code=204, response_class=Response,
+                 dependencies=[Depends(check_origin)])
+    def mark_read(notification_id: int, traveler: TravelerDep, session: SessionDep):
+        notification = session.get(Notification, notification_id)
+        if notification is None or notification.traveler_id != traveler.id:
+            # 404 either way, so another traveler's ids can't be probed.
+            raise HTTPException(status_code=404, detail="Notification not found.")
+        if notification.read_at is None:
+            notification.read_at = datetime.now(timezone.utc)
+            session.add(notification)
+            session.commit()
+        return Response(status_code=204)
+
+    @router.post("/read-all", status_code=204, response_class=Response, dependencies=[Depends(check_origin)])
+    def mark_all_read(traveler: TravelerDep, session: SessionDep):
+        session.exec(update(Notification).where(Notification.traveler_id == traveler.id,
+                                                Notification.read_at.is_(None))
+                     .values(read_at=datetime.now(timezone.utc)))
+        session.commit()
+        return Response(status_code=204)
 
     return router

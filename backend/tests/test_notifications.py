@@ -123,3 +123,38 @@ def test_deleting_the_account_removes_every_notification(api):  # noqa: F811
         assert erase_account(session, traveler, app.state.passport_storage, app.state.activity_directory,
                              app.state.auth_settings.jwt_secret)
     assert [row.traveler_id for row in stored(app)] == [2]
+
+
+def test_the_bell_counts_unread_and_marks_one_or_all_read(api):  # noqa: F811
+    client, app, headers, _ = api
+    for owner in (0, 0, 1):
+        answer_all(client, headers[owner], start(client, headers[owner])["id"])
+    count = lambda who: client.get("/notifications/unread-count", headers=headers[who]).json()["unread"]
+    assert (count(0), count(1)) == (2, 1)
+
+    first, second = listed(client, headers[0])
+    assert client.post(f"/notifications/{first['id']}/read", headers=headers[0]).status_code == 204
+    assert client.post(f"/notifications/{first['id']}/read", headers=headers[0]).status_code == 204  # again: no change
+    assert [item["read"] for item in listed(client, headers[0])] == [True, False]
+    assert count(0) == 1
+
+    assert client.post("/notifications/read-all", headers=headers[0]).status_code == 204
+    assert (count(0), count(1)) == (0, 1)  # only the owner's
+    assert all(item["read"] for item in listed(client, headers[0]))
+
+
+def test_nobody_can_read_or_mark_another_travelers_notifications(api):  # noqa: F811
+    client, app, headers, _ = api
+    answer_all(client, headers[1], start(client, headers[1])["id"])
+    [theirs] = listed(client, headers[1])
+    assert client.post(f"/notifications/{theirs['id']}/read", headers=headers[0]).status_code == 404
+    assert client.post("/notifications/999999/read", headers=headers[0]).status_code == 404
+    assert client.post("/notifications/read-all", headers=headers[0]).status_code == 204
+    assert listed(client, headers[1])[0]["read"] is False
+
+    cross_site = {**headers[1], "Origin": "https://evil.example"}
+    assert client.post(f"/notifications/{theirs['id']}/read", headers=cross_site).status_code == 403
+    assert client.post("/notifications/read-all", headers=cross_site).status_code == 403
+    assert client.get("/notifications/unread-count").status_code == 401
+    assert client.post("/notifications/read-all").status_code in (401, 403)
+    assert listed(client, headers[1])[0]["read"] is False
