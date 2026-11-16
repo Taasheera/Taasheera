@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GlobalAssistant from '../assistant/GlobalAssistant'
+import Feature from '../Feature'
 import { AdminAccessError, adminRequest, deleteUser, type AdminUser, type Monitoring, type Staff, type UserPage } from '../admin'
 import '../App.css'
 import './dashboard.css'
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
           {users.items.map(user => <tr key={user.id}><td>{user.name}</td><td>{user.email}</td><td>{user.role}</td><td>{user.status}</td><td>
             <button type="button" className="danger-button" aria-label={`Delete ${user.name}`} disabled={busy || loading || user.id === staff?.id || user.role === 'admin'}
               onClick={() => { setSelected(user); setConfirmation(''); setError(''); setMessage('') }}>Delete user</button>
+            <Feature name="activity_history"><p><a href={`/admin/users/${user.id}/activity`}>View activity</a></p></Feature>
           </td></tr>)}
         </tbody></table></div>}
         {selected && <form className="deletion-confirm" aria-label="Confirm user deletion" onSubmit={async event => {

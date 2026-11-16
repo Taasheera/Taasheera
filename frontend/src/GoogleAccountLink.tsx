@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { linkGoogleAndSignIn, type Traveler } from './auth'
+import { linkGoogleAndSignIn, MfaRequiredError, type Traveler } from './auth'
+import MfaPrompt from './security/MfaPrompt'
 
 export default function GoogleAccountLink({ credential, onSignedIn, onCancel }: {
   credential: string; onSignedIn: (traveler: Traveler) => void; onCancel: () => void
 }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
   const pending = useRef(false)
   const mounted = useRef(false)
   useEffect(() => {
     mounted.current = true
     return () => { mounted.current = false }
   }, [])
+  if (mfaChallenge) return <MfaPrompt challengeToken={mfaChallenge} onSignedIn={onSignedIn} onCancel={onCancel} />
   return <section className="sign-in-card" aria-labelledby="google-link-heading">
     <h1 id="google-link-heading">Connect Google to your account</h1>
     <p>You already have an account with this Google email. Confirm your existing Taasheera password once
@@ -27,6 +30,7 @@ export default function GoogleAccountLink({ credential, onSignedIn, onCancel }: 
         const traveler = await linkGoogleAndSignIn(credential, String(new FormData(form).get('password') ?? ''))
         if (mounted.current) onSignedIn(traveler)
       } catch (error) {
+        if (mounted.current && error instanceof MfaRequiredError) { setMfaChallenge(error.challengeToken); return }
         if (mounted.current) setMessage(error instanceof Error ? error.message : 'Could not connect Google.')
       } finally {
         const input = form.elements.namedItem('password')

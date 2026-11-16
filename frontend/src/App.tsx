@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { GoogleLinkRequiredError, restoreSession, signIn, signInWithGoogle, signOut, type Traveler } from './auth'
+import { GoogleLinkRequiredError, MfaRequiredError, restoreSession, signIn, signInWithGoogle, signOut, type Traveler } from './auth'
+import MfaPrompt from './security/MfaPrompt'
+import MfaSettings from './security/MfaSettings'
 import GoogleAccountLink from './GoogleAccountLink'
 import GoogleSignIn from './GoogleSignIn'
 import { disableGoogleAutoSelect } from './googleIdentity'
@@ -100,6 +102,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
               onConnected={setTraveler} />
             {traveler.password_enabled === true && <ChangePassword />}
             <Sessions />
+            <MfaSettings key={traveler.id} traveler={traveler} googleClientId={googleClientId} />
             <DocumentHistory />
             <DownloadData />
             <DeleteAccount traveler={traveler} clientId={googleClientId} onDeleted={complete => {
@@ -160,6 +163,7 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
   const [message, setMessage] = useState(initialMessage)
   const [submitting, setSubmitting] = useState(false)
   const [linkCredential, setLinkCredential] = useState<string | null>(null)
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
   const inProgress = useRef(false)
   const mounted = useRef(false)
   useEffect(() => {
@@ -175,6 +179,9 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
       const profile = await signInWithGoogle(credential)
       if (mounted.current) onSignedIn(profile)
     } catch (error) {
+      if (mounted.current && error instanceof MfaRequiredError) {
+        setMfaChallenge(error.challengeToken); setMessage(''); return
+      }
       if (mounted.current && error instanceof GoogleLinkRequiredError) {
         setLinkCredential(credential)
         setMessage('')
@@ -188,6 +195,8 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
     }
   }, [onSignedIn])
 
+  if (mfaChallenge) return <MfaPrompt challengeToken={mfaChallenge} onSignedIn={onSignedIn}
+    onCancel={() => { setMfaChallenge(null); setMessage('') }} />
   if (linkCredential) return <GoogleAccountLink credential={linkCredential}
     onSignedIn={traveler => { setLinkCredential(null); onSignedIn(traveler) }}
     onCancel={() => { setLinkCredential(null); setMessage('') }} />
@@ -212,6 +221,7 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
             const profile = await signIn(String(fields.get('email') ?? ''), String(fields.get('password') ?? ''))
             onSignedIn(profile)
           } catch (error) {
+            if (error instanceof MfaRequiredError) { setMfaChallenge(error.challengeToken); return }
             setMessage(error instanceof Error && error.name === 'Error'
               ? error.message : 'Could not sign in. Check your connection and try again.')
           } finally {

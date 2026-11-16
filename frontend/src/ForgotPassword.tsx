@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { requestPasswordReset, ResetError, verifyResetCode } from './passwordReset'
 import SetNewPassword from './SetNewPassword'
+import { useFeature } from './features'
 
 function ForgotPassword() {
+  const googleRecovery = useFeature('google_password_recovery')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -26,7 +28,9 @@ function ForgotPassword() {
     <section className="sign-in-card" aria-labelledby="forgot-password-heading">
       <p className="eyebrow">YOUR JOURNEY STARTS HERE</p>
       <h1 id="forgot-password-heading">Forgot password?</h1>
-      <p className="intro">Enter your email/password account email to receive a six-digit reset code. Google-only users recover access through Google.</p>
+      <p className="intro">{googleRecovery
+        ? 'Enter your account email to receive a six-digit reset code. A Google-only account can add a Taasheera password; Google sign-in stays linked.'
+        : 'Enter your email/password account email to receive a six-digit reset code. Google-only users recover access through Google.'}</p>
 
       <form
         aria-busy={submitting}

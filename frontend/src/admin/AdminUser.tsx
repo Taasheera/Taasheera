@@ -8,6 +8,7 @@ import {
 import type { AdminContext } from './AdminLayout'
 import { readableDate, roleLabels, signInMethod, statusLabels } from './format'
 import AdminDelete from './AdminDelete'
+import Feature from '../Feature'
 
 type Pending = { kind: 'suspend' } | { kind: 'reactivate' } | { kind: 'role'; role: Role }
 
@@ -97,6 +98,7 @@ function AdminUserPage({ userId }: { userId: string }) {
     {back}
     <div className="admin-user-heading">
       <h1>{user.name}</h1>
+      <Feature name="activity_history"><p><Link to={`/admin/users/${user.id}/activity`}>View full activity</Link></p></Feature>
       <span className={`admin-status admin-status-${user.status}`}>{statusLabels[user.status]}</span>
       <span className="admin-role">{roleLabels[user.role]}</span>
     </div>

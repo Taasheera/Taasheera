@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GoogleSignIn from './GoogleSignIn'
-import { GoogleLinkRequiredError, signInWithGoogle, type Traveler } from './auth'
+import { GoogleLinkRequiredError, MfaRequiredError, signInWithGoogle, type Traveler } from './auth'
+import MfaPrompt from './security/MfaPrompt'
 import GoogleAccountLink from './GoogleAccountLink'
 
 function validationMessage(body: unknown): string {
@@ -31,6 +32,7 @@ function CreateAccount({ onCreated, googleClientId = '', googleConfigurationStat
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [linkCredential, setLinkCredential] = useState<string | null>(null)
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null)
   const requestInProgress = useRef(false)
   const passwordRef = useRef<HTMLInputElement>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
@@ -48,6 +50,9 @@ function CreateAccount({ onCreated, googleClientId = '', googleConfigurationStat
       const profile = await signInWithGoogle(credential)
       if (mounted.current) onSignedIn?.(profile)
     } catch (error) {
+      if (mounted.current && error instanceof MfaRequiredError) {
+        setMfaChallenge(error.challengeToken); setMessage(''); return
+      }
       if (mounted.current && error instanceof GoogleLinkRequiredError) {
         setLinkCredential(credential)
         setMessage('')
@@ -77,6 +82,8 @@ function CreateAccount({ onCreated, googleClientId = '', googleConfigurationStat
     setMessage('')
   }
 
+  if (mfaChallenge && onSignedIn) return <MfaPrompt challengeToken={mfaChallenge} onSignedIn={onSignedIn}
+    onCancel={() => { setMfaChallenge(null); setMessage('') }} />
   if (linkCredential && onSignedIn) return <GoogleAccountLink credential={linkCredential}
     onSignedIn={traveler => { setLinkCredential(null); onSignedIn(traveler) }}
     onCancel={() => { setLinkCredential(null); setMessage(''); setHasError(false) }} />

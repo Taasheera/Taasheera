@@ -65,7 +65,7 @@ export function renderGoogleButton(api: GoogleIdentity, clientId: string, elemen
     api.renderButton(element, {
       type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
       width: Math.min(400, Math.max(180, Math.floor(element.getBoundingClientRect().width || 240))),
-      state, click_listener: clicked,
+      state, click_listener: () => { active = { state, receive }; clicked() },
     })
   }
   try { render() } catch (error) {

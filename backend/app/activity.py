@@ -27,8 +27,9 @@ def activity_directory_from_environment() -> Path:
 
 # Only static UI identifiers may cross the browser boundary. In particular,
 # URLs, element text, form fields, error messages and Google responses are excluded.
-Page = Literal["home", "faq", "passport", "apply", "dashboard", "sign-in", "create-account", "forgot-password", "reset-password", "not-found"]
+Page = Literal["home", "faq", "passport", "apply", "dashboard", "account", "admin", "backoffice", "sign-in", "create-account", "forgot-password", "reset-password", "not-found"]
 Control = Literal[
+    "activity-filter", "activity-page", "activity-refresh", "mfa-setup", "mfa-enable", "mfa-disable", "mfa-backup-regenerate",
     "home-link", "how-it-works-link", "destinations-link", "privacy-link", "faq-link",
     "login-link", "get-started-link", "skip-link", "menu-toggle", "password-toggle",
     "forgot-password-link", "create-account-link", "sign-in-link", "submit-login",
@@ -55,7 +56,16 @@ class FrontendActivity(BaseModel):
 
 
 def record_activity(session: Session, directory: Path, traveler_id: int, event_type: str,
-                    identifier: str, outcome: str) -> ActivityEvent | None:
+                    identifier: str, outcome: str, *, actor_id: int | None = None,
+                    actor_kind: str = "traveler", resource_type: str | None = None,
+                    resource_id: str | None = None, purpose: str | None = None,
+                    document_access_id: int | None = None) -> ActivityEvent | None:
+    if actor_kind not in {"traveler", "staff", "service"}:
+        raise ValueError("Unknown activity actor kind")
+    if resource_type not in {None, "account", "passport", "document", "application", "session", "notification", "security"}:
+        raise ValueError("Unknown activity resource type")
+    if actor_id is None and actor_kind == "traveler":
+        actor_id = traveler_id
     # Serialize unauthenticated login/reset logging with erasure too. A completed
     # deletion must not be followed by a late event recreating an owner's mirror.
     locked = session.execute(update(Traveler).where(Traveler.id == traveler_id).values(status=Traveler.status))
@@ -63,7 +73,9 @@ def record_activity(session: Session, directory: Path, traveler_id: int, event_t
         session.rollback()
         return None
     event = ActivityEvent(traveler_id=traveler_id, event_type=event_type,
-                          identifier=identifier, outcome=outcome)
+                          identifier=identifier, outcome=outcome, actor_id=actor_id, actor_kind=actor_kind,
+                          resource_type=resource_type, resource_id=resource_id, purpose=purpose,
+                          document_access_id=document_access_id)
     session.add(event)
     session.flush()
     session.refresh(event)
@@ -89,6 +101,10 @@ def record_activity(session: Session, directory: Path, traveler_id: int, event_t
                 "id": event.id, "traveler_id": traveler_id,
                 "occurred_at": event.occurred_at.replace(tzinfo=timezone.utc).isoformat(),
                 "event_type": event_type, "identifier": identifier, "outcome": outcome,
+                "actor_id": actor_id, "actor_kind": actor_kind, "resource_type": resource_type,
+                # Object references stay in the authenticated database view;
+                # avoid copying document locators into the filesystem mirror.
+                "purpose": purpose,
             }, separators=(",", ":")) + "\n")
     except OSError:
         log.error("Activity JSONL mirror failed; database event was saved")

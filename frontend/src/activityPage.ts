@@ -1,5 +1,8 @@
 export function safePage(pathname: string, hash: string): string {
   if (pathname === '/') return 'home'
+  if (pathname === '/account') return 'account'
+  if (pathname === '/admin' || /^\/admin\/users\/[1-9][0-9]*(?:\/activity)?$/.test(pathname)) return 'admin'
+  if (pathname === '/backoffice') return 'backoffice'
   if (pathname === '/faq') return 'faq'
   if (pathname === '/passport' || /^\/passport\/[0-9a-f]{32}$/.test(pathname)) return 'passport'
   if (pathname === '/apply' || /^\/apply\/[0-9a-f]{32}$/.test(pathname)) return 'apply'

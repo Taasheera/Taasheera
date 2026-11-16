@@ -1,11 +1,19 @@
 import { useRef, useState } from 'react'
 import { loadDocumentAccess, type AccessPage } from './privacy'
+import { useFeature } from './features'
+import ActivityHistory from './activity/ActivityHistory'
 
 const purposes: Record<string, string> = { image_view: 'Viewed passport image', extraction: 'Read for passport extraction',
   review_read: 'Read confirmed details', review_update: 'Read for review update', assistant_context: 'Read for assistant context',
   application_prefill: 'Read for application prefill', data_export: 'Included in your data download' }
 
 export default function DocumentHistory() {
+  const enabled = useFeature('activity_history')
+  if (enabled === undefined) return null
+  return enabled ? <ActivityHistory documentsOnly /> : <LegacyDocumentHistory />
+}
+
+function LegacyDocumentHistory() {
   const [opened, setOpened] = useState(false)
   const [history, setHistory] = useState<AccessPage | null>(null)
   const [loading, setLoading] = useState(false)

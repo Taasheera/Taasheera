@@ -26,7 +26,7 @@ from sqlmodel import Session, SQLModel, select
 from .activity import record_activity
 from .models import (AccountErasure, ActivityEvent, Application, ApplicationAnswer, AssistantMessage, AuthSession,
                      DocumentAccess, GoogleIdentity, Notification, PasswordResetChallenge, PasswordResetToken,
-                     RefreshToken, Traveler, TravelerProfile)
+                     RefreshToken, Traveler, TravelerProfile, MfaSettings, MfaChallenge, MfaBackupCode)
 from .security import throttle
 
 
@@ -51,7 +51,13 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(ApplicationAnswer, "application", True),
     Holding(AssistantMessage, "traveler", True),
     Holding(Notification, "traveler", True),
-    Holding(ActivityEvent, "traveler", True),
+    Holding(ActivityEvent, "traveler", True, omit=("actor_id",)),
+    Holding(MfaSettings, "traveler", False,
+            reason="Encrypted authenticator secrets and enrollment state; never exported."),
+    Holding(MfaChallenge, "traveler", False,
+            reason="Short-lived sign-in challenge hashes; never exported."),
+    Holding(MfaBackupCode, "traveler", False,
+            reason="Only hashes of one-use security recovery codes; never exported."),
     Holding(DocumentAccess, "traveler", True, omit=("actor_id",)),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),

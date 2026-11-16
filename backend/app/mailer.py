@@ -106,7 +106,7 @@ def otp_message(code: str) -> str:
         f"Your Taasheera password-reset code is: {code}\n\n"
         "Enter this code in the app. It expires in 10 minutes and can be used once.\n"
         "Never share this code. If you did not request it, ignore this email.\n"
-        "Google-only accounts recover access through Google.\n"
+        "Google sign-in, if linked, remains available after you set a password.\n"
     )
 
 

@@ -19,3 +19,8 @@ phonenumbers>=9,<10
 # Owner request serialization and opt-in privacy-filtered monitoring.
 filelock>=3.20,<4
 sentry-sdk>=2.43,<3
+
+# Optional authenticator-app sign-in (CMPS271-118).
+pyotp==2.9.0
+qrcode==8.2
+cryptography>=50,<51

@@ -58,7 +58,7 @@ def seed_demo():
     from sqlmodel import Session, select
     from uuid import uuid4
     from app.database import build_engine
-    from app.models import ActivityEvent, Traveler, Application
+    from app.models import ActivityEvent, Traveler, Application, GoogleIdentity
     engine = build_engine()
     with Session(engine) as session:
         for label, role in (("admin", "admin"), ("traveler", "traveler"), ("delete-me", "traveler")):
@@ -72,12 +72,18 @@ def seed_demo():
                 for status in ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE"):
                     session.add(Application(id=uuid4().hex, traveler_id=traveler.id, questionnaire_id="schengen-short-stay",
                         questionnaire_version=1, destination="SCHENGEN", visa_type="short_stay", status=status))
-                session.add(ActivityEvent(traveler_id=traveler.id, event_type="passport_extraction",
+                session.add(ActivityEvent(traveler_id=traveler.id, actor_id=traveler.id, event_type="passport_extraction",
                                           identifier="passport", outcome="unreadable"))
+        if session.exec(select(Traveler).where(Traveler.email == 'qa-google@example.com')).first() is None:
+            google = Traveler(name='Demo Google', email='qa-google@example.com', auth_type='google',
+                              sso_email='qa-google@example.com', password_hash='')
+            session.add(google); session.flush()
+            session.add(GoogleIdentity(subject='local-synthetic-google-subject', traveler_id=google.id))
         session.commit()
     engine.dispose()
     print("Synthetic local accounts: qa-admin@example.com, qa-traveler@example.com, qa-delete-me@example.com")
     print("Local demo password: Local-preview-only-123!")
+    print("Google-only recovery demo: qa-google@example.com (synthetic identity; use reset, not real Google sign-in)")
 
 
 def prepare_ports(ports, free_ports=False):
@@ -128,6 +134,8 @@ def main(argv=None):
     run.add_argument("--free-ports", action="store_true")
     run.add_argument("--api-only", action="store_true")
     run.add_argument("--enable-monitoring", action="store_true", help="Opt in to exported Sentry DSNs for synthetic testing")
+    run.add_argument("--mailbox", action="store_true", help="Capture preview reset emails in a loopback QA inbox; never send real mail")
+    run.add_argument("--mailbox-port", type=int, default=8025)
     admin = sub.add_parser("admin"); admin.add_argument("--email", required=True)
     sub.add_parser("retry-erasures")
     args = parser.parse_args(argv)
@@ -135,7 +143,12 @@ def main(argv=None):
     if not 1024 <= api_port <= 65535 or not 1024 <= web_port <= 65535 or api_port == web_port:
         parser.error("Use two different ports between 1024 and 65535.")
     if args.command == "run":
-        prepare_ports([api_port] if args.api_only else [api_port, web_port], args.free_ports)
+        ports = [api_port] if args.api_only else [api_port, web_port]
+        if args.mailbox:
+            if not 1024 <= args.mailbox_port <= 65535 or args.mailbox_port in (api_port, web_port):
+                parser.error("Use a different valid mailbox port.")
+            ports.append(args.mailbox_port)
+        prepare_ports(ports, args.free_ports)
     configure(api_port, web_port, enable_monitoring=getattr(args, "enable_monitoring", False))
     if args.command == "admin":
         from manage import set_role
@@ -153,6 +166,11 @@ def main(argv=None):
         print(f"Pending erasures: {pending}"); return
     if args.seed_demo:
         seed_demo()
+    mailbox = bool(getattr(args, "mailbox", False))
+    if mailbox:
+        os.environ.update({"TAASHEERA_QA_MAIL_DIR": str(DATA / "outbox"), "SMTP_HOST": "127.0.0.1",
+            "SMTP_FROM": "qa@example.com", "SMTP_SECURITY": "none", "SMTP_PORT": "1025",
+            "RESET_FRONTEND_URL": f"http://127.0.0.1:{web_port}/reset-password"})
     children = []
     def stop(_signum=None, _frame=None):
         for child in children:
@@ -160,7 +178,8 @@ def main(argv=None):
     for name in ("SIGINT", "SIGTERM"):
         signal.signal(getattr(signal, name), stop)
     try:
-        children.append(subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1",
+        module = "qa_app:app" if mailbox else "app.main:app"
+        children.append(subprocess.Popen([sys.executable, "-m", "uvicorn", module, "--host", "127.0.0.1",
                                           "--port", str(api_port), "--no-access-log"], cwd=BACKEND))
         if not args.api_only:
             # Run Vite directly so the launcher can reap its own node child,
@@ -168,6 +187,10 @@ def main(argv=None):
             children.append(subprocess.Popen(["node", str(BACKEND.parent / "frontend/node_modules/vite/bin/vite.js")],
                                               cwd=BACKEND.parent / "frontend"))
         print(f"Preview: http://127.0.0.1:{web_port}/sign-in | Admin: /backoffice | API: http://127.0.0.1:{api_port}/docs", flush=True)
+        if mailbox:
+            children.append(subprocess.Popen([sys.executable, str(BACKEND / "qa_mailbox.py"),
+                "--directory", str(DATA / "outbox"), "--port", str(args.mailbox_port)], cwd=BACKEND))
+            print(f"Local QA inbox: http://127.0.0.1:{args.mailbox_port}/ (synthetic preview emails only)", flush=True)
         while all(child.poll() is None for child in children):
             time.sleep(.25)
     finally:

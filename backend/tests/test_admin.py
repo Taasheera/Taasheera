@@ -389,9 +389,11 @@ def test_admin_refusals_are_logged_without_account_details(api):
     assert [(record["route"], record["status"]) for record in records] == [("/admin/me", 403)]
     assert email_of("traveler") not in output.getvalue()
     assert api.tokens["traveler"] not in output.getvalue()
-    # Refused attempts are not audit events: any signed-in traveler could otherwise flood the table.
+    # Sprint 4 records authenticated refusals as metadata in the full user history.
     with Session(api.app.state.engine) as session:
-        assert session.exec(select(func.count()).select_from(ActivityEvent)).one() == events_before
+        assert session.exec(select(func.count()).select_from(ActivityEvent)).one() == events_before + 1
+        event = session.exec(select(ActivityEvent).order_by(ActivityEvent.id.desc())).first()
+        assert (event.event_type, event.identifier, event.outcome) == ('api_action', 'GET /admin/me', 'denied')
 
 
 def object_schemas(schema, components, seen):

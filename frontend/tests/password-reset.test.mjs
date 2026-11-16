@@ -18,6 +18,7 @@ beforeEach(() => {
   replies = []
   window.history.replaceState(null, '', '/')
   globalThis.fetch = async (url, options) => {
+    if (url === '/features') return Response.json({ google_password_recovery: false })
     calls.push({ url, ...options })
     if (url !== '/auth/register') {
       assert.equal(options.credentials, 'same-origin')

@@ -12,7 +12,8 @@ from sqlalchemy import delete, update
 from sqlmodel import Session, select
 
 from .auth import check_origin, clear_refresh_cookie, token_hash
-from .models import (ActivityEvent, AuthSession, PasswordResetChallenge, PasswordResetConfirm,
+from .activity import record_activity
+from .models import (AuthSession, GoogleIdentity, MfaChallenge, PasswordResetChallenge, PasswordResetConfirm,
                      PasswordResetGrant, PasswordResetRequest, PasswordResetToken,
                      PasswordResetVerify, Traveler)
 from .security import admitted, audit, client_address
@@ -26,6 +27,40 @@ GRANT_SECONDS = 300
 MAX_ATTEMPTS = 5
 
 
+def request_message(request):
+    if request.app.state.feature_flags.is_on("google_password_recovery"):
+        return {"detail": "If an eligible account exists for that email, a reset code will be sent. Google sign-in remains linked when you add a password."}
+    return REQUEST_MESSAGE
+
+
+def eligible(traveler, request, session):
+    if traveler is None:
+        return False
+    if traveler.password_enabled:
+        return True
+    # A Google-only account can add a password only through its already verified
+    # provider email. Do not turn an unlinked/changed address into a recovery path.
+    return (request.app.state.feature_flags.is_on("google_password_recovery")
+            and traveler.auth_type == "google" and traveler.sso_email == traveler.email
+            and session.exec(select(GoogleIdentity).where(GoogleIdentity.traveler_id == traveler.id)).first() is not None)
+
+
+def delivery_reason(error):
+    from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
+    if isinstance(error, (NoCredentialsError, PartialCredentialsError)):
+        return "credentials_unavailable"
+    if isinstance(error, ClientError):
+        details = error.response.get("Error", {})
+        code, message = details.get("Code", ""), details.get("Message", "").lower()
+        if code in {"MessageRejected", "BadRequestException"} and "not verified" in message:
+            return "ses_unverified_identity"
+        if code in {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"}: return "ses_access_denied"
+        if code in {"Throttling", "ThrottlingException", "TooManyRequestsException", "LimitExceededException"}: return "ses_rate_limited"
+        if code in {"MessageRejected", "MailFromDomainNotVerifiedException", "AccountSuspendedException", "SendingPausedException"}:
+            return "ses_rejected"
+    return "delivery_unavailable"
+
+
 def code_digest(secret: str, traveler_id: int, nonce: str, code: str) -> str:
     payload = f"password-reset-otp:{traveler_id}:{nonce}:{code}".encode()
     return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
@@ -36,15 +71,15 @@ def deliver_reset(request: Request, recipient: str, code: str, owner: int, nonce
         request.app.state.reset_sender.send_reset(recipient, code)
         audit(request, "reset-delivery", "accepted", owner)
         return
-    except Exception:
+    except Exception as error:
         # Provider exceptions can include the complete message. Do not log them.
-        pass
+        reason = delivery_reason(error)
     # Use the nonce so a late failure cannot delete a newer resend's code.
     with Session(request.app.state.engine) as session:
         session.execute(delete(PasswordResetChallenge).where(
             PasswordResetChallenge.traveler_id == owner, PasswordResetChallenge.nonce == nonce))
         session.commit()
-    audit(request, "reset-delivery", "failed", owner)
+    audit(request, "reset-delivery", "failed", owner, reason=reason)
 
 
 def invalid_code():
@@ -70,11 +105,11 @@ def create_password_reset_router(get_session):
         ])
         if not allowed:
             audit(request, "reset-request", "throttled")
-            return REQUEST_MESSAGE
+            return request_message(request)
 
         session.execute(update(Traveler).where(Traveler.email == data.email).values(password_hash=Traveler.password_hash))
         traveler = session.exec(select(Traveler).where(Traveler.email == data.email)).first()
-        if traveler is not None and traveler.password_enabled:
+        if eligible(traveler, request, session):
             now = int(time.time())
             code = f"{secrets.randbelow(1_000_000):06d}"
             nonce = secrets.token_urlsafe(32)
@@ -91,7 +126,7 @@ def create_password_reset_router(get_session):
         # Keep the same response and request audit for unknown, Google-only and
         # password accounts. Never expose account type from recovery endpoints.
         audit(request, "reset-request", "accepted")
-        return REQUEST_MESSAGE
+        return request_message(request)
 
     @router.post("/verify-reset-code", response_model=PasswordResetGrant)
     def verify_code(data: PasswordResetVerify, request: Request, response: Response, session: SessionDep):
@@ -107,7 +142,7 @@ def create_password_reset_router(get_session):
         traveler = session.exec(select(Traveler).where(Traveler.email == data.email)).first()
         challenge = session.get(PasswordResetChallenge, traveler.id) if traveler else None
         now = int(time.time())
-        if (traveler is None or not traveler.password_enabled or challenge is None
+        if (not eligible(traveler, request, session) or challenge is None
                 or challenge.consumed or challenge.expires_at <= now or challenge.attempts >= MAX_ATTEMPTS):
             session.rollback()
             audit(request, "reset-verify", "rejected")
@@ -144,7 +179,7 @@ def create_password_reset_router(get_session):
         owner = select(PasswordResetToken.traveler_id).where(PasswordResetToken.token_hash == digest).scalar_subquery()
         session.execute(update(Traveler).where(Traveler.id == owner).values(password_hash=Traveler.password_hash))
         password_owner = session.exec(select(Traveler).where(Traveler.id == owner)).first()
-        if password_owner is None or not password_owner.password_enabled:
+        if not eligible(password_owner, request, session):
             session.rollback()
             audit(request, "reset-complete", "rejected")
             raise HTTPException(400, INVALID_MESSAGE, headers={"Cache-Control": "no-store"})
@@ -157,13 +192,14 @@ def create_password_reset_router(get_session):
             audit(request, "reset-complete", "rejected")
             raise HTTPException(400, INVALID_MESSAGE, headers={"Cache-Control": "no-store"})
         hashed = bcrypt.hashpw(data.password.get_secret_value().encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("ascii")
-        session.execute(update(Traveler).where(Traveler.id == consumed).values(password_hash=hashed))
+        session.execute(update(Traveler).where(Traveler.id == consumed).values(password_hash=hashed, auth_type="email_password"))
+        session.execute(delete(MfaChallenge).where(MfaChallenge.traveler_id == consumed))
         session.execute(update(PasswordResetToken).where(PasswordResetToken.traveler_id == consumed).values(used=True))
         session.execute(update(PasswordResetChallenge).where(PasswordResetChallenge.traveler_id == consumed).values(consumed=True))
         session.execute(update(AuthSession).where(AuthSession.traveler_id == consumed).values(revoked=True))
         # Persist the success event in the same transaction as password/session changes.
-        session.add(ActivityEvent(traveler_id=consumed, event_type="password_reset", identifier="email_otp", outcome="success"))
-        session.commit()
+        record_activity(session, request.app.state.activity_directory, consumed,
+                        "password_reset", "email_otp", "success", resource_type="security")
         audit(request, "reset-complete", "success", consumed)
         response = Response(status_code=204)
         clear_refresh_cookie(response, request.app.state.auth_settings)

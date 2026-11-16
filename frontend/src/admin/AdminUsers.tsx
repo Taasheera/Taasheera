@@ -7,6 +7,7 @@ import {
 import type { AdminContext } from './AdminLayout'
 import { readableDate, roleLabels, statusLabels } from './format'
 import AddAdmin from './AddAdmin'
+import Feature from '../Feature'
 
 function Overview() {
   const { leave } = useOutletContext<AdminContext>()
@@ -131,6 +132,7 @@ export default function AdminUsers() {
             <thead><tr>
               <th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th>
               <th scope="col">Status</th><th scope="col">Joined</th><th scope="col">Last sign-in</th>
+              <Feature name="activity_history"><th scope="col">Activity</th></Feature>
             </tr></thead>
             <tbody>
               {result.items.map(user => <tr key={user.id}>
@@ -140,6 +142,8 @@ export default function AdminUsers() {
                 <td><span className={`admin-status admin-status-${user.status}`}>{statusLabels[user.status]}</span></td>
                 <td>{readableDate(user.created_at, false)}</td>
                 <td>{readableDate(user.last_sign_in_at)}</td>
+                <Feature name="activity_history"><td><Link to={`/admin/users/${user.id}/activity`}
+                  aria-label={`Activity for ${user.name}`}>View activity</Link></td></Feature>
               </tr>)}
             </tbody>
           </table>

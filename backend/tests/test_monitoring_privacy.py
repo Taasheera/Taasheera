@@ -262,7 +262,7 @@ def test_google_only_deletion_verifies_connected_subject(api, monkeypatch):
 
 def test_all_private_endpoints_reject_anonymous_requests_before_body_validation(api):
     public = {'/auth/register', '/auth/login', '/auth/config', '/auth/google', '/auth/google/link-login', '/auth/refresh', '/auth/logout',
-              '/auth/forgot-password', '/auth/verify-reset-code', '/auth/reset-password',
+              '/auth/forgot-password', '/auth/verify-reset-code', '/auth/reset-password', '/auth/mfa/verify', '/auth/mfa/cancel',
               '/health/live', '/health/ready', '/features'}
     for route in iter_route_contexts(api.app.routes):
         if route.path in public or not hasattr(route, 'dependant'):

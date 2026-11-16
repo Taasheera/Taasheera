@@ -40,6 +40,8 @@ from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
 from .notifications import create_notifications_router
 from .personal_data import create_data_export_router
+from .activity_history import create_history_router, install_action_history, record_completed_action
+from .mfa import create_mfa_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
@@ -75,6 +77,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     install_request_logging(app)
     install_admin_no_store(app)
     install_private_no_store(app)
+    install_action_history(app)
 
     @app.get("/health/live", include_in_schema=False)
     def liveness():
@@ -93,9 +96,18 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
             raise HTTPException(status_code=503, detail="Service is not ready.") from None
         return {"status": "ok"}
 
-    def get_session():
+    def get_session(request: Request):
         with Session(engine) as session:
-            yield session
+            try:
+                yield session
+            except HTTPException as error:
+                request.state.activity_response_status = error.status_code
+                raise
+            except RequestValidationError:
+                request.state.activity_response_status = 422
+                raise
+            finally:
+                record_completed_action(session, request)
 
     current_traveler = create_current_traveler(get_session)
     passport_storage = PassportImageStorage(
@@ -110,7 +122,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_privacy_router(get_session, current_traveler, passport_storage))
     app.include_router(create_data_export_router(get_session, current_traveler, passport_storage))
     app.include_router(create_auth_router(get_session, current_traveler))
+    app.include_router(create_mfa_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
+    app.include_router(create_history_router(get_session, current_traveler))
     app.include_router(create_sessions_router(get_session, current_traveler))
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))

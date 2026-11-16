@@ -15,6 +15,9 @@ from fastapi import APIRouter, HTTPException, Request, Response
 # Every flag the app knows, with the work it hides. To add a flag, add it here and to
 # FeatureName in frontend/src/features.ts. Delete it in both places once the feature is released.
 FLAGS = {
+    "google_password_recovery": "Email-verified password setup for linked Google-only accounts (CMPS271-233)",
+    "activity_history": "Shared admin/user document and activity history (CMPS271-234/120)",
+    "two_factor_signin": "Optional authenticator-app sign-in (CMPS271-118)",
     "agent_form_filling": "The agent fills an embassy online form (CMPS271-67)",
     "supporting_documents": "Supporting document upload (CMPS271-29)",
 }

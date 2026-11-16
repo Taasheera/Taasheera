@@ -21,6 +21,7 @@ from .account_lock import account_lock
 from .auth import COOKIE_NAME, check_origin, clear_refresh_cookie, revoke_all_sessions, token_hash
 from .google_auth import verify_google_token
 from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, GoogleIdentity,
+                     MfaSettings, MfaChallenge, MfaBackupCode,
                      Notification, PasswordResetChallenge, PasswordResetToken, RefreshToken, ResetRateLimit,
                      Traveler, TravelerProfile, Application, ApplicationAnswer)
 from .security import throttle
@@ -68,8 +69,10 @@ def complete_erasure(session: Session, traveler_id: int, storage, directory: Pat
     session_ids = select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)
     session.execute(delete(RefreshToken).where(RefreshToken.session_id.in_(session_ids)))
     for model in (AuthSession, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
-                  TravelerProfile, Application, ActivityEvent):
+                  MfaChallenge, MfaBackupCode, MfaSettings, TravelerProfile, Application, ActivityEvent):
         session.execute(delete(model).where(model.traveler_id == traveler_id))
+    # Preserve other travelers' history without retaining the deleted actor's ID.
+    session.execute(update(ActivityEvent).where(ActivityEvent.actor_id == traveler_id).values(actor_id=None))
     session.execute(delete(DocumentAccess).where(or_(DocumentAccess.traveler_id == traveler_id,
                                                    DocumentAccess.actor_id == traveler_id)))
     # Remove account-specific admission keys. Shared IP limits expire after 15 minutes.

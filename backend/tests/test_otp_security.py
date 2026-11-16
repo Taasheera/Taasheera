@@ -120,6 +120,8 @@ def test_malformed_or_non_ascii_codes_are_never_echoed(api, code):
 
 def test_unknown_and_google_only_accounts_get_identical_recovery_results(api):
     client, app, sender = api
+    from app.features import FeatureFlags
+    app.state.feature_flags = FeatureFlags(frozenset())
     with Session(app.state.engine) as session:
         user = Traveler(name='Google user', email='google@example.com', sso_email='google@example.com', password_hash='', auth_type='google')
         session.add(user); session.flush()

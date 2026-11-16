@@ -223,7 +223,8 @@ def apply_change(session: Session, request: Request, actor: Traveler, target: Tr
         revoke_all_sessions(session, target.id)
     # record_activity commits, so the change and its audit event are saved together or not at all.
     record_activity(session, request.app.state.activity_directory, target.id, event_type,
-                    f"admin:{actor.id}:{previous}->{value}", "success")
+                    f"admin:{actor.id}:{previous}->{value}", "success", actor_id=actor.id,
+                    actor_kind="staff", resource_type="account", resource_id=str(target.id))
 
 
 def create_admin_router(get_session, current_traveler, passport_storage) -> APIRouter:

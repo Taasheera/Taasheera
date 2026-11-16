@@ -17,10 +17,13 @@ def record_document_access(engine, directory, owner_id: int, upload_id: str, pur
     if purpose not in PURPOSES:
         raise ValueError("Unknown passport access purpose")
     with Session(engine) as session:
-        session.add(DocumentAccess(traveler_id=owner_id, actor_id=owner_id,
-                                   upload_id=upload_id, purpose=purpose))
+        access = DocumentAccess(traveler_id=owner_id, actor_id=owner_id, upload_id=upload_id, purpose=purpose)
+        session.add(access)
+        session.flush()
         # Commits both entries. Failure deliberately blocks access to the content.
-        if record_activity(session, directory, owner_id, "document_access", "passport", "success") is None:
+        if record_activity(session, directory, owner_id, "document_access", "passport", "success",
+                           actor_id=owner_id, resource_type="passport", resource_id=upload_id,
+                           purpose=purpose, document_access_id=access.id) is None:
             raise HTTPException(401, "Passport owner is no longer available.")
 
 

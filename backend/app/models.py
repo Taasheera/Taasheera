@@ -101,11 +101,45 @@ class ActivityEvent(SQLModel, table=True):
     event_type: str = Field(max_length=40, index=True)
     identifier: str = Field(max_length=80)
     outcome: str = Field(max_length=20)
+    actor_id: int | None = Field(default=None, foreign_key="traveler.id", ondelete="SET NULL", index=True)
+    actor_kind: str = Field(default="traveler", max_length=20, sa_column_kwargs={"server_default": "traveler"})
+    resource_type: str | None = Field(default=None, max_length=30)
+    resource_id: str | None = Field(default=None, max_length=64)
+    purpose: str | None = Field(default=None, max_length=30)
+    document_access_id: int | None = Field(default=None, foreign_key="documentaccess.id",
+                                          ondelete="SET NULL", unique=True, index=True)
 
 
 class GoogleIdentity(SQLModel, table=True):
     subject: str = Field(primary_key=True, max_length=255)
     traveler_id: int = Field(foreign_key="traveler.id", unique=True, index=True)
+
+
+class MfaSettings(SQLModel, table=True):
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    enabled: bool = False
+    secret_ciphertext: str | None = Field(default=None, max_length=512, repr=False)
+    pending_ciphertext: str | None = Field(default=None, max_length=512, repr=False)
+    pending_expires_at: int | None = None
+    last_counter: int = -1
+    generation: int = 0
+
+
+class MfaBackupCode(SQLModel, table=True):
+    code_hash: str = Field(primary_key=True, max_length=64, repr=False)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    used: bool = False
+
+
+class MfaChallenge(SQLModel, table=True):
+    token_hash: str = Field(primary_key=True, max_length=64, repr=False)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    expires_at: int = Field(index=True)
+    attempts: int = 0
+    used: bool = False
+    method: str = Field(max_length=20)
+    credential_fingerprint: str = Field(max_length=64, repr=False)
+    generation: int
 
 
 class GoogleLoginRequest(BaseModel):

@@ -56,6 +56,9 @@ def upgrade() -> None:
                             signatures.add((kind, difference[1].name))
                         elif kind == "add_table":
                             signatures.add((kind, difference[1].name))
+                        elif kind == "add_fk":
+                            signatures.add((kind, tuple((element.parent.name, element.target_fullname)
+                                                        for element in difference[1].elements)))
                         else:
                             raise RuntimeError(REFUSED)
                     otp = {
@@ -74,6 +77,15 @@ def upgrade() -> None:
                         ("add_column", "authsession", "created_at"),
                         ("add_column", "authsession", "last_active_at"),
                     }
+                    activity = {("add_column", "activityevent", name) for name in
+                                ("actor_id", "actor_kind", "resource_type", "resource_id", "purpose", "document_access_id")}
+                    activity |= {("add_index", "ix_activityevent_actor_id"),
+                                 ("add_index", "ix_activityevent_document_access_id"),
+                                 ("add_fk", (("actor_id", "traveler.id"),)),
+                                 ("add_fk", (("document_access_id", "documentaccess.id"),))}
+                    mfa = {("add_table", "mfasettings"), ("add_table", "mfabackupcode"), ("add_table", "mfachallenge"),
+                           ("add_index", "ix_mfabackupcode_traveler_id"),
+                           ("add_index", "ix_mfachallenge_traveler_id"), ("add_index", "ix_mfachallenge_expires_at")}
                     # Unversioned databases predate migrations, so none has the columns or tables added since.
                     migrated_only = {("add_column", "traveler", "role"), ("add_column", "traveler", "status"),
                                      ("add_column", "traveler", "created_at"),
@@ -92,6 +104,7 @@ def upgrade() -> None:
                                      ("add_index", "ix_notification_traveler_id"),
                                      ("add_index", "ix_notification_application_id"),
                                      ("add_index", "ix_notification_created_at")}
+                    migrated_only |= activity | mfa
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

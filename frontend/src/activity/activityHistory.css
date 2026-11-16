@@ -1,0 +1,10 @@
+.activity-history { min-width: 0; max-width: 100%; }
+.activity-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 16px 0; }
+.activity-filters label { display: flex; flex-direction: column; gap: 6px; flex: 1 1 230px; min-width: 0; }
+.activity-filters input { box-sizing: border-box; width: 100%; max-width: 100%; padding: 10px; }
+.activity-history .access-history { padding-left: 20px; overflow-wrap: anywhere; }
+.activity-history li { padding: 12px 0; border-bottom: 1px solid var(--border, #d9e3df); }
+.activity-pagination { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.activity-history button { padding: 9px 13px; cursor: pointer; border: 1px solid #b9cdc5; border-radius: 7px; background: #fff; color: #175d4c; font: inherit; }
+.activity-history button:hover:enabled { background: #e7f1ec; }
+.activity-history button:disabled { cursor: default; opacity: .55; }

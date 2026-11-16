@@ -280,6 +280,7 @@ export function signIn(email: string, password: string): Promise<Traveler> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), password }),
     })
+    await requireSecondFactor(response)
     if (response.status === 401) throw new Error('Invalid email or password.')
     if (response.status === 422) throw new Error('Please check your email and password.')
     if (await isSuspended(response)) throw new Error(SUSPENDED)
@@ -297,6 +298,46 @@ export class GoogleLinkRequiredError extends Error {
   }
 }
 
+export class MfaRequiredError extends Error {
+  readonly challengeToken: string
+  constructor(challengeToken: string) {
+    super('Enter your authenticator code or an unused backup code to finish signing in.')
+    this.name = 'MfaRequiredError'
+    this.challengeToken = challengeToken
+  }
+}
+
+async function requireSecondFactor(response: Response): Promise<void> {
+  if (response.status !== 202) return
+  const body = await response.json().catch(() => null)
+  if (body?.mfa_required === true && typeof body.challenge_token === 'string' && /^[A-Za-z0-9_-]{43}$/.test(body.challenge_token)) {
+    throw new MfaRequiredError(body.challenge_token)
+  }
+  throw new Error('Could not start the two-factor sign-in check. Please try again.')
+}
+
+export function finishMfa(challengeToken: string, code: string): Promise<Traveler> {
+  return sessionOperation(async () => {
+    accessToken = null
+    let response: Response
+    try {
+      response = await request('mfa/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge_token: challengeToken, code: code.trim() }) })
+    } catch { throw new Error('Could not verify the code. Check your connection and try again.') }
+    if (response.status === 401 || response.status === 403) throw new Error('Use a new authenticator code or an unused backup code. If this sign-in expired, cancel and sign in again.')
+    if (response.status === 429) throw new Error('Too many code attempts. Wait 15 minutes before trying again.')
+    if (!response.ok) throw new Error('Could not complete the two-factor check. Please try again.')
+    accessToken = (await response.json()).access_token
+    lastRefreshAt = Date.now()
+    return profile()
+  })
+}
+
+export async function cancelMfa(challengeToken: string): Promise<void> {
+  await request('mfa/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ challenge_token: challengeToken }) }).catch(() => null)
+}
+
 export function signInWithGoogle(idToken: string): Promise<Traveler> {
   return sessionOperation(async () => {
     accessToken = null
@@ -310,6 +351,7 @@ export function signInWithGoogle(idToken: string): Promise<Traveler> {
     } catch {
       throw new Error('Could not complete Google sign-in. Check your connection and try again.')
     }
+    await requireSecondFactor(response)
     if (response.status === 409) {
       const payload = await response.json().catch(() => null)
       if (payload?.detail?.code === 'google_link_required') throw new GoogleLinkRequiredError()
@@ -333,8 +375,13 @@ export function linkGoogleAndSignIn(idToken: string, password: string): Promise<
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id_token: idToken, password }),
     })
+    await requireSecondFactor(response)
     if (response.status === 401) throw new Error('Check your password. If the Google prompt expired, cancel and choose Google again.')
-    if (response.status === 409) throw new Error('This Google account cannot be linked. Sign in with your existing method and check your account settings.')
+    if (response.status === 409) {
+      const body = await response.json().catch(() => null)
+      if (body?.detail?.code === 'mfa_link_requires_sign_in') throw new Error('Sign in with email and your second factor first, then connect Google in Account settings.')
+      throw new Error('This Google account cannot be linked. Sign in with your existing method and check your account settings.')
+    }
     if (response.status === 429) throw new Error('Too many attempts. Please wait 15 minutes before trying again.')
     if (response.status === 422) throw new Error('Check your password and try again.')
     if (await isSuspended(response)) throw new Error(SUSPENDED)

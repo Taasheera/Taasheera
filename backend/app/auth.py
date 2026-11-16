@@ -108,7 +108,7 @@ def check_origin(request: Request):
 
 
 def start_session(traveler: Traveler, request: Request, response: Response, session: Session,
-                  *, method: str = "email_password"):
+                  *, method: str = "email_password", mfa_verified: bool = False):
     """Common session issuance for password and verified Google sign-in."""
     settings = request.app.state.auth_settings
     # Callers check the credential first, so only its owner learns the account is suspended.
@@ -117,6 +117,11 @@ def start_session(traveler: Traveler, request: Request, response: Response, sess
         audit(request, "login" if method == "email_password" else "google-login", "suspended", traveler.id)
         record_activity(session, request.app.state.activity_directory, traveler.id, "sign_in", method, "suspended")
         raise HTTPException(403, SUSPENDED, headers={"Cache-Control": "no-store"})
+    if not mfa_verified:
+        from .mfa import begin_challenge
+        challenge = begin_challenge(traveler, request, response, session, method)
+        if challenge is not None:
+            return challenge
     traveler.last_login_method = method
     traveler.last_login_at = int(time.time())
     session.add(traveler)
@@ -198,7 +203,8 @@ def create_auth_router(get_session, current_traveler=None):
     SessionDep = Annotated[Session, Depends(get_session)]
     current_traveler = current_traveler or create_current_traveler(get_session)
 
-    @router.post("/login", response_model=AccessTokenPublic, dependencies=[Depends(check_origin)])
+    @router.post("/login", response_model=AccessTokenPublic, dependencies=[Depends(check_origin)],
+                 responses={202: {"description": "Primary identity verified; an opaque MFA challenge requires a second factor. No session is issued."}})
     def login(data: LoginRequest, request: Request, response: Response, session: SessionDep):
         throttle(request, session, "login", account=data.email)
         # Serialize login with password reset so an old-password login cannot
@@ -226,6 +232,8 @@ def create_auth_router(get_session, current_traveler=None):
             )
 
         result = start_session(traveler, request, response, session)
+        if isinstance(result, Response):
+            return result
         audit(request, "login", "success", traveler.id)
         record_activity(session, request.app.state.activity_directory, traveler.id,
                         "sign_in", "email_password", "success")

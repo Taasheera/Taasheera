@@ -163,7 +163,8 @@ def create_google_auth_router(get_session, current_traveler):
         audit(request, "google-link", "success", traveler.id)
         return traveler
 
-    @router.post("/google", response_model=AccessTokenPublic, dependencies=[Depends(check_origin)])
+    @router.post("/google", response_model=AccessTokenPublic, dependencies=[Depends(check_origin)],
+                 responses={202: {"description": "Google identity verified; complete the MFA challenge before a session is issued."}})
     def google_login(data: GoogleLoginRequest, request: Request, response: Response, session: SessionDep):
         throttle(request, session, "google-login", ip_limit=30)
         client_id = request.app.state.auth_settings.google_client_id
@@ -177,6 +178,8 @@ def create_google_auth_router(get_session, current_traveler):
             audit(request, "google-login", "rejected")
             raise
         result = start_session(traveler, request, response, session, method="google")
+        if isinstance(result, Response):
+            return result
         audit(request, "google-login", "success", traveler.id)
         if new_account:
             record_activity(session, request.app.state.activity_directory, traveler.id,
@@ -222,6 +225,15 @@ def create_google_auth_router(get_session, current_traveler):
             raise HTTPException(409, "That Google account cannot be connected to this traveler.",
                                 headers={"Cache-Control": "no-store"})
         created = subject is None
+        # Connecting another sign-in method is a security change. An enrolled
+        # traveler must first finish their existing password + MFA sign-in, then
+        # use the authenticated linking endpoint; never commit a new identity
+        # merely because the first factor was correct.
+        from .models import MfaSettings
+        mfa = session.get(MfaSettings, traveler.id)
+        if created and mfa is not None and mfa.enabled:
+            raise HTTPException(409, {"code": "mfa_link_requires_sign_in",
+                "message": "Sign in with email and your second factor, then connect Google in account settings."})
         try:
             with session.begin_nested():
                 if created:
@@ -233,6 +245,8 @@ def create_google_auth_router(get_session, current_traveler):
             session.rollback()
             raise collision() from None
         result = start_session(traveler, request, response, session, method="google")
+        if isinstance(result, Response):
+            return result
         if created:
             record_activity(session, request.app.state.activity_directory, traveler.id,
                             "account_link", "google", "success")

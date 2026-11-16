@@ -3,6 +3,8 @@ import AuthRoute from './AuthRoute'
 import AdminLayout from './admin/AdminLayout'
 import AdminUser from './admin/AdminUser'
 import AdminUsers from './admin/AdminUsers'
+import UserActivity from './admin/UserActivity'
+import Feature from './Feature'
 import { readNavigation } from './navigation'
 import Layout from './Layout'
 import Faq from './pages/Faq'
@@ -48,6 +50,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <AdminUsers /> },
       { path: 'users/:userId', element: <AdminUser /> },
+      { path: 'users/:userId/activity', element: <Feature name="activity_history" fallback={<NotFound />}><UserActivity /></Feature> },
       { path: '*', element: <NotFound /> },
     ],
   },

@@ -82,4 +82,4 @@ def test_the_app_publishes_its_flags_without_sign_in_and_uncached(tmp_path, monk
         response = client.get("/features")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
-    assert response.json() == {"agent_form_filling": False, "supporting_documents": True}
+    assert response.json() == {name: name != 'agent_form_filling' for name in FLAGS}

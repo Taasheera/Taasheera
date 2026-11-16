@@ -167,6 +167,9 @@ def test_different_google_subject_with_same_email_is_not_linked(api, google):
 
 
 def test_google_only_account_cannot_use_password_login_registration_or_reset(api):
+    from app.features import FeatureFlags
+    # Preserve the released production policy when the new recovery flag is off.
+    api[1].state.feature_flags = FeatureFlags(frozenset())
     client, app, sender = api
     assert sign_in(client).status_code == 200
     for password in ("", PASSWORD):

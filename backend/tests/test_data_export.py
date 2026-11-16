@@ -8,7 +8,7 @@ from sqlmodel import Session, SQLModel, select
 
 from app.chat_history import save_turn
 from app.models import (ActivityEvent, DocumentAccess, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
-                        RefreshToken, Traveler, TravelerProfile)
+                        RefreshToken, Traveler, TravelerProfile, MfaSettings, MfaBackupCode, MfaChallenge)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
 from test_applications_api import ANSWERS, SPECIMEN, answer_all, api, start  # noqa: F401  (pytest fixture)
@@ -32,6 +32,10 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(PasswordResetToken(token_hash=f"r{traveler_id}".ljust(64, "0"), traveler_id=traveler_id, expires_at=2**31))
         session.add(ActivityEvent(traveler_id=traveler_id, event_type="sign_in", identifier="email_password", outcome="success"))
         session.add(DocumentAccess(traveler_id=traveler_id, actor_id=traveler_id, upload_id=upload_id, purpose="review_read"))
+        session.add(MfaSettings(traveler_id=traveler_id, pending_ciphertext="synthetic-private-enrollment"))
+        session.add(MfaBackupCode(traveler_id=traveler_id, code_hash=f"backup-{traveler_id}".ljust(64, "0")))
+        session.add(MfaChallenge(traveler_id=traveler_id, token_hash=f"challenge-{traveler_id}".ljust(64, "0"),
+            expires_at=2**31, method="email_password", credential_fingerprint="f" * 64, generation=0))
         session.commit()
     return {"application_id": application_id, "upload_id": upload_id}
 

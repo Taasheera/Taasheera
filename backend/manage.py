@@ -58,7 +58,8 @@ def set_role(email: str, role: str) -> str:
                 traveler.role = role
                 session.add(traveler)
                 # Commits the role change and its audit event together.
-                record_activity(session, directory, traveler.id, "role_change", f"cli:{previous}->{role}", "success")
+                record_activity(session, directory, traveler.id, "role_change", f"cli:{previous}->{role}", "success",
+                                actor_kind="service", resource_type="account", resource_id=str(traveler.id))
     finally:
         engine.dispose()
     if previous == role:

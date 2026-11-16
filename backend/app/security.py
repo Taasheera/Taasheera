@@ -19,7 +19,11 @@ from .observability import RequestJsonFormatter
 security_log = logging.getLogger("taasheera.security")
 
 
-def audit(request: Request, operation: str, outcome: str, traveler_id: int | None = None):
+DELIVERY_REASONS = frozenset({"ses_unverified_identity", "ses_rejected", "ses_rate_limited", "ses_access_denied",
+                             "credentials_unavailable", "delivery_unavailable"})
+
+
+def audit(request: Request, operation: str, outcome: str, traveler_id: int | None = None, *, reason: str | None = None):
     # Never accept arbitrary text, email, IP, provider errors, passwords or tokens.
     if not security_log.handlers:
         handler = logging.StreamHandler()
@@ -27,10 +31,14 @@ def audit(request: Request, operation: str, outcome: str, traveler_id: int | Non
         security_log.addHandler(handler)
     security_log.setLevel(logging.INFO)
     security_log.propagate = False
-    security_log.info("authentication", extra={"activity": {
+    if reason is not None and reason not in DELIVERY_REASONS:
+        raise ValueError("Unknown delivery diagnostic reason")
+    metadata = {
         "request_id": getattr(request.state, "request_id", None),
         "operation": operation, "outcome": outcome, "traveler_id": traveler_id,
-    }})
+    }
+    if reason is not None: metadata["reason"] = reason
+    security_log.info("authentication", extra={"activity": metadata})
 
 
 def client_address(request: Request) -> str:

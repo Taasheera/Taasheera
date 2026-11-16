@@ -30,6 +30,7 @@ function button(text) {
 function apiMock(handler) {
   const calls = []
   globalThis.fetch = async (url, options = {}) => {
+    if (url === '/features') return Response.json({ activity_history: false })
     calls.push({ url, ...options })
     if (url === '/auth/refresh') return Response.json({ access_token: 'synthetic-access' })
     if (url === '/auth/me') return Response.json(traveler)

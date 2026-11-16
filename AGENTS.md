@@ -23,11 +23,11 @@ L2 portal to review; L3 traveler handles CAPTCHA; L4 manual guide. Status tracki
 - Gemini's free tier is for synthetic/specimen demos only: Google may use prompts for improvement
   and human review. Real traveler data requires a paid tier or another provider.
 
-## Sprint 3 and workflow
+## Current work and workflow
 
-Sprint 3: **October 30–November 13, 2026** (current Jira board; the PDF proposed earlier dates). Goal: working sign-in/recovery, an assistant with full
-application context and confirmed actions, persistent conversations, an applications dashboard,
-admin monitoring/deletion, and tested work on `main` reaching the live site.
+Sprint 4 local work (November 16): Mohammad's CMPS271-233/118/234/120 on
+`mohammad_auth_activity_audit_sprint4`, based on dev `6537609`. Local QA only; do not deploy or merge
+to dev/main without the user's later instruction. Sprint 3 ownership remains the collaboration guide below.
 
 | Member | Owns this sprint | Tested/reviewed by |
 |---|---|---|
@@ -37,9 +37,7 @@ admin monitoring/deletion, and tested work on `main` reaching the live site.
 | Dani Salman | Applications dashboard/lifecycle, backups, critical-path tests, CI/protection (CMPS271-76/78/82/132/133/155) | Mohammad Sharafeddin |
 
 New features go in new modules; keep edits to another member's files small and coordinate interfaces.
-The backlog and plan are guides, not permanent assignments. Update this section each sprint.
-Ahmad Zeid leads deployment and AWS operations from November 2; administrative access must be
-handed over/verified separately from the existing AWS account and GitHub repository ownership.
+Ahmad Zeid leads AWS operations; verify administrative access separately from repository ownership.
 
 - `main` is production; tested sprint work integrates on `dev` before release to `main`.
 - Feature branches start from `dev` and PR back to `dev`. Existing names use
@@ -49,15 +47,14 @@ handed over/verified separately from the existing AWS account and GitHub reposit
 - **Alembic has one head.** Before merge, point a new migration at the current `dev` head.
 - End other sessions through `revoke_other_sessions` in `backend/app/auth.py`. The suspended-user
   check belongs in the single current-traveler loader, not duplicate endpoint checks.
-- Pending Sprint 3 work is tested together on `zeid_sprint3_integration`; merging branches there
-  does not merge their PRs to `dev`. Its migration order is privacy → archive → chat history.
+- Migration order now ends notifications → shared activity (`e4a162f09b37`) → MFA (`f4b27a9c803e`).
 
 ## Stack and layout
 
 | Area | In use | Proposed / operational notes |
 |---|---|---|
 | Backend | Python, FastAPI router factories, SQLModel, Pydantic v2, uvicorn | Environment validated at startup in `app/config.py` |
-| Auth | bcrypt, PyJWT access tokens in memory, rotating HttpOnly refresh cookies, google-auth | Roles/status read from the traveler row on every request |
+| Auth | bcrypt, PyJWT, rotating HttpOnly refresh cookies, google-auth, pyotp/Fernet | Roles/status read from DB; MFA challenge grants no session |
 | Database | SQLite on encrypted persistent AWS EBS; Alembic; psycopg driver | PostgreSQL tests need a disposable database; only tests use `create_all` |
 | Files | Private owner-scoped local/EBS folders | Private S3-compatible passport storage proposed; never public/ephemeral |
 | OCR | Tesseract/pytesseract plus our MRZ locator and checksum repair | Vision-model fallback proposed |
@@ -69,9 +66,9 @@ handed over/verified separately from the existing AWS account and GitHub reposit
 | Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry/uptime tooling | Sentry/uptime opt in; metadata allowlists omit private data |
 | Backups | Nightly systemd/S3 backup and restore tooling | Provision private bucket/host permissions; see `docs/BACKUPS.md` |
 
-Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires),
-`backend/alembic/`, `backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`,
-`backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
+Layout: `backend/app/` (including pure `applications/`), `backend/alembic/`, `backend/tests/`,
+`backend/scripts/`, `backend/manage.py`, `backend/preview.py`, `backend/retry_erasures.py`,
+`frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
 Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
 (the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant button calls `openAssistant()`, which every
 `AssistantPanel` listens for. It makes the sticky header about 60px taller; `sectionNav.css` adjusts offsets below it.
@@ -90,9 +87,10 @@ public.** Without a key, `/assistant/messages` returns 503 and other features re
 Checks: backend `python -m pytest -q`; frontend `npm test`, `npm run lint`, `npm run build`,
 `npm run test:e2e` (install Playwright Chromium; set `TAASHEERA_TEST_PYTHON` if needed).
 `TEST_POSTGRES_URL` must name a disposable database with create/drop privileges. Browser tests use
-ports 8100/5273 and isolated synthetic storage. Preview: `python preview.py run --seed-demo`;
+ports 8100/5273/8125 and isolated synthetic storage. Preview: `python preview.py run --seed-demo --mailbox --api-port 8101`;
 this does not load `.env.local`, sends no mail/Gemini calls, and keeps separate data under ignored
-`backend/storage/`. See `docs/LOCAL_FEATURE_TESTING.md`. Avoid `--free-ports` unless stopping the
+`backend/storage/`. QA inbox: loopback port 8025; `qa_app.py`/`qa_mailbox.py` are outside the production image.
+See `docs/SPRINT4_QA.md`. Avoid `--free-ports` unless stopping the
 processes on those ports is intended.
 Full Sprint 3 delivery and isolated manual tests with Gemini: `docs/SPRINT3_MANUAL_TESTING.md`.
 
@@ -140,18 +138,18 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
    authoritative; private JSONL is a best-effort mirror. `ACTIVITY_LOG_DIR` overrides its directory.
 10. **Production schema/builds.** Alembic owns migrations, old exact local schemas can be safely adopted;
     pinned dependencies, non-root images, readiness checks and metadata-only JSON request logs.
-11. **Netlify rollback.** Generated redirects proxy API paths and serve SPA paths; confirmed passport sidecars.
-12. **Render rollback.** Uploads disabled on its ephemeral free tier; database expiry makes it demo-only.
+11. **Netlify rollback.** Generated redirects proxy APIs/SPA; confirmed passport sidecars.
+12. **Render rollback.** Uploads disabled on ephemeral tier; demo database expires.
 13. **Passport review (US 6–8).** Field verification labels plus human confirmation; rules in `passport/fields.ts`.
 14. **Assistant adapter.** One backend provider call per question, deterministic date arithmetic, 20-second
     timeout/one retry, polite safety refusal. Current history and rate-limit behavior supersede the old in-memory demo.
     The prompt states verified product/privacy facts (one destination, planned features, Gemini receives chat
     context) and declines off-topic requests; update `PRODUCT_FACTS` when features ship.
-15. **Lambda alternative.** Web Adapter + Tesseract image; OIDC/ECR/Lambda prerequisites documented in
-    `docs/AWS_LAMBDA.md`. Uploads disabled without suitable durable storage/upload handling.
+15. **Lambda alternative.** Web Adapter/Tesseract; `docs/AWS_LAMBDA.md`. Uploads need durable storage.
 16. **Google linking.** Verified `sub` is identity; password accounts explicitly link with password confirmation.
 17. **OTP recovery.** Ten-minute/five-attempt codes issue five-minute single-use reset grants; reset revokes
-    sessions and cannot enable Google-only passwords. SES sandbox/owner setup: `docs/AUTH_OTP_AWS.md`.
+    sessions, preserves MFA/Google identity. `google_password_recovery` permits email-verified Google-only
+    password setup; off preserves released policy. Safe SES failure reasons omit provider text/emails/codes.
 18. **Password change (US 43).** Current password required; current session stays and all others are revoked.
 19. **Traveler profile.** Separate owned row; `PUT` replaces fields, validates dates/codes/names and E.164 phone.
 20. **Account page.** Profile, sign-in methods, password and sessions; country options use UN M49/ICAO codes.
@@ -178,8 +176,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 31. **Admin dashboard (US 132).** `/admin` pages call `/admin-api`; backend role/status checks protect data.
 32. **Retryable account erasure.** Suspend/revoke/persist intent first, then remove files/rows: 204 complete,
     202 pending. Portable owner file locks serialize deletion with requests. Startup/retry command finish cleanup.
-33. **Document audit/monitoring.** Storage hooks record content access before returning data; strict Sentry
-    metadata allowlists and opt-in uptime checks. See `docs/MONITORING_RUNBOOK.md`.
+33. **Shared activity/audit.** Storage reads fail closed before returning content; DocumentAccess links to
+    canonical ActivityEvent. `activity_history` adds admin/user pagination, inclusive seconds in Beirut
+    converted to UTC, and metadata-only completed API actions; no bodies/query strings/passport fields.
 34. **Public Google consent pages.** Standalone `/privacy.html`/`terms.html`, linked before JS startup;
     scoped publication tooling and rollback in `docs/GOOGLE_APP_DOMAIN.md`.
 35. **Admin by email.** Lookup grants nothing; explicit promotion rechecks identity/status/locks. No allowlist
@@ -198,5 +197,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
     nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
-    *Rejected: a flag service or database table (flags change only with a deploy), build-time frontend
-    variables (the same web image serves every environment).*
+41. **Optional MFA (US 86).** `mfa.py` encrypts seeds, hashes one-use backups and five-minute challenges;
+    five guesses, counter replay checks, row locks. Password and Google both challenge before session issuance.
+    `two_factor_signin` gates enrollment; existing enforcement/status/disable stay available even when off.
+    Settings require owner/primary proof to enroll and a fresh second factor to disable/replace codes.
+    Secret tables are explicitly omitted from data exports and removed during erasure. Preserve JWT_SECRET
+    securely: it derives the seed encryption key; rotation needs a deliberate MFA migration/recovery plan.
