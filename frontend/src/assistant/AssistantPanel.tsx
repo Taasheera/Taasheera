@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { askAssistant, getHistory, type AssistantStep, type ChatTurn } from './api'
+import { OPEN_ASSISTANT_EVENT } from './openAssistant'
 import '../ui.css'
 import './assistant.css'
 
@@ -34,6 +35,12 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
   const log = useRef<HTMLDivElement>(null)
 
   useEffect(() => { if (open) input.current?.focus() }, [open])
+  // The navigation panel's Assistant button (US 15) opens this panel, whichever page it is on.
+  useEffect(() => {
+    const openFromNavigation = () => onOpenChange(true)
+    window.addEventListener(OPEN_ASSISTANT_EVENT, openFromNavigation)
+    return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, openFromNavigation)
+  }, [onOpenChange])
   const loaded = useRef(false)
   useEffect(() => {
     if (!open || loaded.current) return

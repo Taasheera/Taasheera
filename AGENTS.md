@@ -72,6 +72,9 @@ Layout: `backend/app/` (`applications/` pure engine/router and destination JSON 
 `documents/` uploads and cross-check, `agent/` form sites, filler, queue and worker), `backend/alembic/`,
 `backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`, `backend/agent_worker.py`,
 `backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
+Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
+(the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant button calls `openAssistant()`, which every
+`AssistantPanel` listens for. It makes the sticky header about 60px taller; `sectionNav.css` adjusts offsets below it.
 
 ## Local commands and routing
 
@@ -95,7 +98,7 @@ processes on those ports is intended.
 Full Sprint 3 delivery and isolated manual tests with Gemini: `docs/SPRINT3_MANUAL_TESTING.md`.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
 `/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
@@ -112,6 +115,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
   (no passport or answer values); application deletion and account erasure delete them. Email copies wait on CMPS271-233.
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
+- A new table that refers to a traveler, application or session goes in `PERSONAL_DATA` (`backend/app/personal_data.py`)
+  and in account erasure: the data download (US 87, `GET /auth/account/export`) reads that list, and
+  `tests/test_data_export.py` fails until both include it. Secrets are listed in `omit`; left-out tables give a reason.
 - Feature changes include meaningful tests; lint, tests and build pass before a PR merges.
 - Every merge to `main` goes live, so unfinished work merges behind a feature flag (`backend/app/features.py`):
   add the name to `FLAGS` and to `FeatureName` in `frontend/src/features.ts`, guard its router with
