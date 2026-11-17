@@ -104,8 +104,9 @@ python preview.py admin --email your-local-account@example.com
 The existing `/apply` questionnaire, group-size selection, branching, eligibility,
 passport/profile suggestions and application sidebar are preserved. Monitoring reads
 those same `Application` rows, and deletion also removes their `ApplicationAnswer`
-copies. The current statuses are DRAFT, INELIGIBLE and ANSWERS_COMPLETE. Embassy
-submission and agent failure ingestion remain separate future workflows.
+copies. The statuses are DRAFT, INELIGIBLE and ANSWERS_COMPLETE (from the answers), then
+SUBMITTED, APPROVED and REFUSED, which the traveler records on the application's dashboard
+page (US 55). Automated embassy submission and agent failure ingestion remain future workflows.
 The existing user-management pages at `/admin` retain search/filter/suspend/role
 controls and now include deletion on a user detail page. `/backoffice` is linked
 as Monitoring; browser calls use the existing `/admin-api` rewrite.

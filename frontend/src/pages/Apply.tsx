@@ -12,7 +12,7 @@ import Feature from '../Feature'
 import StartChat from '../application/StartChat'
 import SuggestedAnswer from '../application/SuggestedAnswer'
 import {
-  getApplication, listApplications, saveAnswer,
+  getApplication, isRecorded, listApplications, saveAnswer,
   type AnswerInput as Answer, type ApplicationState, type ApplicationSummary,
 } from '../application/api'
 import { formatAnswer, formatDate, returnedPassport, sourceLabel, travellers } from '../application/format'
@@ -211,6 +211,12 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   if (application.archived_at) {
     return <p className="apply-status">This application is archived, so its answers can't be changed.{' '}
       <Link to={`/dashboard/${application.id}`} data-activity-id="application-details">See it and restore it</Link>.</p>
+  }
+
+  // Recorded as submitted (US 55): the answers are what the embassy received, so they stay as they are.
+  if (isRecorded(application.status)) {
+    return <p className="apply-status">You recorded this application as submitted, so its answers can't be changed.{' '}
+      <Link to={`/dashboard/${application.id}`} data-activity-id="application-details">See it and its decision</Link>.</p>
   }
 
   const { progress } = application

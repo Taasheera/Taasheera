@@ -41,7 +41,8 @@ The backlog and plan are guides, not permanent assignments. Update this section 
 Ahmad Zeid leads deployment and AWS operations from November 2; administrative access must be
 handed over/verified separately from the existing AWS account and GitHub repository ownership.
 
-- `main` is production; tested sprint work integrates on `dev` before release to `main`.
+- `main` is production; tested sprint work integrates on `dev` before release to `main`. Both should be
+  protected: CI `backend`/`frontend`/`browser`/`container` and one approval (`docs/BRANCH_PROTECTION.md`; admin applies).
 - Feature branches start from `dev` and PR back to `dev`. Existing names use
   `<name>_<feature>_sprint<N>` (for example `zeid_chat_history_sprint3`).
 - Keep PRs focused, reference ticket/story numbers and explain why. Set the rotation's reviewer.
@@ -89,7 +90,8 @@ supply environment secrets (Render names the key with `sync: false`). **Never co
 public.** Without a key, `/assistant/messages` returns 503 and other features remain available.
 
 Checks: backend `python -m pytest -q`; frontend `npm test`, `npm run lint`, `npm run build`,
-`npm run test:e2e` (install Playwright Chromium; set `TAASHEERA_TEST_PYTHON` if needed).
+`npm run test:e2e` (install Playwright Chromium; set `TAASHEERA_TEST_PYTHON` if needed). `e2e/critical-path.spec.ts`
+is the critical path (sign-in, passport, chat, dashboard); CI's browser job runs it on every push and PR.
 `TEST_POSTGRES_URL` must name a disposable database with create/drop privileges. Browser tests use
 ports 8100/5273 and isolated synthetic storage. Preview: `python preview.py run --seed-demo`;
 this does not load `.env.local`, sends no mail/Gemini calls, and keeps separate data under ignored
@@ -209,9 +211,16 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     signed-in page named in `?return=` (`signedInHome`, never an outside URL). `/account` renders inside the
     site layout; the separate sign-in shell is only for signing in and recovery. Signed in, the header keeps
     FAQ/Log out/New application and `SectionNav` is the navigation. Staff see a Staff dashboard link on `/dashboard`.
-40. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
+44. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
     nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
     *Rejected: a flag service or database table (flags change only with a deploy), build-time frontend
     variables (the same web image serves every environment).*
+45. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
+    agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
+46. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
+    questionnaire/country, re-checked by the engine (dependent dates dropped too); accommodation/host answers are
+    asked again (`COUNTRY_SPECIFIC`); provenance kept, original untouched.
+47. **Export record (US 80).** Owner-only `GET /applications/{id}/export`: answers as shown, status and the shared
+    `build_timeline` as `taasheera.application-record` v1 JSON; no-store, audited before the file leaves.

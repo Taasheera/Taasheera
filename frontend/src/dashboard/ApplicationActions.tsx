@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteApplication, setArchived, type ApplicationSummary } from '../application/api'
+import DuplicateAction from './DuplicateAction'
 import { applicationLabel, applicationName } from './helpers'
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 export default function ApplicationActions({ application, onArchiveChange, onDeleted }: Props) {
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   const name = applicationName(application)
   const label = applicationLabel(application)
   const archived = application.archived_at !== null
@@ -57,11 +59,12 @@ export default function ApplicationActions({ application, onArchiveChange, onDel
   const confirmId = `dash-confirm-${application.id}`
   return <div className="dash-actions-wrap">
     <div className="dash-actions">
-      <button type="button" className="button button-secondary dash-small" disabled={busy || confirming}
+      <DuplicateAction application={application} disabled={busy || confirming} onActiveChange={setDuplicating} />
+      <button type="button" className="button button-secondary dash-small" disabled={busy || confirming || duplicating}
         data-activity-id={archived ? 'application-restore' : 'application-archive'}
         aria-label={`${archived ? 'Restore' : 'Archive'} ${label}`}
         onClick={() => void toggleArchive(!archived)}>{archived ? 'Restore' : 'Archive'}</button>
-      <button ref={deleteButton} type="button" className="button dash-small dash-delete" disabled={busy || confirming}
+      <button ref={deleteButton} type="button" className="button dash-small dash-delete" disabled={busy || confirming || duplicating}
         data-activity-id="application-delete" aria-label={`Delete ${label}`}
         onClick={() => setConfirming(true)}>Delete</button>
     </div>

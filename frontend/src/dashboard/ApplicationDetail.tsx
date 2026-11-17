@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { getApplication, getTimeline, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
+import { getApplication, getTimeline, isRecorded, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
 import ApplicationActions from './ApplicationActions'
+import DecisionActions from './DecisionActions'
+import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
 import AgentPanel from '../agent/AgentPanel'
@@ -61,6 +63,7 @@ function Detail({ applicationId }: { applicationId: string }) {
 
   const { application, timeline } = loaded
   const archived = application.archived_at !== null
+  const recorded = isRecorded(application.status)
   const byStep = application.steps
     .map(step => ({ step, answers: application.answers.filter(answer => answer.question.step_id === step.id) }))
     .filter(group => group.answers.length > 0)
@@ -86,9 +89,12 @@ function Detail({ applicationId }: { applicationId: string }) {
       <h2>What happens next</h2>
       <p>{timeline.next.text}</p>
       <div className="dash-next-actions">
-        {!archived && <Link to={`/apply/${application.id}`} className="button button-primary dash-small" data-activity-id="application-resume">
+        {!archived && !recorded && <Link to={`/apply/${application.id}`} className="button button-primary dash-small" data-activity-id="application-resume">
           {timeline.next.kind === 'complete' ? 'Review answers' : timeline.next.kind === 'change' ? 'Change an answer' : 'Resume'}
         </Link>}
+        {/* Recording or taking back a decision changes the status, the timeline and what comes next. */}
+        <DecisionActions application={application} onChange={() => setAttempt(count => count + 1)} />
+        <ExportRecord application={application} />
         <ApplicationActions application={application}
           // The timeline gains or loses its "Archived" entry, so load both again.
           onArchiveChange={() => setAttempt(count => count + 1)}
