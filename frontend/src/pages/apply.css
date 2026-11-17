@@ -561,3 +561,9 @@ a.button {
 .completeness-tag { display: inline-block; font-size: .75rem; font-weight: 600; padding: .1rem .45rem; border-radius: 999px; margin-right: .35rem; }
 .is-blocking .completeness-tag { background: var(--danger-bg); color: var(--danger); }
 .is-warning .completeness-tag { background: var(--warn-bg); color: var(--warn); }
+
+/* Supporting documents under the finished questions, before the check (CMPS271-29). */
+.chat-documents { margin-top: 1.5rem; padding: 1rem 1.25rem; border: 1px solid var(--border); background: var(--card); border-radius: 12px; }
+.chat-documents .docs { margin: 0; padding: 0; border: 0; }
+.completeness-fix { margin-left: .35rem; color: var(--brand); font-weight: 600; }
+.chat-documents #docs-title { scroll-margin-top: 180px; }
