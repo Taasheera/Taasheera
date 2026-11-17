@@ -205,6 +205,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     visible CAPTCHA, unknown required field, missing answer or changed form; never clicks submit or the
     declaration. Only the local harmonised-form copy is wired: VIDEX is long-stay only, Swiss iVIS2 refuses
     online applications from Lebanon, France-Visas needs the traveler's account. Behind `agent_form_filling`.
+43. **Signed-in landing.** Signing in (or opening `/sign-in` while signed in) goes to `/dashboard`, or to a
+    signed-in page named in `?return=` (`signedInHome`, never an outside URL). `/account` renders inside the
+    site layout; the separate sign-in shell is only for signing in and recovery. Signed in, the header keeps
+    FAQ/Log out/New application and `SectionNav` is the navigation. Staff see a Staff dashboard link on `/dashboard`.
 40. **Feature flags (US 127).** One env-driven module read at startup: flags default on in development and
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
