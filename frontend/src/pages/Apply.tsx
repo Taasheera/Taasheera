@@ -7,6 +7,8 @@ import ProposalCard from '../assistant/ProposalCard'
 import AnswerInput from '../application/AnswerInput'
 import ApplicationsSidebar from '../application/ApplicationsSidebar'
 import CompletenessCheck from '../application/CompletenessCheck'
+import DocumentChecklist from '../documents/DocumentChecklist'
+import Feature from '../Feature'
 import StartChat from '../application/StartChat'
 import SuggestedAnswer from '../application/SuggestedAnswer'
 import {
@@ -99,6 +101,8 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   const [draft, setDraft] = useState('')
   const [asking, setAsking] = useState(false)
   const [askError, setAskError] = useState('')
+  // Counts document uploads/deletions on this page, so the check below can run again.
+  const [documentChanges, setDocumentChanges] = useState(0)
   const current = useRef<HTMLLIElement>(null)
   const askBox = useRef<HTMLTextAreaElement>(null)
   const upload = returnedPassport(location.search)
@@ -296,11 +300,20 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       </li>}
       {done && <li ref={current} className="bubble bubble-assistant bubble-done" role="status">
         That's every question for now. Your answers are saved, and you can still change any of them above.
-        Next we'll check your documents against these answers.
+        Next, upload the documents the embassy asks for below, and we'll check them against these answers.
       </li>}
     </ol>
 
-    {!application.stopped && <CompletenessCheck key={application.updated_at} applicationId={applicationId} />}
+    {/* The checklist follows the answers, so it appears once every question is answered (CMPS271-29). */}
+    {done && !application.stopped && <Feature name="supporting_documents">
+      <div className="chat-documents">
+        <DocumentChecklist applicationId={applicationId} version={application.updated_at}
+          onChange={() => setDocumentChanges(count => count + 1)} />
+      </div>
+    </Feature>}
+
+    {!application.stopped && <CompletenessCheck key={application.updated_at} applicationId={applicationId}
+      documents={documentChanges} uploadLinks={done} />}
 
     <form className="chat-ask" onSubmit={ask}>
       <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>

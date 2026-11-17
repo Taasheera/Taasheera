@@ -20,7 +20,9 @@ async function signIn(page: Page, email: string, name: string) {
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.getByRole('heading', { name: `Welcome, ${name}` })).toBeVisible()
+  // Signing in lands on the dashboard, which greets the traveler by first name.
+  await expect(page).toHaveURL('/dashboard')
+  await expect(page.getByText(new RegExp(`^Welcome( back)?, ${name.split(' ')[0]}$`))).toBeVisible()
 }
 
 test('sign-in refuses a wrong password, then signs in, survives a reload and logs out', async ({ page, context }) => {
@@ -31,13 +33,16 @@ test('sign-in refuses a wrong password, then signs in, survives a reload and log
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   // The refusal arrives first, so the "not signed in" check after it means something.
   await expect(page.locator('#auth-status')).toHaveText('Invalid email or password.')
-  await expect(page.getByRole('heading', { name: 'Welcome, Critical Sign In' })).toHaveCount(0)
+  await expect(page.getByText(/^Welcome( back)?, Critical$/)).toHaveCount(0)
+  await expect(page).toHaveURL(/\/sign-in/)
 
   await signIn(page, email, 'Critical Sign In')
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Welcome, Critical Sign In' })).toBeVisible()
+  await expect(page.getByText(/^Welcome( back)?, Critical$/)).toBeVisible()
   await page.getByRole('button', { name: 'Log out', exact: true }).first().click()
-  await expect(page.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible()
+  // Logging out from the site header goes to the home page, signed out.
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('link', { name: 'Log in', exact: true }).first()).toBeVisible()
   expect((await context.cookies()).some(cookie => cookie.name === 'taasheera_refresh')).toBe(false)
   await page.goto('/dashboard')
   await expect(page.getByText('Please sign in to see your applications.')).toBeVisible()

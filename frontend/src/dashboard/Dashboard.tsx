@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { adminRequest } from '../admin'
 import { isRecorded, listApplications, type ApplicationSummary } from '../application/api'
+import { ArrowIcon } from '../icons'
 import ApplicationActions from './ApplicationActions'
 import { applicationLabel, applicationName, DISCLAIMER, formatDateTime, tripWhen, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
@@ -20,6 +22,15 @@ export default function Dashboard() {
   const heading = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => { document.title = 'Your applications | Taasheera' }, [])
+
+  // Staff also get a way into the staff dashboard. The server decides; anyone else gets a quiet 403.
+  const [staff, setStaff] = useState(false)
+  useEffect(() => {
+    if (!traveler) return
+    let active = true
+    adminRequest('/me').then(() => { if (active) setStaff(true) }).catch(() => {})
+    return () => { active = false }
+  }, [traveler])
 
   useEffect(() => {
     if (!traveler) return
@@ -53,13 +64,19 @@ export default function Dashboard() {
   if (traveler === undefined) return <section className="dash-page container"><p className="dash-status" role="status">Checking your session…</p></section>
   if (traveler === null) return <section className="dash-page container"><SignedOut /></section>
 
+  const firstName = traveler.name.trim().split(/\s+/)[0]
+  const firstVisit = view === 'active' && Array.isArray(applications) && applications.length === 0
   return <section className="dash-page container" aria-labelledby="dash-title">
     <div className="dash-head">
       <div>
+        {firstName && <p className="dash-welcome">{firstVisit ? 'Welcome' : 'Welcome back'}, {firstName}</p>}
         <h1 id="dash-title" ref={heading} tabIndex={-1}>Your applications</h1>
         <p className="dash-lede">Where each visa application stands, and where to pick up.</p>
       </div>
-      <Link to="/apply" className="button button-primary" data-activity-id="application-new">New application</Link>
+      <div className="dash-head-actions">
+        {staff && <a href="/backoffice" className="button button-secondary">Staff dashboard</a>}
+        {!firstVisit && <Link to="/apply" className="button button-primary" data-activity-id="application-new">New application</Link>}
+      </div>
     </div>
 
     <div className="dash-tabs" role="group" aria-label="Show">
@@ -75,10 +92,20 @@ export default function Dashboard() {
       <p>{applications.message}</p>
       <button type="button" className="button button-secondary dash-small" onClick={() => { setApplications(null); setAttempt(count => count + 1) }}>Try again</button>
     </div>}
-    {Array.isArray(applications) && applications.length === 0 && <div className="dash-empty">
-      {view === 'active'
-        ? <><p>You have no active applications.</p><Link to="/apply" data-activity-id="application-new">Start your first application</Link></>
-        : <p>Nothing archived. Applications you archive wait here until you restore or delete them.</p>}
+    {firstVisit && <div className="dash-start">
+      <h2>Start your visa application</h2>
+      <p>Pick your destination, upload your passport and answer a few questions. We fill in the embassy
+        form and list the documents to bring. You review everything before anything is sent.</p>
+      <Link to="/apply" className="button button-primary dash-start-cta" data-activity-id="application-new">
+        <span className="mini-circle" aria-hidden="true"><ArrowIcon /></span>Start your first application
+      </Link>
+      <Link to="/passport" className="dash-ready" data-activity-id="passport-link">
+        <strong>Not travelling yet?</strong>
+        <span>Save your passport now, and your next application starts with it filled in.</span>
+      </Link>
+    </div>}
+    {view === 'archived' && Array.isArray(applications) && applications.length === 0 && <div className="dash-empty">
+      <p>Nothing archived. Applications you archive wait here until you restore or delete them.</p>
     </div>}
     {Array.isArray(applications) && applications.length > 0 && <ul className="dash-list">
       {applications.map(application => <li key={application.id} className="dash-card">

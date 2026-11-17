@@ -96,7 +96,9 @@ test('signed-in travelers see Account, Log out and Start an application instead 
   const router = await render('/faq')
   await settle()
   const header = container.querySelector('.nav-right')
-  assert.equal(header.querySelector('a[href="/account"]')?.textContent, 'Account')
+  // Account lives in the section panel below the bar, so the bar doesn't repeat it.
+  assert.equal(header.querySelector('a[href="/account"]'), null)
+  assert.equal(container.querySelector('.section-nav a[href="/account"]')?.textContent, 'Account')
   assert.equal(header.querySelector('.logout-button')?.textContent, 'Log out')
   assert.equal(header.querySelector('a.header-cta')?.getAttribute('href'), '/apply')
   assert.equal(container.querySelector('a[href^="/sign-in"]'), null, 'no Log in or Get started anywhere')
@@ -105,8 +107,8 @@ test('signed-in travelers see Account, Log out and Start an application instead 
 
   await click(container.querySelector('.menu-button'))
   const items = [...container.querySelectorAll('#mobile-menu a, #mobile-menu button')].map(el => el.textContent.trim())
-  assert.deepEqual(items, ['How it works', 'Destinations', 'Privacy', 'FAQ', 'Account', 'Log out', 'Start an application'])
-  assert.equal(container.querySelector('#mobile-menu a[href="/account"]')?.textContent, 'Account')
+  // Signed in, the marketing links give way to the traveler's own sections.
+  assert.deepEqual(items, ['FAQ', 'Log out', 'New application'])
 
   await click(container.querySelector('#mobile-menu .logout-button'))
   await settle()
@@ -235,25 +237,41 @@ test('signed-out visitors get no assistant button', async (t) => {
   assert.equal(container.querySelector('.assistant-launcher'), null)
 })
 
-for (const path of ['/sign-in', '/account']) {
-  test(`the separate ${path} shell has one assistant after session restoration`, async (t) => {
-    t.mock.method(globalThis, 'fetch', async url => {
-      if (url === '/auth/refresh') return Response.json({ access_token: 'test-access-token' })
-      if (url === '/auth/me') return Response.json({ id: 1, name: 'Anna', email: 'anna@example.com' })
-      if (url === '/auth/config') return Response.json({ google_client_id: '' })
-      if (url === '/profile') return Response.json({})
-      if (url === '/sessions') return Response.json([])
-      if (url === '/assistant/history') return Response.json([])
-      return new Response(null, { status: 204 })
-    })
-    window.history.replaceState(null, '', path)
-    await render(path)
-    await settle()
-    assert.equal(container.querySelectorAll('.assistant-launcher').length, 1)
-    assert.equal(container.querySelector('.sign-in-page .assistant'), null, 'auth form styles must not affect the panel')
-    await click(container.querySelector('.assistant-launcher'))
-    await settle()
-    assert.ok(container.querySelector('.assistant-panel'))
-    window.history.replaceState(null, '', '/')
-  })
+const signedInFetch = async url => {
+  if (url === '/auth/refresh') return Response.json({ access_token: 'test-access-token' })
+  if (url === '/auth/me') return Response.json({ id: 1, name: 'Anna', email: 'anna@example.com' })
+  if (url === '/auth/config') return Response.json({ google_client_id: '' })
+  if (url === '/profile') return Response.json({})
+  if (url === '/sessions') return Response.json([])
+  if (url === '/assistant/history') return Response.json([])
+  return new Response(null, { status: 204 })
 }
+
+test('a signed-in traveler who opens /sign-in is taken to their applications, not a welcome card', async (t) => {
+  t.mock.method(globalThis, 'fetch', signedInFetch)
+  window.history.replaceState(null, '', '/sign-in')
+  await render('/sign-in')
+  await settle()
+  // The page itself moves on with location.replace (tests/signed-in-home.test.mjs checks where to).
+  assert.match(container.textContent, /Taking you to your applications/)
+  assert.doesNotMatch(container.textContent, /Welcome, Anna|Staff dashboard/)
+  assert.equal(container.querySelector('.assistant-launcher'), null)
+  window.history.replaceState(null, '', '/')
+})
+
+test('the account page sits in the site layout, with one header, one section panel and one assistant', async (t) => {
+  t.mock.method(globalThis, 'fetch', signedInFetch)
+  window.history.replaceState(null, '', '/account')
+  await render('/account')
+  await settle()
+  assert.ok(container.querySelector('.navbar'), 'the site header')
+  assert.equal(container.querySelector('.brand'), null, 'not the separate sign-in shell')
+  assert.equal(container.querySelectorAll('.section-nav').length, 1)
+  assert.equal(container.querySelectorAll('.assistant-launcher').length, 1)
+  assert.equal(container.querySelector('.sign-in-page .assistant'), null, 'auth form styles must not affect the panel')
+  assert.ok(container.querySelector('#main .account-page h1'))
+  await click(container.querySelector('.assistant-launcher'))
+  await settle()
+  assert.ok(container.querySelector('.assistant-panel'))
+  window.history.replaceState(null, '', '/')
+})

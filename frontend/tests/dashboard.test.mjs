@@ -68,6 +68,8 @@ const signedIn = extra => ({
   'POST /auth/refresh': () => json({ access_token: 'token' }),
   'GET /auth/me': () => json({ id: 1, name: 'Anna', email: 'anna@example.com' }),
   'POST /activity/events': () => new Response(null, { status: 204 }),
+  // The dashboard asks whether the traveler is staff; a traveler gets the server's 403.
+  'GET /admin-api/me': () => json({ detail: 'Forbidden.' }, 403),
   ...extra,
 })
 
@@ -131,7 +133,7 @@ test('archived applications have their own tab, and archiving moves one there', 
   await click(button('Archive'))
   assert.ok(calls.includes(`POST /applications/${APP}/archive`))
   assert.equal(container.querySelectorAll('.dash-card').length, 0)
-  assert.match(text(), /no active applications/)
+  assert.match(text(), /Start your visa application/)
 
   handlers['GET /applications?archived=true'] = () => json([summary({ archived_at: '2026-10-31T10:00:00Z' })])
   await click(button('Archived'))
@@ -437,4 +439,33 @@ test('archive and delete wait while a duplicate is open', async () => {
   await click(button('Cancel'))
   assert.equal(button('Archive').disabled, false)
   assert.equal(button('Delete').disabled, false)
+})
+
+test('the dashboard greets the traveler and, with nothing started, offers one clear way to begin', async () => {
+  handlers = signedIn({ 'GET /applications': () => json([]) })
+  await render('/dashboard')
+  assert.equal(container.querySelector('.dash-welcome').textContent, 'Welcome, Anna')
+  // The tabs stay: someone who archived everything still needs the way back to their archive.
+  assert.ok(container.querySelector('.dash-tabs'))
+  const start = container.querySelector('.dash-start')
+  assert.equal(start.querySelector('h2').textContent, 'Start your visa application')
+  assert.equal(start.querySelector('a.dash-start-cta').getAttribute('href'), '/apply')
+  assert.equal(start.querySelector('a.dash-ready').getAttribute('href'), '/passport')
+  // One start button on the page, not two: the page's New application waits until there is a list.
+  const head = container.querySelector('.dash-head')
+  assert.equal(head.querySelector('a[href="/apply"]'), null)
+  assert.equal(head.querySelector('a[href="/backoffice"]'), null)
+})
+
+test('staff see a link to the staff dashboard next to their applications', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    'GET /admin-api/me': () => json({ id: 1, name: 'Anna', email: 'anna@example.com', role: 'admin' }),
+  })
+  await render('/dashboard')
+  assert.equal(container.querySelector('.dash-welcome').textContent, 'Welcome back, Anna')
+  const head = container.querySelector('.dash-head')
+  assert.equal(head.querySelector('a[href="/backoffice"]').textContent, 'Staff dashboard')
+  assert.ok(head.querySelector('a[href="/apply"]'))
+  assert.equal(container.querySelector('.dash-start'), null)
 })
