@@ -1,13 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { checkApplication, type CheckReport } from './api'
 
 // The completeness check before submission (US 13). The server decides what is missing or
 // inconsistent; this only shows it. Fix links from each issue are US 14 (next sprint).
 // The page keys it by the application's last update, so an old report never sits next to new answers.
-export default function CompletenessCheck({ applicationId }: { applicationId: string }) {
+// `documents` changes after each document upload or deletion: a report already on screen is re-run.
+// With `uploadLinks`, each missing document links to its row in the checklist on the same page.
+export default function CompletenessCheck({ applicationId, documents = 0, uploadLinks = false }:
+  { applicationId: string; documents?: number; uploadLinks?: boolean }) {
   const [report, setReport] = useState<CheckReport | null>(null)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
+  const shown = useRef(false)
+  useEffect(() => { shown.current = report !== null }, [report])
+  useEffect(() => {
+    if (documents > 0 && shown.current) void run()
+    // run is recreated each render; only a documents change should re-run the check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents])
 
   async function run() {
     setChecking(true)
@@ -43,6 +53,8 @@ export default function CompletenessCheck({ applicationId }: { applicationId: st
         {report.issues.map((issue, index) => <li key={`${issue.question_id}-${index}`}
           className={`completeness-issue is-${issue.severity}`}>
           <span className="completeness-tag">{issue.severity === 'blocking' ? 'Must fix' : 'Check'}</span> {issue.message}
+          {uploadLinks && issue.kind === 'missing' && issue.question_id === null && <>
+            {' '}<a href="#docs-title" className="completeness-fix">Upload</a></>}
         </li>)}
       </ul>}
     </div>}
