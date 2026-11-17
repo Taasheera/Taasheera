@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { GoogleLinkRequiredError, restoreSession, signIn, signInWithGoogle, signOut, type Traveler } from './auth'
 import GoogleAccountLink from './GoogleAccountLink'
 import GoogleSignIn from './GoogleSignIn'
@@ -26,9 +26,13 @@ const pageTitles = {
 }
 
 function App({ initialNavigation, accountPage = false, googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID?.trim() ?? '',
-  googleConfigurationStatus = 'ready', onGoogleConfigurationRetry }: {
+  googleConfigurationStatus = 'ready', onGoogleConfigurationRetry, signedInRedirect, embedded = false }: {
   initialNavigation: Navigation; accountPage?: boolean; googleClientId?: string
   googleConfigurationStatus?: 'loading' | 'ready' | 'failed'; onGoogleConfigurationRetry?: () => void
+  // The sign-in route sends a signed-in traveler on to this page instead of showing the welcome card.
+  signedInRedirect?: string
+  // The account page sits inside the site layout, which already has the header, sections, assistant and footer.
+  embedded?: boolean
 }) {
   const [route, setRoute] = useState({ ...initialNavigation, version: 0 })
   const page = route.page
@@ -63,20 +67,25 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
     return () => window.removeEventListener('hashchange', updatePage)
   }, [])
 
+  const redirecting = Boolean(signedInRedirect && traveler && !accountPage && !isRecoveryPage)
+  useEffect(() => {
+    if (redirecting && signedInRedirect) window.location.replace(signedInRedirect)
+  }, [redirecting, signedInRedirect])
+
   useEffect(() => {
     document.title = `${traveler && !isRecoveryPage ? (accountPage ? 'Account' : 'Signed in') : pageTitles[page]} | Taasheera`
   }, [page, traveler, isRecoveryPage, accountPage])
 
   return (
-    <><main className="sign-in-page">
-      <header className="brand">
+    <><Shell embedded={embedded}>
+      {!embedded && <header className="brand">
         {/* The sign-in screens sit outside the site layout, so this is their only way home. */}
         <a href="/" className="brand-link" aria-label="Taasheera home" data-activity-id="home-link">
           <span className="brand-mark" aria-hidden="true">T</span>
           Taasheera
         </a>
-      </header>
-      {traveler && !isRecoveryPage && !checking && <SectionNav pathname={window.location.pathname} />}
+      </header>}
+      {!embedded && traveler && !isRecoveryPage && !checking && !redirecting && <SectionNav pathname={window.location.pathname} />}
 
       {isResetPage ? <SetNewPassword
         key={route.version}
@@ -88,12 +97,13 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
           setChecking(false)
           setRoute(previous => ({ ...previous, resetToken: null }))
         }}
-      /> : page === 'forgot-password' ? <ForgotPassword /> : checking ? <p role="status">Restoring your session…</p> : traveler ? (
+      /> : page === 'forgot-password' ? <ForgotPassword /> : checking ? <p role="status">Restoring your session…</p>
+        : redirecting ? <p role="status">Taking you to your applications…</p> : traveler ? (
         <section className={`sign-in-card${accountPage ? ' account-card' : ''}`} aria-labelledby="signed-in-heading">
           <p className="eyebrow">YOUR TRAVELER ACCOUNT</p>
           <h1 id="signed-in-heading">{accountPage ? 'Your account' : `Welcome, ${traveler.name}`}</h1>
           {accountPage ? <>
-            <p className="intro"><a href="/sign-in">Back to welcome</a></p>
+            <p className="intro">Your details, how you sign in, and your privacy. <a href="/dashboard">Back to your applications</a></p>
             <ProfileForm />
             <ConnectGoogle traveler={traveler} clientId={googleClientId}
               configurationStatus={googleConfigurationStatus} onConfigurationRetry={onGoogleConfigurationRetry}
@@ -114,7 +124,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
             <a href="/backoffice" className="account-link">Staff dashboard</a>
             <a href="/passport" className="primary-button passport-link">Upload your passport</a>
           </>}
-          <button className="primary-button" data-activity-id="logout-button" disabled={loggingOut} onClick={async () => {
+          {!embedded && <button className="primary-button" data-activity-id="logout-button" disabled={loggingOut} onClick={async () => {
             setLoggingOut(true)
             setSessionError('')
             try {
@@ -127,7 +137,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
             } finally {
               setLoggingOut(false)
             }
-          }}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
+          }}>{loggingOut ? 'Logging out…' : 'Log out'}</button>}
         </section>
       ) : <>
         {page === 'sign-in' && <SignIn googleClientId={googleClientId}
@@ -146,10 +156,15 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
       </>}
       {sessionError && !isRecoveryPage && <p className="auth-status auth-error" role="alert">{sessionError}</p>}
 
-      <footer>Your next chapter starts with a journey.</footer>
-    </main>
-    {traveler && !isRecoveryPage && <GlobalAssistant key={traveler.id} />}</>
+      {!embedded && <footer>Your next chapter starts with a journey.</footer>}
+    </Shell>
+    {!embedded && traveler && !isRecoveryPage && !redirecting && <GlobalAssistant key={traveler.id} />}</>
   )
+}
+
+// Its own page for sign-in, or a section of the site layout's <main> for the account page.
+function Shell({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  return embedded ? <div className="sign-in-page account-page">{children}</div> : <main className="sign-in-page">{children}</main>
 }
 
 function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfigurationStatus,
