@@ -47,6 +47,13 @@
 }
 
 .account-card { max-width: 760px; }
+
+/* The account page inside the site layout: below the header, not centred in the window. */
+.sign-in-page.account-page {
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 48px 20px 96px;
+}
 .account-link { display: block; margin-bottom: 12px; }
 .profile-section { margin-bottom: 32px; }
 .profile-section h2 { margin: 0 0 8px; font-size: 20px; }

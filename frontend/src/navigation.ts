@@ -25,3 +25,11 @@ export function readNavigation(browser: Pick<Window, 'location' | 'history'>): N
     resetToken: null,
   }
 }
+
+// Where a traveler lands after signing in: the page they asked for in ?return=, if it is one of the
+// signed-in pages on this site, and otherwise their applications. Never an arbitrary URL (open redirect).
+const SIGNED_IN_PAGE = /^\/(dashboard|apply|passport)(\/[0-9a-f]{32})?$|^\/account$/
+export function signedInHome(search: string): string {
+  const target = new URLSearchParams(search).get('return')
+  return target && SIGNED_IN_PAGE.test(target) ? target : '/dashboard'
+}

@@ -82,8 +82,9 @@ test('country choices have unique passport codes and include Lebanon and Germany
 })
 
 test('/account is a page route and /profile is reserved for the API', () => {
-  assert.ok(routes.some(route => route.path === 'account'))
-  assert.equal(routes.some(route => route.path === 'profile'), false)
+  const all = list => list.flatMap(route => [route, ...all(route.children ?? [])])
+  assert.ok(all(routes).some(route => route.path === 'account'))
+  assert.equal(all(routes).some(route => route.path === 'profile'), false)
 })
 
 test('profile loading is visible until the protected request finishes', async () => {
@@ -115,7 +116,7 @@ test('account form loads existing values and keeps methods and password sections
   assert.ok(document.getElementById('change-password-heading'))
   assert.ok(document.getElementById('sessions-heading'))
   assert.equal(document.querySelectorAll('#sign-in-methods-heading').length, 1)
-  assert.equal(document.querySelector('a[href="/sign-in"]').textContent, 'Back to welcome')
+  assert.equal(document.querySelector('.intro a[href="/dashboard"]').textContent, 'Back to your applications')
   assert.equal(calls.find(call => call.url === '/profile').headers.Authorization, 'Bearer synthetic-access')
 })
 

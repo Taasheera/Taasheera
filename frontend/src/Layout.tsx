@@ -11,7 +11,9 @@ import { disableGoogleAutoSelect } from './googleIdentity'
 import { createAccountPath, signInPath } from './paths'
 import './site.css'
 
-function MainLinks() {
+// Signed in, the section panel below the bar is the navigation; FAQ moves next to Log out.
+function MainLinks({ signedIn }: { signedIn: boolean }) {
+  if (signedIn) return null
   return (
     <>
       <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
@@ -24,25 +26,27 @@ function MainLinks() {
 
 export type LayoutContext = { traveler: Traveler | null }
 
-type AccountProps = { traveler: Traveler | null; loggingOut: boolean; onLogOut: () => void; inMenu?: boolean }
+type AccountProps = { traveler: Traveler | null; loggingOut: boolean; onLogOut: () => void; inMenu?: boolean
+  // The applications list has its own New application button, so the header doesn't repeat it there.
+  hideCta?: boolean }
 
-// Signed out: Log in / Get started. Signed in: Account / Log out / Start an application.
-function AccountLinks({ traveler, loggingOut, onLogOut, inMenu = false }: AccountProps) {
+// Signed out: Log in / Get started. Signed in: Log out / New application (Account is in the section panel).
+function AccountLinks({ traveler, loggingOut, onLogOut, inMenu = false, hideCta = false }: AccountProps) {
   const cta = traveler
     ? <Link to="/apply" className="header-cta" data-activity-id="start-application-link">
-        <span className="mini-circle"><ArrowIcon /></span>Start an application
+        <span className="mini-circle"><ArrowIcon /></span>New application
       </Link>
     : <Link to={createAccountPath} reloadDocument className="header-cta" data-activity-id="get-started-link">
         <span className="mini-circle"><ArrowIcon /></span>Get started
       </Link>
   const account = traveler
     ? <>
-        <Link to="/account" className={inMenu ? undefined : 'login-link header-account'}>Account</Link>
+        <NavLink to="/faq" className={inMenu ? undefined : 'login-link'} data-activity-id="faq-link">FAQ</NavLink>
         <button type="button" className={`logout-button${inMenu ? '' : ' login-link'}`} data-activity-id="logout-button"
           disabled={loggingOut} onClick={onLogOut}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
       </>
     : <Link to={signInPath} className={inMenu ? undefined : 'login-link'} data-activity-id="login-link">Log in</Link>
-  return <>{account}{cta}</>
+  return <>{account}{hideCta ? null : cta}</>
 }
 
 export default function Layout() {
@@ -89,7 +93,7 @@ export default function Layout() {
       setLoggingOut(false)
     }
   }
-  const account = { traveler, loggingOut, onLogOut: logOut }
+  const account = { traveler, loggingOut, onLogOut: logOut, hideCta: traveler !== null && /^\/dashboard\/?$/.test(location.pathname) }
 
   return (
     <div className="site">
@@ -103,7 +107,7 @@ export default function Layout() {
             <span className="logo-mark" aria-hidden="true">T</span>Taasheera
           </Link>
           <nav className="nav-links" aria-label="Main">
-            <MainLinks />
+            <MainLinks signedIn={traveler !== null} />
           </nav>
           <div className="nav-right">
             <AccountLinks {...account} />
@@ -122,7 +126,7 @@ export default function Layout() {
         </div>
         {menuOpen && (
           <nav id="mobile-menu" className="mobile-menu" aria-label="Menu" onClick={closeOnLink}>
-            <MainLinks />
+            <MainLinks signedIn={traveler !== null} />
             <AccountLinks {...account} inMenu />
           </nav>
         )}
