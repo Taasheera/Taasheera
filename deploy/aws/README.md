@@ -16,7 +16,20 @@ The deployment uses the existing application code with persistent SQLite on EBS.
 Public account creation, real Google sign-in, Gemini responses, and SMTP delivery
 were not exercised by these read-only live checks. Authentication and specimen
 passport OCR/persistence were exercised in local production-container checks.
-The configuration remains in PR #6; `main` was not changed by deployment.
+Production releases now use the tested `main` workflow described below.
+
+## Organization transfer (November 18, 2026)
+
+Canonical repository: `Taasheera/Taasheera`; organization owners: `mhs86` and `Ahmad-Zeid`.
+The existing AWS account, EC2 stack, ECR repositories and production role remain in use.
+`AWS_MAIN_DEPLOY_ROLE_ARN` points to
+`arn:aws:iam::632630731308:role/taasheera-github-main-role-DeployRole-zusFtGBPYSBG`.
+The `production` environment allows only the `main` branch, with no tag deployment rules.
+The production OIDC subject is
+`repo:Taasheera@357495043/Taasheera@1387089236:environment:production`
+and the audience is `sts.amazonaws.com`. Keep the IDs in the subject and do not use a wildcard.
+Host bootstrap updates existing Git origins to the canonical repository.
+Main releases still require a successful push CI run for the exact current commit.
 
 ## What this deploys
 
@@ -43,7 +56,7 @@ be checked in Billing, including expiry and eligible services, before creating
 resources. EC2, encrypted gp3 EBS, one Elastic IP/public IPv4 address, CloudFront
 requests/transfer, and any snapshots can consume credits or incur charges on
 a Paid plan. There is no NAT Gateway, load balancer, RDS instance, purchased
-domain, or container registry. CPU credits are standard, avoiding surplus-credit
+domain, or public container registry. The main-release workflow uses two private ECR repositories. CPU credits are standard, avoiding surplus-credit
 charges. The 8 GiB root plus 8 GiB data disks are intentional; Docker builds on a
 1 GiB host may need a larger instance and its associated cost.
 
@@ -61,7 +74,7 @@ create another account. First publish/merge these configuration files so the
 host can fetch the exact Git commit. A clean Git checkout is required.
 
 ```bash
-git clone https://github.com/mhs86/Taasheera.git
+git clone https://github.com/Taasheera/Taasheera.git
 cd Taasheera
 export AWS_REGION=us-east-1
 export AWS_FREE_ELIGIBILITY_CONFIRMED=yes
@@ -137,7 +150,7 @@ environment. A concurrency group shared with manual dev deploys prevents overlap
 run must also have passing push CI; a superseded commit is refused before publication and again
 before host deployment. Ahmad Zeid leads deployment/AWS operations from November 2, 2026.
 The following one-time setup needs AWS IAM/CloudFormation and GitHub repository-settings permissions;
-verify the access handover first. Existing account/repository ownership is unchanged by this role handover.
+verify the access handover first. The repository is now owned by the Taasheera organization.
 These steps are not run automatically:
 
 1. In GitHub, create the `production` environment (Settings → Environments). Optionally add a
@@ -147,7 +160,7 @@ These steps are not run automatically:
    ```bash
    aws cloudformation deploy --region us-east-1 --stack-name taasheera-github-main-role \
      --template-file deploy/aws/github-role.yaml --capabilities CAPABILITY_NAMED_IAM \
-     --parameter-overrides CreateOidcProvider=false TrustedSubject=repo:mhs86/Taasheera:environment:production
+     --parameter-overrides CreateOidcProvider=false TrustedSubject=repo:Taasheera@357495043/Taasheera@1387089236:environment:production
    aws cloudformation describe-stacks --stack-name taasheera-github-main-role \
      --query 'Stacks[0].Outputs' --output table
    ```
