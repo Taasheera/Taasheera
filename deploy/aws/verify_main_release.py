@@ -7,7 +7,7 @@ import sys
 
 
 def verify(revision, repository, *, run=subprocess.run):
-    if not re.fullmatch(r"[a-f0-9]{40}", revision) or repository != "mhs86/Taasheera":
+    if not re.fullmatch(r"[a-f0-9]{40}", revision) or repository != "Taasheera/Taasheera":
         raise ValueError("Invalid release identity.")
 
     def api(path):
