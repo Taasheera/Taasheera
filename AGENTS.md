@@ -173,7 +173,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 33. **Main release images (CMPS271-190).** Only current main with successful push CI can release, including
     manual runs. Actions publishes immutable SHA-tagged API/web images to private EC2-specific ECR repos;
     the host pulls digests, verifies revision labels, preserves secrets, backs up SQLite and migrates. Old
-    manual dev/bootstrap still builds locally. The repo transfer changed the immutable OIDC owner ID.
+    manual dev/bootstrap still builds locally. An immutable pull with less than 2 GiB of Docker disk
+    space clears unused build cache before pulling, keeping containers, images and volumes.
+    The repo transfer changed the immutable OIDC owner ID.
     Update and verify the existing role stacks before releasing. See `deploy/aws/README.md`.
 34. **Supporting documents (CMPS271-29/50).** Each questionnaire lists its documents with answer-driven `show_if`.
     Files sit in the owner's passport folder (erased with it); PDFs are kept as uploaded but only downloaded,
