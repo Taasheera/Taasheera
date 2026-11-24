@@ -69,7 +69,13 @@ export default function AdminDashboard() {
             <thead><tr><th>Time</th><th>Source</th><th>Outcome</th></tr></thead><tbody>
               {monitoring.recent_errors.map(event => <tr key={event.id}><td>{new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(event.occurred_at) ? event.occurred_at : `${event.occurred_at}Z`).toLocaleString()}</td><td>{event.source}</td><td>{event.outcome}</td></tr>)}
             </tbody></table></div>}
-          {!monitoring.agent_failures_available && <p>Agent failure monitoring will appear when the agent workflow is connected.</p>}
+          {monitoring.agent_failures_available && <div>
+            <h3>Embassy form agent</h3>
+            {monitoring.agent_problems?.length ? <ul>{monitoring.agent_problems.map((problem, index) =>
+              <li key={`${problem.site}-${index}`}>
+                {problem.kind === 'site_changed' ? 'Check form selectors' : 'Agent run failed'} · {problem.site}
+              </li>)}</ul> : <p>No form changes or failed runs recorded.</p>}
+          </div>}
           {monitoring.pending_erasures > 0 && <p role="status">{monitoring.pending_erasures} account erasure(s) awaiting cleanup. Follow the monitoring runbook.</p>}
         </section>
       </>}

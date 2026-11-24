@@ -6,6 +6,7 @@ export type UserPage = { items: AdminUser[]; total: number; page: number; page_s
 export type Monitoring = {
   applications_by_status: Record<string, number>; total_applications: number
   recent_errors: { id: number; occurred_at: string; event_type: string; source: string; outcome: string }[]
+  agent_problems?: { site: string; kind: 'site_changed' | 'failed'; occurred_at: string }[]
   agent_failures_available: boolean; pending_erasures: number
 }
 

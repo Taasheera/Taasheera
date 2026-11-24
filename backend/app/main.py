@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
 from .database import build_engine
+from .applications.form_review import create_form_review_router
 from .applications.router import application_context, application_proposal, create_applications_router
 from .activity import activity_directory_from_environment, create_activity_router, record_activity
 from .admin_api import create_admin_router, install_admin_no_store
@@ -136,6 +137,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_passport_router(
         passport_storage, current_traveler_id, record_event=record_passport_activity,
         uploads_enabled=uploads_setting == "true",
+        check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
@@ -150,7 +152,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     def document_issues(session, application, answers):
         # Until the documents feature is released, the checks stay exactly as they were.
         if not app.state.feature_flags.is_on("supporting_documents"):
-            return []
+            return None
         from .applications.router import saved_profile
         return completeness_issues(session, document_storage, application, answers,
                                    latest_passport=passport_storage.latest_review(application.traveler_id, purpose="consistency_check"),
@@ -164,6 +166,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         remove_document_files=remove_document_files, document_issues=document_issues,
         remove_agent_files=agent_files.remove_application))
     app.include_router(create_agent_router(get_session, current_traveler, agent_files))
+    app.include_router(create_form_review_router(get_session, current_traveler,
+        lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:

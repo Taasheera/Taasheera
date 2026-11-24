@@ -33,8 +33,8 @@ export default function Home() {
             Prepare your visa application <span className="accent">with AI</span>
           </h1>
           <p className="hero-sub">
-            Upload your passport and answer a few questions. We fill in the embassy form, write your
-            cover letter and give you a document checklist, ready for you to review and submit.
+            Start with a passport photo. We read the details, guide you through the questions for your visa,
+            and save your progress so you can come back anytime.
           </p>
           <div className="hero-buttons">
             <MainButton />
@@ -112,7 +112,7 @@ export default function Home() {
         <div className="container">
           <header className="section-header">
             <p className="badge">Privacy</p>
-            <h2 id="privacy-heading">Your documents are safe with us</h2>
+            <h2 id="privacy-heading">How we handle your documents</h2>
           </header>
           <ul className="privacy">
             {privacyPoints.map(point => (

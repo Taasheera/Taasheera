@@ -68,11 +68,18 @@ def record_entry(session: Session, run_id: str, *, page: int, page_title: str, f
     session.commit()
 
 
-def record_screenshot(session: Session, run_id: str, *, page: int, page_title: str) -> str:
+def record_screenshot(session: Session, run_id: str, *, page: int, page_title: str,
+                      save=lambda screenshot_id: None, cleanup=lambda screenshot_id: None) -> str:
     _still_running(session, run_id)
     shot = AgentScreenshot(id=uuid.uuid4().hex, run_id=run_id, page=page, page_title=page_title[:100])
-    session.add(shot)
-    session.commit()
+    try:
+        save(shot.id)
+        session.add(shot)
+        session.commit()
+    except Exception:
+        session.rollback()
+        cleanup(shot.id)
+        raise
     return shot.id
 
 

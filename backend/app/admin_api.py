@@ -10,6 +10,7 @@ from sqlalchemy import or_, update
 from sqlmodel import Session, func, select
 
 from .activity import record_activity
+from .agent.monitoring import recent_agent_problems
 from .auth import check_origin, revoke_all_sessions
 from .models import (ROLES, APPLICATION_STATUSES, AccountErasure, ActivityEvent, AuthSession,
                      GoogleIdentity, Role, Status, Traveler, Application)
@@ -151,11 +152,18 @@ class MonitoringError(BaseModel):
     source: str
 
 
+class AgentProblem(BaseModel):
+    site: str
+    kind: Literal["site_changed", "failed"]
+    occurred_at: datetime
+
+
 class MonitoringPublic(BaseModel):
     applications_by_status: dict[str, int]
     total_applications: int
     recent_errors: list[MonitoringError]
     agent_failures_available: bool
+    agent_problems: list[AgentProblem]
     pending_erasures: int
 
 
@@ -252,7 +260,8 @@ def create_admin_router(get_session, current_traveler, passport_storage) -> APIR
                     "event_type": event.event_type, "outcome": event.outcome,
                     "source": event.identifier if event.event_type == "api_error" else event.event_type}
                     for event in errors],
-                "agent_failures_available": False,
+                "agent_failures_available": True,
+                "agent_problems": recent_agent_problems(session, limit),
                 "pending_erasures": count(session, AccountErasure)}
 
     @router.get("/overview", response_model=AdminOverview)

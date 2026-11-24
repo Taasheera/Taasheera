@@ -1,8 +1,7 @@
-# Sprint 3 local feature testing
+# Local feature testing
 
-Current combined branch: `zeid_sprint3_integration` (draft PR #28 to `dev`). This preview guide focuses
-on admin/privacy features and deliberately disables Gemini. For the full delivery summary and live
-assistant manual tests with separate data, use [Sprint 3 manual acceptance](SPRINT3_MANUAL_TESTING.md).
+The isolated preview uses a synthetic database and disables Gemini. For manual assistant testing with
+specimen data and Gemini, see [Sprint 3 manual acceptance](SPRINT3_MANUAL_TESTING.md).
 
 ## Start the isolated preview
 
@@ -12,8 +11,6 @@ requirement as the existing application). Run these from your Taasheera checkout
 macOS/Linux:
 
 ```bash
-git fetch origin
-git switch zeid_sprint3_integration
 cd frontend
 npm ci
 cd ../backend
@@ -26,8 +23,6 @@ python preview.py run --seed-demo
 Windows PowerShell:
 
 ```powershell
-git fetch origin
-git switch zeid_sprint3_integration
 cd frontend
 npm ci
 cd ../backend
@@ -106,10 +101,27 @@ passport/profile suggestions and application sidebar are preserved. Monitoring r
 those same `Application` rows, and deletion also removes their `ApplicationAnswer`
 copies. The statuses are DRAFT, INELIGIBLE and ANSWERS_COMPLETE (from the answers), then
 SUBMITTED, APPROVED and REFUSED, which the traveler records on the application's dashboard
-page (US 55). Automated embassy submission and agent failure ingestion remain future workflows.
+page (US 55). Agent failure and selector-change alerts now appear on the monitoring page.
+
 The existing user-management pages at `/admin` retain search/filter/suspend/role
 controls and now include deletion on a user detail page. `/backoffice` is linked
 as Monitoring; browser calls use the existing `/admin-api` rewrite.
+
+## Sprint 5 preparation checks
+
+Use the same isolated preview from your current Sprint 5 checkout. The Schengen questionnaire,
+supporting documents and PDF review are available in development. The critical-path Playwright test
+creates its own synthetic traveler and verifies the form download before recording a manual submission.
+
+- Complete a Schengen draft, open **Check my application**, and use the links to fix missing answers or uploads.
+- Open **Review embassy PDF** and compare the saved source for each field. When warnings appear, acknowledge
+  them, then confirm the reviewed values. The generated PDF has four pages and leaves
+  signature and declaration fields for the traveler. Editing an answer invalidates the old review.
+- With the worker connected to the same database, **Run form preview** uses the bundled practice form.
+  The status and screenshot update as pages are filled. Unknown fields and CAPTCHA stop the run.
+- Try **Explain this question** using the normal local app with a specimen-only Gemini configuration.
+  In a supported browser, **Dictate** puts editable text in the question box. Use manual text input
+  when speech recognition is unavailable.
 
 The earlier preliminary preview dataset is left intact; the integrated branch uses
 `feature-preview-sprint3` and `e2e-preview-sprint3-*` so no old or existing local data

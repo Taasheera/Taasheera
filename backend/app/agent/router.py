@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..applications import flow
+from ..applications.router import is_recorded
 from ..features import require_feature
 from ..models import AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, Traveler
 from . import queue
@@ -23,6 +24,7 @@ from .storage import AgentFiles
 class SitePublic(BaseModel):
     id: str
     name: str
+    is_demo: bool = False
 
 
 class RunPublic(BaseModel):
@@ -93,6 +95,8 @@ def create_agent_router(get_session, current_traveler, files: AgentFiles) -> API
             return "The agent can't fill this destination's online form yet."
         if application.archived_at is not None:
             return "This application is archived. Restore it first."
+        if is_recorded(application):
+            return "This application is recorded as submitted."
         questionnaire = flow.load_questionnaire(application.questionnaire_id)
         rows = session.exec(select(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
         answers, _ = flow.reconcile(questionnaire, {row.question_id: row.value for row in rows}, date.today())
@@ -112,7 +116,7 @@ def create_agent_router(get_session, current_traveler, files: AgentFiles) -> API
         site = site_for(application.questionnaire_id)
         reason = blocker(session, application)
         response.headers["Cache-Control"] = "private, no-store"
-        return AgentState(site=SitePublic(id=site.id, name=site.name) if site else None, can_start=reason is None,
+        return AgentState(site=SitePublic(id=site.id, name=site.name, is_demo=site.start_url.startswith("file:")) if site else None, can_start=reason is None,
                           reason=reason, runs=[_public(run) for run in runs(session, application)])
 
     @router.post("/runs", response_model=RunPublic, status_code=201, dependencies=[Depends(check_origin)])

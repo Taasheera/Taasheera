@@ -88,7 +88,7 @@ export function formatSize(bytes: number): string {
 
 // The cross-check (CMPS271-50). Mirrors backend/app/documents/crosscheck.py.
 export type Finding = {
-  field: 'name' | 'birth_date' | 'document_number'
+  field: 'name' | 'birth_date' | 'document_number' | 'travel_dates'
   source: 'passport' | 'profile' | 'document'
   where: string
   expected: string

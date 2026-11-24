@@ -139,8 +139,9 @@ export type CheckIssue = {
   message: string
   question_id: string | null
   step_id: string | null
+  document_id?: string | null
 }
-export type CheckReport = { ready: boolean; answered: number; total: number; issues: CheckIssue[] }
+export type CheckReport = { ready: boolean; answered: number; total: number; issues: CheckIssue[]; readiness_score?: number; readiness_reason?: string }
 
 export async function checkApplication(id: string): Promise<CheckReport> {
   const response = await protectedFetch(`/applications/${id}/check`, { cache: 'no-store' })

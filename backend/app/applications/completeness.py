@@ -34,6 +34,7 @@ class Issue(BaseModel):
     # Where it can be fixed (the fix links themselves are US 14).
     question_id: str | None = None
     step_id: str | None = None
+    document_id: str | None = None
 
 
 class Report(BaseModel):
@@ -41,6 +42,8 @@ class Report(BaseModel):
     answered: int
     total: int
     issues: list[Issue]
+    readiness_score: int
+    readiness_reason: str
 
 
 def _same(left: Any, right: Any) -> bool:
@@ -93,8 +96,24 @@ def check(questionnaire: flow.Questionnaire, answers: flow.Answers, today: date,
     issues += _passport_issues(questionnaire, answers, latest_passport, profile)
     issues += document_issues or []
     progress = flow.progress(questionnaire, answers)
+    missing_documents = sum(issue.kind == "missing" and issue.severity == "blocking"
+                            for issue in (document_issues or []))
+    warnings = sum(issue.severity == "warning" for issue in issues)
+    document_total = (sum(requirement.required for requirement in flow.required_documents(questionnaire, answers))
+                      if document_issues is not None else 0)
+    done = progress.answered + max(0, document_total - missing_documents)
+    total = progress.total + document_total
+    score = 0 if stopped else 100 * done // max(1, total)
+    reason = f"{progress.answered} of {progress.total} applicable questions answered."
+    if document_total:
+        reason += f" {document_total - missing_documents} of {document_total} required documents uploaded."
+    if warnings:
+        reason += f" {warnings} {'warning' if warnings == 1 else 'warnings'} to review."
+    if stopped:
+        reason = f"An eligibility answer stops this application. {reason}"
     return Report(ready=not any(issue.severity == "blocking" for issue in issues),
-                  answered=progress.answered, total=progress.total, issues=issues)
+                  answered=progress.answered, total=progress.total, issues=issues,
+                  readiness_score=score, readiness_reason=reason)
 
 
 def describe(report: Report) -> str:

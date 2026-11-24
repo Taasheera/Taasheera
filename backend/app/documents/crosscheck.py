@@ -21,10 +21,11 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Field = Literal["name", "birth_date", "document_number"]
+Field = Literal["name", "birth_date", "document_number", "travel_dates"]
 SourceKind = Literal["passport", "profile", "document"]
 
-FIELD_NAMES: dict[str, str] = {"name": "name", "birth_date": "date of birth", "document_number": "passport number"}
+FIELD_NAMES: dict[str, str] = {"name": "name", "birth_date": "date of birth", "document_number": "passport number",
+                              "travel_dates": "travel dates"}
 # Below this, the text is too short to say anything about (a photo, a blank scan).
 MIN_TEXT = 40
 _MONTHS = {name: number for number, names in enumerate(
