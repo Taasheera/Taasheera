@@ -15,7 +15,7 @@ export type Run = {
 export type Entry = { page: number; page_title: string; field: string; value: string; entered_at: string }
 export type Screenshot = { id: string; page: number; page_title: string; taken_at: string }
 export type RunDetail = Run & { entries: Entry[]; screenshots: Screenshot[] }
-export type AgentState = { site: { id: string; name: string } | null; can_start: boolean; reason: string | null; runs: Run[] }
+export type AgentState = { site: { id: string; name: string; is_demo?: boolean } | null; can_start: boolean; reason: string | null; runs: Run[] }
 
 export const ACTIVE: RunStatus[] = ['queued', 'running']
 

@@ -220,11 +220,11 @@ def _state_line(application: Application) -> str:
     return recorded.get(application.status, "This application is active.")
 
 
-DocumentIssues = Callable[[Session, Application, flow.Answers], list[completeness.Issue]]
+DocumentIssues = Callable[[Session, Application, flow.Answers], list[completeness.Issue] | None]
 
 
-def no_document_issues(session: Session, application: Application, answers: flow.Answers) -> list[completeness.Issue]:
-    return []
+def no_document_issues(session: Session, application: Application, answers: flow.Answers) -> None:
+    return None
 
 
 def application_context(session: Session, traveler_id: int, application_id: str, *,

@@ -567,3 +567,15 @@ a.button {
 .chat-documents .docs { margin: 0; padding: 0; border: 0; }
 .completeness-fix { margin-left: .35rem; color: var(--brand); font-weight: 600; }
 .chat-documents #docs-title { scroll-margin-top: 180px; }
+
+.chat-explain {
+  display: block;
+  padding: .4rem 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: .85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

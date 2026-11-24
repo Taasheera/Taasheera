@@ -6,8 +6,11 @@ import subprocess
 import sys
 
 
+RELEASE_REPOSITORY = "Taasheera/Taasheera"
+
+
 def verify(revision, repository, *, run=subprocess.run):
-    if not re.fullmatch(r"[a-f0-9]{40}", revision) or repository != "mhs86/Taasheera":
+    if not re.fullmatch(r"[a-f0-9]{40}", revision) or repository != RELEASE_REPOSITORY:
         raise ValueError("Invalid release identity.")
 
     def api(path):

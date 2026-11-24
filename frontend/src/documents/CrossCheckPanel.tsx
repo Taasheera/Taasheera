@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCrossCheck, type CrossCheck } from './api'
 
-const FIELD_LABELS = { name: 'Name', birth_date: 'Date of birth', document_number: 'Passport number' } as const
+const FIELD_LABELS = { name: 'Name', birth_date: 'Date of birth', document_number: 'Passport number', travel_dates: 'Travel dates' } as const
 
 // Where the traveler's name, date of birth or passport number disagrees with their passport (CMPS271-50).
 // The server reads the documents and decides; `version` changes whenever a file or answer changes.

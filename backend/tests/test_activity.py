@@ -3,7 +3,7 @@ from io import BytesIO
 
 from fastapi.testclient import TestClient
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 from sqlmodel import Session, select
 
 from app.main import create_app
@@ -94,7 +94,9 @@ def test_passport_action_logs_status_without_image_or_mrz(tmp_path, monkeypatch)
                         lambda image, reader: Extraction(status=ExtractionStatus.UNREADABLE))
     app = create_app(f"sqlite:///{(tmp_path / 'app.db').as_posix()}")
     image = BytesIO()
-    Image.new("RGB", (400, 300), "white").save(image, format="JPEG")
+    specimen = Image.new("RGB", (800, 500), "white")
+    ImageDraw.Draw(specimen).rectangle((100, 120, 700, 380), fill="black")
+    specimen.save(image, format="JPEG")
     with TestClient(app) as client:
         client.post("/auth/register", json={"name": "Maya", "email": "maya@example.com", "password": PASSWORD})
         token = client.post("/auth/login", json={"email": "maya@example.com",

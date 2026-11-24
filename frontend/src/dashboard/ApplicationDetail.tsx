@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { getApplication, getTimeline, isRecorded, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
 import ApplicationActions from './ApplicationActions'
@@ -8,6 +8,7 @@ import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
 import AgentPanel from '../agent/AgentPanel'
+import FormReview from '../submission/FormReview'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -24,6 +25,7 @@ export default function ApplicationDetail() {
 
 function Detail({ applicationId }: { applicationId: string }) {
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const traveler = useTraveler()
   // null while loading, 'missing' for an id that isn't the traveler's, an Error when loading failed.
   const [loaded, setLoaded] = useState<Loaded | 'missing' | Error | null>(null)
@@ -105,6 +107,10 @@ function Detail({ applicationId }: { applicationId: string }) {
     <Feature name="supporting_documents">
       <DocumentChecklist applicationId={application.id} version={application.updated_at} />
     </Feature>
+
+    {!archived && !isRecorded(application.status) && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
+      <FormReview key={application.updated_at} applicationId={application.id} focused={hash === '#embassy-pdf'} />
+    </Feature>}
 
     <Feature name="agent_form_filling">
       <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />

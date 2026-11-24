@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .extraction import Extraction, MrzReader, extract_passport, read_mrz_lines
 from .images import MAX_UPLOAD_BYTES, InvalidImageError, normalize_image
+from .quality import validate_scan
 from .storage import PassportImageStorage
 
 # Fields the MRZ has no check digit for. The review form always asks the
@@ -98,6 +99,7 @@ def create_passport_router(
     reader: MrzReader = read_mrz_lines,
     record_event=None,
     uploads_enabled: bool = True,
+    check_quality=lambda: False,
 ) -> APIRouter:
     router = APIRouter(prefix="/passports", tags=["passports"])
     TravelerId = Annotated[int, Depends(current_traveler_id)]
@@ -116,7 +118,7 @@ def create_passport_router(
         # Read one byte past the limit so oversized files are detected without reading them fully.
         data = file.file.read(MAX_UPLOAD_BYTES + 1)
         try:
-            jpeg = normalize_image(data)
+            jpeg = normalize_image(data, validate=validate_scan if check_quality() else None)
         except InvalidImageError as exc:
             if record_event:
                 record_event(traveler_id, "passport_upload", "failure")

@@ -44,6 +44,9 @@ class AgentFiles:
             self.on_access(owner_id, screenshot_id, purpose)
         return path.read_bytes()
 
+    def remove_screenshot(self, owner_id: int, application_id: str, screenshot_id: str) -> None:
+        self._path(owner_id, application_id, screenshot_id).unlink(missing_ok=True)
+
     def remove_application(self, owner_id: int, application_id: str) -> None:
         folder = self._folder(owner_id, application_id)
         if folder.is_symlink():

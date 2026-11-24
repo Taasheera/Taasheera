@@ -255,3 +255,14 @@
 .proposal-diff s { color: var(--fg-dim); }
 .proposal-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .proposal-done { margin: 0; color: var(--fg-muted); }
+
+.assistant-compose-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.assistant-form textarea { grid-column: 1 / -1; }
+.voice-draft button { white-space: nowrap; }

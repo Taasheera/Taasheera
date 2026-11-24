@@ -51,7 +51,7 @@ with the GitHub CLI signed in (`gh auth status`):
 
 ```bash
 for branch in dev main; do
-  gh api --method PUT "repos/mhs86/Taasheera/branches/$branch/protection" --input - <<'JSON'
+  gh api --method PUT "repos/Taasheera/Taasheera/branches/$branch/protection" --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": false,
@@ -82,7 +82,7 @@ done
 Anyone with access to the repository, including write access, can confirm the required checks:
 
 ```bash
-gh api repos/mhs86/Taasheera/branches/dev --jq '{protected, checks: [.protection.required_status_checks.checks[]?.context]}'
+gh api repos/Taasheera/Taasheera/branches/dev --jq '{protected, checks: [.protection.required_status_checks.checks[]?.context]}'
 ```
 
 Expected: `protected: true` and the four checks. Run the same for `main`.
@@ -90,7 +90,7 @@ Expected: `protected: true` and the four checks. Run the same for `main`.
 The approvals and admin settings can only be read by an admin:
 
 ```bash
-gh api repos/mhs86/Taasheera/branches/dev/protection --jq '{approvals: .required_pull_request_reviews.required_approving_review_count, admins: .enforce_admins.enabled}'
+gh api repos/Taasheera/Taasheera/branches/dev/protection --jq '{approvals: .required_pull_request_reviews.required_approving_review_count, admins: .enforce_admins.enabled}'
 ```
 
 Expected: `approvals: 1`, `admins: true`. Without admin rights this answers `404 Not Found` even

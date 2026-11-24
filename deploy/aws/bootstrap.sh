@@ -90,7 +90,7 @@ grep -q "UUID=$disk_uuid " /etc/fstab || printf 'UUID=%s /srv/taasheera xfs defa
 phase='fetch selected Git commit'
 printf 'Setup: %s\n' "$phase"
 if [ ! -d /opt/taasheera/.git ]; then
-  git clone https://github.com/mhs86/Taasheera.git /opt/taasheera
+  git clone https://github.com/Taasheera/Taasheera.git /opt/taasheera
 fi
 cd /opt/taasheera
 test -z "$(git status --porcelain)"

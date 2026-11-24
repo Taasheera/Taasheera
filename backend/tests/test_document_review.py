@@ -88,4 +88,6 @@ def test_with_the_flag_off_the_completeness_check_is_unchanged(api, monkeypatch)
     monkeypatch.setattr(app.state, "feature_flags", type(app.state.feature_flags)(frozenset()))
     application_id = start(client, headers[0])["id"]
     answer_all(client, headers[0], application_id)
-    assert check(client, headers[0], application_id) == {"ready": True, "answered": 19, "total": 19, "issues": []}
+    report = check(client, headers[0], application_id)
+    assert report["ready"] and report["readiness_score"] == 100
+    assert report["answered"] == report["total"] == 19 and not report["issues"]

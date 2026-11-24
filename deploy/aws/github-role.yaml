@@ -11,23 +11,18 @@ Parameters:
     Description: Set false if token.actions.githubusercontent.com already exists in IAM.
   TrustedSubject:
     Type: String
-    Default: repo:mhs86/Taasheera:ref:refs/heads/dev
+    Default: repo:Taasheera@357495043/Taasheera@1387089236:ref:refs/heads/dev
     AllowedValues:
-      - repo:mhs86/Taasheera:ref:refs/heads/dev
-      - repo:mhs86/Taasheera:environment:production
-      # This repository's tokens use GitHub's immutable subject (owner and repository ids), which
-      # GET /repos/mhs86/Taasheera/actions/oidc/customization/sub reports as the claim prefix.
-      - repo:mhs86@333701050/Taasheera@1387089236:ref:refs/heads/dev
-      - repo:mhs86@333701050/Taasheera@1387089236:environment:production
+      - repo:Taasheera@357495043/Taasheera@1387089236:ref:refs/heads/dev
+      - repo:Taasheera@357495043/Taasheera@1387089236:environment:production
     Description: >-
-      Who may assume the role. Deploy this template once per value: the dev role for the manual
-      dev workflow, the production-environment role for deploy-main-aws.yml. Use the subject the
-      repository's tokens actually carry (see the claim prefix above).
+      Deploy once for the dev branch and once for the production environment.
+      GitHub uses the immutable subject after the repository transfer.
 Conditions:
   NewProvider: !Equals [!Ref CreateOidcProvider, 'true']
-  ProductionDeploy: !Or
-    - !Equals [!Ref TrustedSubject, 'repo:mhs86/Taasheera:environment:production']
-    - !Equals [!Ref TrustedSubject, 'repo:mhs86@333701050/Taasheera@1387089236:environment:production']
+  ProductionDeploy: !Equals
+    - !Ref TrustedSubject
+    - 'repo:Taasheera@357495043/Taasheera@1387089236:environment:production'
 Resources:
   Provider:
     Type: AWS::IAM::OIDCProvider

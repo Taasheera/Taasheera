@@ -4,10 +4,13 @@ Shared by the documents page, the completeness check (US 13) and the assistant's
 application, so all three report the same thing.
 """
 
+from datetime import date
+
 from sqlmodel import Session, select
 
 from ..applications import completeness, flow
 from ..models import Application, SupportingDocument
+from .booking_dates import booking_findings
 from .crosscheck import DocumentText, Report, cross_check
 from .storage import DocumentStorage
 
@@ -28,7 +31,12 @@ def document_cross_check(session: Session, storage: DocumentStorage, application
                           text=storage.load_text(application.traveler_id, document.id, purpose="document_check"))
              for document in _documents(session, application) if document.requirement not in skipped]
     passport = answers.get("passport") if isinstance(answers.get("passport"), dict) else None
-    return cross_check(passport, latest_passport=latest_passport, profile=profile, documents=texts)
+    report = cross_check(passport, latest_passport=latest_passport, profile=profile, documents=texts)
+    arrival, departure = answers.get("arrival_date"), answers.get("departure_date")
+    if arrival and departure:
+        for document in texts:
+            report.findings.extend(booking_findings(document, date.fromisoformat(arrival), date.fromisoformat(departure)))
+    return report
 
 
 def completeness_issues(session: Session, storage: DocumentStorage, application: Application, answers: flow.Answers,
@@ -39,11 +47,13 @@ def completeness_issues(session: Session, storage: DocumentStorage, application:
     """
     questionnaire = flow.load_questionnaire(application.questionnaire_id)
     uploaded = {document.requirement for document in _documents(session, application)}
-    issues = [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}")
+    issues = [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}",
+                                 document_id=requirement.id)
               for requirement in flow.required_documents(questionnaire, answers)
               if requirement.required and requirement.id not in uploaded]
     report = document_cross_check(session, storage, application, answers,
                                   latest_passport=latest_passport, profile=profile)
-    issues += [completeness.Issue(kind="inconsistent", severity="warning", message=finding.message)
+    issues += [completeness.Issue(kind="inconsistent", severity="warning", message=finding.message,
+                                  document_id=finding.requirement)
                for finding in report.findings if finding.source == "document"]
     return issues

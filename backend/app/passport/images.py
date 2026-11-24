@@ -8,6 +8,7 @@ re-encoded as a fresh JPEG. That:
 - means we never store the uploaded bytes as-is
 """
 
+from collections.abc import Callable
 from io import BytesIO
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -24,7 +25,7 @@ class InvalidImageError(ValueError):
         self.status_code = status_code
 
 
-def normalize_image(data: bytes) -> bytes:
+def normalize_image(data: bytes, *, validate: Callable[[Image.Image], None] | None = None) -> bytes:
     """Return the upload as a clean, upright JPEG, or raise InvalidImageError."""
     if len(data) > MAX_UPLOAD_BYTES:
         raise InvalidImageError("Image must be 10 MB or smaller.", 413)
@@ -38,6 +39,8 @@ def normalize_image(data: bytes) -> bytes:
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError):
         raise InvalidImageError("The file isn't a readable image.", 422) from None
 
+    if validate is not None:
+        validate(upright)
     upright.thumbnail((MAX_SIDE, MAX_SIDE))
     output = BytesIO()
     upright.save(output, format="JPEG", quality=90)

@@ -1,3 +1,5 @@
+import AssistantText from './AssistantText'
+import VoiceDraft from './VoiceDraft'
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { askAssistant, getHistory, type AssistantStep, type ChatTurn } from './api'
 import { OPEN_ASSISTANT_EVENT } from './openAssistant'
@@ -119,7 +121,7 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         </div>}
         {turns.map((turn, index) => <div key={index} className={`bubble bubble-${turn.role}`}>
           <span className="visually-hidden">{turn.role === 'user' ? 'You said' : 'Assistant said'}: </span>
-          {turn.content}
+          {turn.role === 'assistant' ? <AssistantText text={turn.content} /> : turn.content}
         </div>)}
         {pending && <div className="bubble bubble-assistant bubble-pending" role="status">
           <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
@@ -132,8 +134,12 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         <label htmlFor={`${panelId}-input`} className="visually-hidden">Your question</label>
         <textarea id={`${panelId}-input`} ref={input} rows={2} maxLength={MAX_LENGTH} value={draft}
           placeholder="Ask a question…" onChange={event => setDraft(event.target.value)} onKeyDown={onKeyDown} />
-        <button type="submit" className="button button-primary" disabled={pending || !draft.trim()}
-          data-activity-id="assistant-send">Send</button>
+        <div className="assistant-compose-actions">
+          <VoiceDraft disabled={pending} onText={text =>
+            setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, MAX_LENGTH))} />
+          <button type="submit" className="button button-primary" disabled={pending || !draft.trim()}
+            data-activity-id="assistant-send">Send</button>
+        </div>
       </form>
     </section>}
 

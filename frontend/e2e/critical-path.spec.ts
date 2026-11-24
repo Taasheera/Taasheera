@@ -4,6 +4,7 @@
 // does not change these tests.
 import { readFile } from 'node:fs/promises'
 import { expect, request as playwrightRequest, test, type Page } from '@playwright/test'
+import type { Checklist } from '../src/documents/api'
 
 const password = 'Local-preview-only-123!'
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
@@ -58,9 +59,10 @@ test('passport upload, the application chat and the dashboard work end to end', 
   // the ICAO specimen's details and confirms them.
   await page.goto('/passport')
   const bytes = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 300
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 400, 300)
-    ctx.fillStyle = 'black'; ctx.font = '20px sans-serif'; ctx.fillText('SPECIMEN TEST ONLY', 35, 150)
+    const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 500
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 800, 500)
+    ctx.fillStyle = 'black'; ctx.font = '32px sans-serif';
+    for (let row = 1; row < 10; row++) ctx.fillText('SPECIMEN TEST ONLY — NO PASSPORT DATA', 35, row * 45)
     return Array.from(new Uint8Array(await (await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/jpeg'))).arrayBuffer()))
   })
   await page.locator('input[type="file"]').first().setInputFiles({ name: 'synthetic.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bytes) })
@@ -118,6 +120,16 @@ test('passport upload, the application chat and the dashboard work end to end', 
       state = await response.json()
     }
     expect(state.status).toBe('ANSWERS_COMPLETE')
+    expect(state.answers.map((answer: { question: { id: string } }) => answer.question.id)).not.toContain('accommodation_details')
+
+    const docs = `/applications/${applicationId}/documents`
+    const checklist: Checklist = await (await api.get(docs, { headers })).json()
+    for (const item of checklist.requirements.filter(item => item.required)) {
+      const uploaded = await api.post(docs, { headers, multipart: {
+        requirement: item.id, file: { name: 'specimen.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bytes) },
+      } })
+      expect(uploaded.status(), item.id).toBe(201)
+    }
   } finally {
     await api.dispose()
   }
@@ -131,6 +143,26 @@ test('passport upload, the application chat and the dashboard work end to end', 
   await expect(page).toHaveURL(`/dashboard/${applicationId}`)
   await expect(page.getByRole('heading', { name: 'Timeline' })).toBeVisible()
   await expect(page.locator('.dash-timeline')).toContainText('Every question answered')
+
+  // Review the saved source values, explicitly confirm and download the commission form.
+  await page.getByRole('button', { name: 'Review fields' }).click()
+  const review = page.getByRole('region', { name: 'Review your embassy PDF' })
+  await expect(review.getByRole('row', { name: /1\. Surname.*ERIKSSON/ })).toBeVisible()
+  const desktop = page.viewportSize()!
+  for (const width of [320, 375, 414, 768]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(review.getByRole('heading', { name: 'Review your embassy PDF' })).toBeVisible()
+    expect(await review.evaluate(region => region.getBoundingClientRect().right)).toBeLessThanOrEqual(width + 1)
+  }
+  await page.setViewportSize(desktop)
+  const downloadPdf = review.getByRole('button', { name: 'Download PDF' })
+  await expect(downloadPdf).toBeDisabled()
+  const warnings = review.getByRole('checkbox', { name: /I reviewed the warnings/ })
+  if (await warnings.isVisible()) await warnings.check()
+  await review.getByRole('checkbox', { name: /I reviewed these values/ }).check()
+  const [form] = await Promise.all([page.waitForEvent('download'), downloadPdf.click()])
+  expect(form.suggestedFilename()).toBe('schengen-visa-form.pdf')
+  expect((await readFile((await form.path())!)).subarray(0, 5).toString()).toBe('%PDF-')
 
   // The traveler records submitting it themself, then the embassy's decision (US 55).
   await page.getByRole('button', { name: "I've submitted it" }).click()

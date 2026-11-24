@@ -88,7 +88,7 @@ def test_invalid_release_identity_cannot_run_commands(revision):
     with pytest.raises(ValueError):
         publish_images.publish(revision, run=run)
     with pytest.raises(ValueError):
-        verify_release.verify(revision, "mhs86/Taasheera", run=run)
+        verify_release.verify(revision, "Taasheera/Taasheera", run=run)
 
 
 @pytest.mark.parametrize("main,ci_ok,expected", [(SHA, True, None), ("c" * 40, True, "superseded"),
@@ -108,6 +108,15 @@ def test_only_current_main_with_successful_push_ci_can_deploy(main, ci_ok, expec
 
     if expected:
         with pytest.raises(RuntimeError, match=expected):
-            verify_release.verify(SHA, "mhs86/Taasheera", run=run)
+            verify_release.verify(SHA, "Taasheera/Taasheera", run=run)
     else:
-        verify_release.verify(SHA, "mhs86/Taasheera", run=run)
+        verify_release.verify(SHA, "Taasheera/Taasheera", run=run)
+
+
+@pytest.mark.parametrize("repository", ["mhs86/Taasheera", "different/Taasheera"])
+def test_release_guard_rejects_other_repository_identities(repository):
+    def run(*args, **kwargs):
+        pytest.fail("A different repository reached the release API")
+
+    with pytest.raises(ValueError, match="Invalid release identity"):
+        verify_release.verify(SHA, repository, run=run)

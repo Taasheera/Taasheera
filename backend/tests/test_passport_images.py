@@ -64,3 +64,14 @@ def test_downscales_large_images():
     result = decode(normalize_image(data))
 
     assert result.size == (MAX_SIDE, MAX_SIDE // 2)
+
+
+def test_scan_quality_checks_resolution_and_overexposure_before_encoding():
+    from app.passport.quality import validate_scan
+
+    with pytest.raises(InvalidImageError, match="too small"):
+        normalize_image(encode(Image.new("RGB", (250, 175), "white"), "PNG"), validate=validate_scan)
+    with pytest.raises(InvalidImageError, match="washed out"):
+        normalize_image(encode(Image.new("RGB", (1000, 600), "white"), "PNG"), validate=validate_scan)
+    with pytest.raises(InvalidImageError, match="blurry"):
+        normalize_image(encode(Image.new("RGB", (1000, 600), "#888888"), "PNG"), validate=validate_scan)

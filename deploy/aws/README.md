@@ -61,7 +61,7 @@ create another account. First publish/merge these configuration files so the
 host can fetch the exact Git commit. A clean Git checkout is required.
 
 ```bash
-git clone https://github.com/mhs86/Taasheera.git
+git clone https://github.com/Taasheera/Taasheera.git
 cd Taasheera
 export AWS_REGION=us-east-1
 export AWS_FREE_ELIGIBILITY_CONFIRMED=yes
@@ -137,7 +137,7 @@ environment. A concurrency group shared with manual dev deploys prevents overlap
 run must also have passing push CI; a superseded commit is refused before publication and again
 before host deployment. Ahmad Zeid leads deployment/AWS operations from November 2, 2026.
 The following one-time setup needs AWS IAM/CloudFormation and GitHub repository-settings permissions;
-verify the access handover first. Existing account/repository ownership is unchanged by this role handover.
+Verify access to the AWS account and the transferred `Taasheera/Taasheera` repository before applying.
 These steps are not run automatically:
 
 1. In GitHub, create the `production` environment (Settings → Environments). Optionally add a
@@ -148,15 +148,14 @@ These steps are not run automatically:
    aws cloudformation deploy --region us-east-1 --stack-name taasheera-github-main-role \
      --template-file deploy/aws/github-role.yaml --capabilities CAPABILITY_NAMED_IAM \
      --parameter-overrides CreateOidcProvider=false \
-       TrustedSubject=repo:mhs86@333701050/Taasheera@1387089236:environment:production
+       TrustedSubject=repo:Taasheera@357495043/Taasheera@1387089236:environment:production
    aws cloudformation describe-stacks --stack-name taasheera-github-main-role \
      --query 'Stacks[0].Outputs' --output table
    ```
 
-   This repository's GitHub tokens use the immutable subject (owner and repository ids). Check it with
-   `gh api repos/mhs86/Taasheera/actions/oidc/customization/sub`: a role trusting the plain
-   `repo:mhs86/Taasheera:...` spelling is refused with "Not authorized to perform
-   sts:AssumeRoleWithWebIdentity". Re-running this command on the existing stack keeps the role's ARN.
+   GitHub uses the immutable subject after a repository transfer. Update the existing dev and
+   production role stacks to the new owner ID while keeping the same repository ID. Review the exact
+   branch/environment subject in each change set. Reapplying the existing role stacks keeps their ARNs.
 
 3. Create the two private repositories and grant the existing host read-only image access:
 

@@ -66,7 +66,7 @@ def test_the_agent_starts_only_on_a_complete_application(api):
     client, _, headers, _ = api
     draft = start(client, headers[0])["id"]
     state = agent(client, headers[0], draft).json()
-    assert state["site"] == {"id": "schengen-harmonised", "name": "Harmonised Schengen visa application form"}
+    assert state["site"] == {"id": "schengen-harmonised", "name": "Harmonised Schengen visa application form", "is_demo": True}
     assert state["can_start"] is False and "Answer every question" in state["reason"]
     assert agent(client, headers[0], draft, "/runs", "post").status_code == 409
 

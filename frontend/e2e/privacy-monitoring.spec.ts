@@ -34,9 +34,10 @@ test('traveler creates a draft, sees passport access, restores session and delet
   await page.goto('/passport')
   // Use a generated specimen-size canvas rather than any real passport.
   const bytes = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 300
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 400, 300)
-    ctx.fillStyle = 'black'; ctx.font = '20px sans-serif'; ctx.fillText('SPECIMEN TEST ONLY', 35, 150)
+    const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 500
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 800, 500)
+    ctx.fillStyle = 'black'; ctx.font = '32px sans-serif';
+    for (let row = 1; row < 10; row++) ctx.fillText('SPECIMEN TEST ONLY — NO PASSPORT DATA', 35, row * 45)
     return Array.from(new Uint8Array(await (await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/jpeg'))).arrayBuffer()))
   })
   await page.locator('input[type="file"]').first().setInputFiles({ name: 'synthetic.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(bytes) })
