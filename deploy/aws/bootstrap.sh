@@ -175,6 +175,17 @@ if [ -n "${TAASHEERA_API_IMAGE:-}" ] || [ -n "${TAASHEERA_WEB_IMAGE:-}" ]; then
   # Short-lived registry credentials stay in this setup's private temporary directory.
   export DOCKER_CONFIG="$task_tmp/docker"
   mkdir -m 700 "$DOCKER_CONFIG"
+  phase='check Docker disk space before image pull'
+  docker_root=$(docker info --format '{{.DockerRootDir}}')
+  available_kib=$(df -Pk -- "$docker_root" | awk 'NR == 2 {print $4}')
+  [[ "$available_kib" =~ ^[0-9]+$ ]]
+  if (( available_kib < 2 * 1024 * 1024 )); then
+    # Immutable releases build in Actions. Reclaim only unused local build cache.
+    printf 'Docker has %s MiB free. Clearing unused build cache.\n' "$((available_kib / 1024))"
+    docker builder prune --all --force | tail -n 1
+    df -hP -- "$docker_root"
+  fi
+  phase='pull and verify application images'
   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin \
     632630731308.dkr.ecr.us-east-1.amazonaws.com
   docker compose -f deploy/aws/compose.yaml pull api web
