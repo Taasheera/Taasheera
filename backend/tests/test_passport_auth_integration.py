@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from app.main import create_app
 
@@ -10,7 +10,9 @@ def test_main_app_passport_routes_require_the_authenticated_owner(tmp_path, monk
     monkeypatch.setenv("PASSPORT_STORAGE_DIR", str(tmp_path / "passports"))
     app = create_app(f"sqlite:///{(tmp_path / 'app.db').as_posix()}")
     image = BytesIO()
-    Image.new("RGB", (400, 300), "white").save(image, format="JPEG")
+    specimen = Image.new("RGB", (800, 500), "white")
+    ImageDraw.Draw(specimen).rectangle((100, 120, 700, 380), fill="black")
+    specimen.save(image, format="JPEG")
 
     with TestClient(app) as client:
         for email in ("one@example.com", "two@example.com"):

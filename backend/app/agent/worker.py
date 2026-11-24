@@ -15,10 +15,13 @@ from datetime import date
 
 from sqlmodel import Session, select
 
+from ..account_lock import account_lock
+from ..activity import activity_directory_from_environment
 from ..applications import flow
+from ..applications.router import is_recorded
 from ..models import AgentRun, Application, ApplicationAnswer, Traveler
 from . import queue
-from .filler import Entry, Outcome, Shot, fill
+from .filler import Entry, Outcome, Shot, TransientPortalError, fill, retry_timeout
 from .sites import SITES
 from .storage import AgentFiles
 from .values import VALUE_BUILDERS
@@ -27,7 +30,7 @@ log = logging.getLogger("taasheera.agent")
 POLL_SECONDS = 3
 # Touched on every loop; the container's health check fails if it goes stale (deploy/aws/compose.yaml).
 HEARTBEAT = Path(os.environ.get("AGENT_HEARTBEAT_FILE", "/tmp/taasheera-agent-alive"))
-PAGE_LOAD_TIMEOUT_MS = 45_000
+PAGE_LOAD_TIMEOUT_MS = 15_000
 
 # Opens a browser and yields it; the worker asks it for a new page per run.
 BrowserFactory = Callable[[], AbstractContextManager]
@@ -42,25 +45,45 @@ def form_values(session: Session, run: AgentRun) -> tuple[dict[str, str] | None,
     questionnaire = flow.load_questionnaire(application.questionnaire_id)
     rows = session.exec(select(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
     answers, _ = flow.reconcile(questionnaire, {row.question_id: row.value for row in rows}, date.today())
+    if traveler.status != "active":
+        return None, "the traveler's account is unavailable"
+    if is_recorded(application):
+        return None, "the application is recorded as submitted"
     if application.archived_at is not None:
         return None, "the application is archived"
     if flow.next_question(questionnaire, answers) is not None or flow.stop_message(questionnaire, answers):
         return None, "your answers changed and aren't complete any more. Finish them, then start the agent again"
     site = SITES[run.site]
-    return VALUE_BUILDERS[site.id](answers, email=traveler.email, site=site), None
+    return VALUE_BUILDERS[site.value_profile](answers, email=traveler.email, site=site), None
 
 
 class _Recorder:
     def __init__(self, session: Session, files: AgentFiles, run: AgentRun):
         self.session, self.files, self.run = session, files, run
+        self.owner_id, self.application_id, self.run_id = run.traveler_id, run.application_id, run.id
+        self.lock_directory = activity_directory_from_environment().parent / ".account-locks"
 
     def entry(self, entry: Entry) -> None:
         queue.record_entry(self.session, self.run.id, page=entry.page, page_title=entry.page_title,
                            field=entry.field, value=entry.value)
 
     def screenshot(self, shot: Shot) -> None:
-        screenshot_id = queue.record_screenshot(self.session, self.run.id, page=shot.page, page_title=shot.page_title)
-        self.files.save(self.run.traveler_id, self.run.application_id, screenshot_id, shot.png)
+        # Serialize the file write with account and application deletion. Publish its row only
+        # after the file is complete, so a live poll never sees a partially written screenshot.
+        with account_lock(self.lock_directory, self.owner_id):
+            queue.record_screenshot(self.session, self.run_id, page=shot.page, page_title=shot.page_title,
+                                    save=lambda screenshot_id: self.files.save(self.owner_id, self.application_id,
+                                                                               screenshot_id, shot.png),
+                                    cleanup=lambda screenshot_id: self.files.remove_screenshot(
+                                        self.owner_id, self.application_id, screenshot_id))
+
+
+def _open_page(page, url: str):
+    response = page.goto(url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+    if response is not None and response.status in {502, 503, 504}:
+        raise TransientPortalError()
+    if response is not None and response.status >= 400:
+        raise RuntimeError("The configured page did not load.")
 
 
 def process(session: Session, files: AgentFiles, run: AgentRun, browser) -> Outcome:
@@ -73,7 +96,7 @@ def process(session: Session, files: AgentFiles, run: AgentRun, browser) -> Outc
         context = browser.new_context(viewport={"width": 1280, "height": 900}, locale="en-GB")
         try:
             page = context.new_page()
-            page.goto(site.start_url, timeout=PAGE_LOAD_TIMEOUT_MS, wait_until="domcontentloaded")
+            retry_timeout(lambda: _open_page(page, site.start_url))
             outcome = fill(page, site, values, _Recorder(session, files, run))
         except queue.RunCancelled:
             outcome = Outcome("failed", "cancelled")

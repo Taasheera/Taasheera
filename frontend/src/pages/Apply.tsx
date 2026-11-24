@@ -1,3 +1,5 @@
+import AssistantText from '../assistant/AssistantText'
+import VoiceDraft from '../assistant/VoiceDraft'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { restoreSession, type Traveler } from '../auth'
@@ -7,10 +9,12 @@ import ProposalCard from '../assistant/ProposalCard'
 import AnswerInput from '../application/AnswerInput'
 import ApplicationsSidebar from '../application/ApplicationsSidebar'
 import CompletenessCheck from '../application/CompletenessCheck'
+import DocumentChecklist from '../documents/DocumentChecklist'
+import Feature from '../Feature'
 import StartChat from '../application/StartChat'
 import SuggestedAnswer from '../application/SuggestedAnswer'
 import {
-  getApplication, listApplications, saveAnswer,
+  getApplication, isRecorded, listApplications, saveAnswer,
   type AnswerInput as Answer, type ApplicationState, type ApplicationSummary,
 } from '../application/api'
 import { formatAnswer, formatDate, returnedPassport, sourceLabel, travellers } from '../application/format'
@@ -99,6 +103,9 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   const [draft, setDraft] = useState('')
   const [asking, setAsking] = useState(false)
   const [askError, setAskError] = useState('')
+  // Counts document uploads/deletions on this page, so the check below can run again.
+  const [documentChanges, setDocumentChanges] = useState(0)
+  const [documentTarget, setDocumentTarget] = useState<string | null>(null)
   const current = useRef<HTMLLIElement>(null)
   const askBox = useRef<HTMLTextAreaElement>(null)
   const upload = returnedPassport(location.search)
@@ -162,13 +169,13 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       : '')
   }
 
-  async function ask(event?: { preventDefault(): void }) {
+  async function ask(event?: { preventDefault(): void }, explanation?: string) {
     event?.preventDefault()
-    const question = draft.trim()
+    const question = (explanation ?? draft).trim()
     if (!question || asking || !application) return
     const at = application.answers.length
     const history = asides.map(({ role, content }) => ({ role, content }))
-    setDraft('')
+    if (!explanation) setDraft('')
     setAskError('')
     setAsking(true)
     setAsides(turns => [...turns, { role: 'user', content: question, at }])
@@ -177,7 +184,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       setAsides(turns => [...turns, { role: 'assistant', content: reply.reply, at, proposal: reply.proposal }])
     } catch (error) {
       setAsides(turns => turns.slice(0, -1))
-      setDraft(question)
+      if (!explanation) setDraft(question)
       setAskError(error instanceof Error ? error.message : 'The assistant could not answer. Please try again.')
     } finally {
       setAsking(false)
@@ -185,8 +192,9 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   }
   // The assistant offered to take the traveler to a question: open an answered one for changing.
   function goTo(questionId: string) {
-    if (questionId === application?.current?.id) {
+    if (!application?.answers.some(saved => saved.question.id === questionId)) {
       current.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      current.current?.focus({ preventScroll: true })
       return
     }
     setEditing(questionId)
@@ -209,13 +217,19 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       <Link to={`/dashboard/${application.id}`} data-activity-id="application-details">See it and restore it</Link>.</p>
   }
 
+  // Recorded as submitted (US 55): the answers are what the embassy received, so they stay as they are.
+  if (isRecorded(application.status)) {
+    return <p className="apply-status">You recorded this application as submitted, so its answers can't be changed.{' '}
+      <Link to={`/dashboard/${application.id}`} data-activity-id="application-details">See it and its decision</Link>.</p>
+  }
+
   const { progress } = application
   const done = application.status === 'ANSWERS_COMPLETE'
   const asidesAt = (index: number, last = false) => asides
     .filter(turn => last ? turn.at >= index : turn.at === index)
     .map((turn, n) => <li key={`aside-${index}-${n}`} className={`bubble bubble-${turn.role === 'user' ? 'user' : 'assistant'} bubble-aside`}>
       <span className="bubble-label">{turn.role === 'user' ? 'You asked' : 'Assistant'}</span>
-      {turn.content}
+      {turn.role === 'assistant' ? <AssistantText text={turn.content} /> : turn.content}
       {turn.proposal && <ProposalCard proposal={turn.proposal} onGoTo={goTo}
         onConfirm={() => answer(turn.proposal!.question_id!, { value: turn.proposal!.value! })} />}
     </li>)
@@ -271,11 +285,15 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       {application.stopped && <li className="bubble bubble-assistant bubble-stop" role="status">
         {application.stopped} If that's not right, change your answer above.
       </li>}
-      {application.current && <li ref={current} className="chat-turn" id="current-question">
+      {application.current && <li ref={current} className="chat-turn" id="current-question" tabIndex={-1}>
         <ol className="chat-turn-inner">
           <li className="bubble bubble-assistant">
             {application.current.prompt}
             {application.current.help && <span className="bubble-help">{application.current.help}</span>}
+            <button type="button" className="chat-explain" disabled={asking} onClick={() => {
+              const { prompt, help } = application.current!
+              void ask(undefined, `Explain this question in plain language without answering it for me: ${prompt}${help ? ` ${help}` : ''}`.slice(0, 1000))
+            }}>Explain this question</button>
           </li>
           <li className="chat-answer">
             {handoffError && <p className="answer-error" role="alert">{handoffError}</p>}
@@ -290,17 +308,37 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       </li>}
       {done && <li ref={current} className="bubble bubble-assistant bubble-done" role="status">
         That's every question for now. Your answers are saved, and you can still change any of them above.
-        Next we'll check your documents against these answers.
+        Next, upload the documents the embassy asks for below, and we'll check them against these answers.
       </li>}
     </ol>
 
-    {!application.stopped && <CompletenessCheck key={application.updated_at} applicationId={applicationId} />}
+    {/* The checklist follows the answers, so it appears once every question is answered (CMPS271-29). */}
+    {(done || documentTarget) && !application.stopped && <Feature name="supporting_documents">
+      <div className="chat-documents">
+        <DocumentChecklist applicationId={applicationId} version={application.updated_at} focusRequirement={documentTarget}
+          onChange={() => setDocumentChanges(count => count + 1)} />
+      </div>
+    </Feature>}
+
+    <CompletenessCheck key={application.updated_at} applicationId={applicationId}
+      documents={documentChanges} uploadLinks={done} fixQuestion={goTo}
+      fixDocument={id => {
+        const heading = document.getElementById(`doc-${id}`)
+        if (heading) { heading.scrollIntoView?.({ block: 'center' }); heading.focus() }
+        else setDocumentTarget(id)
+      }} />
+
+    {done && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
+      <Link to={`/dashboard/${applicationId}#embassy-pdf`} className="button button-primary">Review embassy PDF</Link>
+    </Feature>}
 
     <form className="chat-ask" onSubmit={ask}>
       <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>
       <div className="answer-row">
         <textarea ref={askBox} id="chat-ask-input" rows={1} maxLength={1000} value={draft} placeholder="Ask a question…"
           onChange={event => setDraft(event.target.value)} onKeyDown={askOnEnter} />
+        <VoiceDraft disabled={asking} onText={text =>
+          setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, 1000))} />
         <button type="submit" className="button button-secondary" disabled={asking || !draft.trim()}
           aria-busy={asking || undefined} data-activity-id="application-ask">{asking ? 'Asking…' : 'Ask'}</button>
       </div>

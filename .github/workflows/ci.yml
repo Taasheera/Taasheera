@@ -99,6 +99,15 @@ jobs:
       - name: Exercise real browser and API together with synthetic data
         working-directory: frontend
         run: npm run test:e2e
+      # Traces of failed tests (synthetic data only) for seeing what the browser saw.
+      - name: Keep traces of failed browser tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   container:
     runs-on: ubuntu-24.04

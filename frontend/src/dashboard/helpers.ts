@@ -10,6 +10,9 @@ export const statusCopy: Record<Status, string> = {
   DRAFT: 'In progress',
   INELIGIBLE: 'Needs a change',
   ANSWERS_COMPLETE: 'Answers complete',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  REFUSED: 'Refused',
 }
 
 // undefined while the session is being checked, null when signed out.

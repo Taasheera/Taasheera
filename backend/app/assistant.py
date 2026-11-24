@@ -25,7 +25,7 @@ saves it, through the normal answer endpoint. The flow engine stays in charge.
 
 Chat history (US 111, `chat_history.py`) is kept by the server per traveler and
 application; earlier turns sent to the model come from it, not from the browser.
-Still no sourced policy answers.
+Policy answers use an allowlist of official public sources.
 """
 
 import logging
@@ -44,6 +44,7 @@ from .security import admitted, audit, client_address
 
 from .applications.actions import Proposal
 from .applications.flow import InvalidAnswer
+from .applications.policy_sources import link_citations, policy_prompt
 
 log = logging.getLogger(__name__)
 
@@ -149,7 +150,8 @@ If a request has nothing to do with visas, travel or Ta'asheera (for example a p
 
 Use only the passport details given here. If a detail isn't there, say you don't have it. Never guess or invent passport details.
 
-You are not a lawyer or an immigration adviser, and this is not legal or immigration advice. For questions about visa rules, eligibility or what an embassy will accept, give general guidance only, say that rules differ by embassy and change over time, and suggest checking the embassy's official website. Never promise that a visa will be granted. Nothing is submitted to any embassy without the traveler's explicit confirmation.
+You are not a lawyer or an immigration adviser, and this is not legal or immigration advice. For questions about visa rules, eligibility or what an embassy will accept, give general guidance only, say that rules differ by embassy and change over time, and suggest checking the embassy's official website. Never promise that a visa will be granted. Base policy answers only on the official source summaries below and cite each source you use as [source:the-id] at the end of your reply. Never guess a rule, supply a fee or processing estimate from memory, or invent a link. If the sources do not cover the question, say so and point to the relevant official guidance if listed.
+{policy_prompt()} Nothing is submitted to any embassy without the traveler's explicit confirmation.
 
 {PRODUCT_FACTS}
 
@@ -161,7 +163,7 @@ You are not a lawyer or an immigration adviser, and this is not legal or immigra
 PRODUCT_FACTS = """Facts about Ta'asheera. Use these, and don't claim features beyond them:
 - Destinations: the Schengen short-stay visa (type C), the UK Standard Visitor visa, the US B-2 tourist visa and the Canada visitor visa. More are planned.
 - How it works: the traveler uploads a photo of their passport's details page. Ta'asheera reads the two machine-readable lines with OCR and checks their check digits, then the traveler checks and confirms every field. Next come the embassy's questions one at a time in a guided chat; answers are saved as they go, and some are suggested from the confirmed passport and profile for the traveler to confirm. "Check my application" lists anything missing or inconsistent. The applications dashboard shows each application's progress and lets them resume, archive, restore or delete it.
-- Not available yet: uploading supporting documents, cover letters, filling in the official embassy form and submitting. Say these are planned, without giving dates.
+- Supporting document uploads and Schengen PDF preparation are available where enabled. Submission through Ta’asheera and generated cover letters are planned. The traveler can download a reviewed PDF and submit it themselves.
 - Your own abilities: inside an application you can propose changing an answer, take the traveler to a question, or run the completeness check. A change is saved only when the traveler presses Confirm. You can't submit anything. On other pages you can't see their applications; suggest opening one from "Your applications" and asking there.
 - Privacy: passport photos and details are private to the traveler's account, and photos are re-encoded to remove location and other metadata. To answer, the traveler's message, their confirmed passport details and, inside an application, its answers are sent to Google's Gemini AI service. The conversation is saved in their account so it is there next time. Deleting the account deletes all of this. Nothing goes to an embassy."""
 
@@ -315,6 +317,7 @@ def create_assistant_router(
             record(traveler_id, "unavailable")
             raise HTTPException(status_code=503,
                                 detail="The assistant couldn't answer right now. Please try again in a moment.") from None
+        reply = link_citations(reply)
         if save_turn:
             save_turn(traveler_id, data.application_id, data.message, reply)
         record(traveler_id, "proposal" if proposal else "success")

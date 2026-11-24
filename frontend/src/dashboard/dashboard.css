@@ -39,6 +39,83 @@
   color: var(--fg-muted);
 }
 
+/* A personal greeting above the heading, as the first thing a traveler sees after signing in. */
+.dash-welcome {
+  margin: 0 0 6px;
+  color: var(--brand);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dash-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* No applications yet: one clear way to start, and a lighter way to get ready for later. */
+.dash-start {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding: clamp(32px, 6vw, 56px) clamp(20px, 5vw, 48px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg-raised), var(--card) 70%);
+  text-align: center;
+}
+
+.dash-page .dash-start h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.25;
+}
+
+.dash-start p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.6;
+}
+
+.dash-start-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px 22px 12px 12px;
+  font-size: 16px;
+}
+
+.dash-ready {
+  display: grid;
+  gap: 2px;
+  max-width: 420px;
+  margin-top: 8px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--fg-muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition: border-color var(--dur-quick) var(--ease-out);
+}
+
+.dash-ready strong {
+  color: var(--fg);
+}
+
+.dash-ready:hover {
+  border-color: var(--brand);
+}
+
+.dash-ready:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .dash-small {
   padding: 8px 16px;
   font-size: 14px;
@@ -171,6 +248,52 @@
   color: var(--ok);
 }
 
+.dash-chip-submitted {
+  background: var(--brand-muted);
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
+.dash-chip-approved {
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.dash-chip-refused {
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.dash-duplicate {
+  flex-basis: 100%;
+}
+
+.dash-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.dash-field select {
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+}
+
+.dash-decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dash-chip-archived {
   background: var(--bg-raised);
   color: var(--fg-muted);
@@ -265,8 +388,13 @@
   border-left-color: var(--danger);
 }
 
-.dash-next-complete {
+.dash-next-complete,
+.dash-next-approved {
   border-left-color: var(--ok);
+}
+
+.dash-next-refused {
+  border-left-color: var(--danger);
 }
 
 .dash-next-archived {

@@ -1,0 +1,252 @@
+{
+  "id": "schengen-harmonised",
+  "name": "Harmonised Schengen visa application form",
+  "questionnaires": [
+    "schengen-short-stay"
+  ],
+  "start_url": "schengen-harmonised.html",
+  "pages": [
+    {
+      "title": "Personal details",
+      "fields": [
+        {
+          "key": "surname",
+          "label": "1. Surname",
+          "selector": "section.current [name='surname']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "surname_at_birth",
+          "label": "2. Surname at birth",
+          "selector": "section.current [name='surname_at_birth']",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "key": "first_names",
+          "label": "3. First name(s)",
+          "selector": "section.current [name='first_names']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "date_of_birth",
+          "label": "4. Date of birth",
+          "selector": "section.current [name='date_of_birth']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "place_of_birth",
+          "label": "5. Place of birth",
+          "selector": "section.current [name='place_of_birth']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "country_of_birth",
+          "label": "6. Country of birth",
+          "selector": "section.current [name='country_of_birth']",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "key": "nationality",
+          "label": "7. Current nationality",
+          "selector": "section.current [name='nationality']",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "key": "sex",
+          "label": "9. Sex",
+          "selector": "section.current [name='sex']",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "key": "civil_status",
+          "label": "10. Civil status",
+          "selector": "section.current [name='civil_status']",
+          "kind": "select",
+          "required": true
+        }
+      ],
+      "next": "section.current button[data-next]",
+      "ready": "section.current[data-page=\"1\"]"
+    },
+    {
+      "title": "Travel document",
+      "fields": [
+        {
+          "key": "document_type",
+          "label": "13. Type of travel document",
+          "selector": "section.current [name='document_type']",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "key": "document_number",
+          "label": "14. Number of travel document",
+          "selector": "section.current [name='document_number']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "issue_date",
+          "label": "15. Date of issue",
+          "selector": "section.current [name='issue_date']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "valid_until",
+          "label": "16. Valid until",
+          "selector": "section.current [name='valid_until']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "issued_by",
+          "label": "17. Issued by",
+          "selector": "section.current [name='issued_by']",
+          "kind": "select",
+          "required": true
+        }
+      ],
+      "next": "section.current button[data-next]",
+      "ready": "section.current[data-page=\"2\"]"
+    },
+    {
+      "title": "Contact details and occupation",
+      "fields": [
+        {
+          "key": "home_address",
+          "label": "19. Home address",
+          "selector": "section.current [name='home_address']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "19. Email address",
+          "selector": "section.current [name='email']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "label": "19. Telephone number",
+          "selector": "section.current [name='phone']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "occupation",
+          "label": "21. Current occupation",
+          "selector": "section.current [name='occupation']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "employer",
+          "label": "22. Employer or school",
+          "selector": "section.current [name='employer']",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "next": "section.current button[data-next]",
+      "ready": "section.current[data-page=\"3\"]"
+    },
+    {
+      "title": "Your journey",
+      "fields": [
+        {
+          "key": "purpose",
+          "label": "23. Purpose of the journey",
+          "selector": "section.current [name='purpose']",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "key": "main_destination",
+          "label": "25. Member State of main destination",
+          "selector": "section.current [name='main_destination']",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "key": "entries",
+          "label": "27. Number of entries requested",
+          "selector": "section.current [name='entries']",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "key": "arrival_date",
+          "label": "28. Intended date of arrival",
+          "selector": "section.current [name='arrival_date']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "departure_date",
+          "label": "29. Intended date of departure",
+          "selector": "section.current [name='departure_date']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "fingerprints",
+          "label": "30. Fingerprints collected previously",
+          "selector": "section.current [name='fingerprints']",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "key": "fingerprints_date",
+          "label": "30. Date fingerprints were taken",
+          "selector": "section.current [name='fingerprints_date']",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "key": "accommodation",
+          "label": "31. Accommodation or inviting person",
+          "selector": "section.current [name='accommodation']",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "key": "cost_covered_by",
+          "label": "33. Cost of the stay covered by",
+          "selector": "section.current [name='cost_covered_by']",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "key": "sponsor",
+          "label": "33. Sponsor",
+          "selector": "section.current [name='sponsor']",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "next": "section.current button[data-next]",
+      "ready": "section.current[data-page=\"4\"]"
+    },
+    {
+      "title": "Declaration and submission",
+      "fields": [],
+      "next": null,
+      "ready": "section.current[data-page=\"5\"]"
+    }
+  ],
+  "submit": "section.current #submit",
+  "page_scope": "section.current",
+  "date_format": "%d/%m/%Y",
+  "url_override": "AGENT_SCHENGEN_FORM_URL",
+  "value_profile": "schengen-harmonised"
+}

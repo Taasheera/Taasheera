@@ -15,9 +15,12 @@ from fastapi import APIRouter, HTTPException, Request, Response
 # Every flag the app knows, with the work it hides. To add a flag, add it here and to
 # FeatureName in frontend/src/features.ts. Delete it in both places once the feature is released.
 FLAGS = {
+    "passport_scan_quality": "Detect unreadable passport scans before OCR (CMPS271-30)",
+    "embassy_pdf": "Review and download the official embassy PDF (CMPS271-64/65/66/124)",
     "agent_form_filling": "The agent fills an embassy online form (CMPS271-67)",
     "supporting_documents": "Supporting document upload (CMPS271-29)",
 }
+
 
 
 def _variable(name: str) -> str:

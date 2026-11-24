@@ -3,11 +3,11 @@ import { toast, Toaster } from 'sonner'
 import App from './App'
 import ActivityTracker from './ActivityTracker'
 import IdleGuard from './IdleGuard'
-import type { Navigation } from './navigation'
+import { signedInHome, type Navigation } from './navigation'
 import { useEffect, useState } from 'react'
 import { loadGoogleClientId } from './auth'
 
-export default function AuthRoute({ accountPage = false }: { accountPage?: boolean }) {
+export default function AuthRoute({ accountPage = false, embedded = false }: { accountPage?: boolean; embedded?: boolean }) {
   const [clientId, setClientId] = useState('')
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [attempt, setAttempt] = useState(0)
@@ -29,8 +29,10 @@ export default function AuthRoute({ accountPage = false }: { accountPage?: boole
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
   }, [])
 
-  return <><ActivityTracker /><IdleGuard /><Toaster position="top-center" richColors closeButton />
-    <App initialNavigation={useLoaderData() as Navigation} accountPage={accountPage}
+  // Inside the site layout, the layout already tracks activity, guards idle sessions and shows toasts.
+  return <>{!embedded && <><ActivityTracker /><IdleGuard /><Toaster position="top-center" richColors closeButton /></>}
+    <App embedded={embedded} initialNavigation={useLoaderData() as Navigation} accountPage={accountPage}
     googleClientId={clientId} googleConfigurationStatus={status}
+    signedInRedirect={accountPage ? undefined : signedInHome(window.location.search)}
     onGoogleConfigurationRetry={() => { setClientId(''); setStatus('loading'); setAttempt(value => value + 1) }} /></>
 }

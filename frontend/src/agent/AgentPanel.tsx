@@ -61,7 +61,9 @@ export default function AgentPanel({ applicationId, version }: { applicationId: 
       <div>
         <h2 id="agent-title">Embassy form</h2>
         <p className="agent-lede">
-          {state.site
+          {state.site?.is_demo
+            ? 'Preview how the agent fills a local practice form using your saved answers.'
+            : state.site
             ? <>The agent types your confirmed answers into the {state.site.name}, saves a screenshot of every page and stops before submitting. You review and submit it yourself.</>
             : 'The agent can’t fill this destination’s online form yet.'}
         </p>
@@ -73,35 +75,51 @@ export default function AgentPanel({ applicationId, version }: { applicationId: 
           : <button type="button" className="button button-primary dash-small" disabled={busy || !state.can_start}
               aria-describedby={state.reason ? 'agent-reason' : undefined}
               onClick={() => act(() => startRun(applicationId))} data-activity-id="agent-start">
-              {latest ? 'Fill the form again' : 'Fill the embassy form'}
+              {state.site.is_demo ? 'Run form preview' : latest ? 'Fill the form again' : 'Fill the embassy form'}
             </button>}
       </div>}
     </div>
     {!state.can_start && state.reason && !active && <p id="agent-reason" className="agent-note">{state.reason}</p>}
     {problem && <p className="agent-error" role="alert">{problem}</p>}
-    {latest && <RunView applicationId={applicationId} run={latest} />}
+    {latest && <RunView applicationId={applicationId} run={latest} demo={state.site?.is_demo} />}
     <p className="agent-disclaimer">Nothing is submitted to an embassy without you. Ta’asheera doesn’t give legal or immigration advice.</p>
   </section>
 }
 
-function RunView({ applicationId, run }: { applicationId: string; run: Run }) {
+function RunView({ applicationId, run, demo }: { applicationId: string; run: Run; demo?: boolean }) {
   const [detail, setDetail] = useState<RunDetail | Error | null>(null)
 
   useEffect(() => {
     let active = true
-    getRun(applicationId, run.id)
-      .then(result => { if (active) setDetail(result) })
-      .catch(failure => { if (active) setDetail(failure instanceof Error ? failure : new Error('Could not load what the agent did.')) })
-    return () => { active = false }
+    let timer: number | undefined
+    async function refresh() {
+      try {
+        const result = await getRun(applicationId, run.id)
+        if (active) setDetail(result)
+      } catch (failure) {
+        if (active) setDetail(failure instanceof Error ? failure : new Error('Could not load what the agent did.'))
+      }
+      if (active && ACTIVE.includes(run.status)) timer = window.setTimeout(refresh, POLL_MS)
+    }
+    void refresh()
+    return () => { active = false; window.clearTimeout(timer) }
   }, [applicationId, run.id, run.status])
 
   const ended = !ACTIVE.includes(run.status)
+  const runDetail = detail && !(detail instanceof Error) ? detail : null
+  const lastEntry = runDetail?.entries.at(-1)
+  const lastShot = runDetail?.screenshots.at(-1)
+  const currentPage = (lastEntry?.page ?? 0) > (lastShot?.page ?? 0) ? lastEntry : lastShot
   return <div className={`agent-run is-${run.status}`}>
     <p className="agent-status" role="status">
-      <strong>{STATUS_TEXT[run.status]}</strong>
+      <strong>{demo && run.status === 'ready' ? 'Preview complete. Review the filled fields below.' : STATUS_TEXT[run.status]}</strong>
       {run.status !== 'ready' && run.message && ended && <>: {run.message}</>}
       {run.finished_at && <span className="agent-when"> · {formatDateTime(run.finished_at)}</span>}
     </p>
+    {!ended && currentPage && <p className="agent-note" role="status">
+      Page {currentPage.page} · {currentPage.page_title} · {runDetail?.entries.length} fields filled
+    </p>}
+    {!ended && lastShot && <ScreenshotView key={lastShot.id} applicationId={applicationId} runId={run.id} shot={lastShot} auto />}
     {detail instanceof Error && <p className="agent-error" role="alert">{detail.message}</p>}
     {detail && !(detail instanceof Error) && detail.entries.length > 0 && <AuditTrail applicationId={applicationId} detail={detail} />}
   </div>
@@ -109,7 +127,7 @@ function RunView({ applicationId, run }: { applicationId: string; run: Run }) {
 
 function AuditTrail({ applicationId, detail }: { applicationId: string; detail: RunDetail }) {
   const pages = [...new Set(detail.entries.map(entry => entry.page).concat(detail.screenshots.map(shot => shot.page)))].sort((a, b) => a - b)
-  return <details className="agent-audit" open={detail.status === 'ready'}>
+  return <details className="agent-audit" open={detail.status === 'ready' || ACTIVE.includes(detail.status)}>
     <summary>What the agent typed: {detail.entries.length} {detail.entries.length === 1 ? 'field' : 'fields'} on {pages.length} {pages.length === 1 ? 'page' : 'pages'}</summary>
     <p className="agent-note">Run {detail.id.slice(0, 8)} · Check every value against your documents before you submit.</p>
     {pages.map(page => {
@@ -134,7 +152,8 @@ function AuditTrail({ applicationId, detail }: { applicationId: string; detail: 
   </details>
 }
 
-function ScreenshotView({ applicationId, runId, shot }: { applicationId: string; runId: string; shot: Screenshot }) {
+function ScreenshotView({ applicationId, runId, shot, auto = false }:
+  { applicationId: string; runId: string; shot: Screenshot; auto?: boolean }) {
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -145,6 +164,16 @@ function ScreenshotView({ applicationId, runId, shot }: { applicationId: string;
       setFailed(true)
     }
   }
+  useEffect(() => {
+    if (!auto) return
+    let active = true
+    void screenshotUrl(applicationId, runId, shot.id).then(result => {
+      if (active) setUrl(result)
+      else URL.revokeObjectURL(result)
+    }).catch(() => { /* The latest screenshot may still be writing. Keep the manual retry. */ })
+    return () => { active = false }
+  }, [auto, applicationId, runId, shot.id])
+
   useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
 
   if (failed) return <p className="agent-error">Could not load the screenshot.</p>

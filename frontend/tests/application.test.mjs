@@ -514,6 +514,59 @@ test('a ready application says so, and a failed check is reported', async () => 
   assert.ok(!text().includes('Nothing is missing'))
 })
 
+test('with every question answered, the documents are uploaded right here and the check follows them', async () => {
+  const { resetFeatureFlags } = await import('../src/features.ts')
+  resetFeatureFlags()
+  const DOCS = `/applications/${APP}/documents`
+  let uploaded = false
+  const checklist = () => ({
+    requirements: [{ id: 'photo', label: 'Passport photo', help: 'A recent photo.', required: true,
+      documents: uploaded ? [{ id: 'e'.repeat(32), requirement: 'photo', filename: 'me.jpg', content_type: 'image/jpeg',
+        size_bytes: 1000, uploaded_at: '2026-11-17T10:00:00Z' }] : [] }],
+    other: [], complete: uploaded, read_only: false,
+  })
+  const missing = { kind: 'missing', severity: 'blocking', message: 'Not uploaded yet: Passport photo', question_id: null, step_id: null }
+  handlers = signedIn({
+    'GET /features': () => json({ supporting_documents: true, agent_form_filling: false }),
+    [`GET /applications/${APP}`]: () => json(state([[PURPOSE, 'tourism']], null)),
+    [`GET ${DOCS}`]: () => json(checklist()),
+    [`GET ${DOCS}/crosscheck`]: () => json({ reference: 'application', checked: [], unreadable: [], findings: [] }),
+    [`POST ${DOCS}`]: () => { uploaded = true; return json(checklist().requirements[0].documents[0], 201) },
+    [`GET /applications/${APP}/check`]: () => json(uploaded
+      ? { ready: true, answered: 4, total: 4, issues: [] }
+      : { ready: false, answered: 4, total: 4, issues: [missing] }),
+  })
+  await render(`/apply/${APP}`)
+  assert.match($('.bubble-done').textContent, /upload the documents the embassy asks for below/)
+  assert.ok($('.chat-documents #docs-title'), 'the checklist is on the questions page')
+
+  await click(button('Check my application'))
+  assert.match(text(), /Must fix Not uploaded yet: Passport photo/)
+  assert.equal($('.completeness-fix').getAttribute('href'), '#docs-title')
+
+  const input = $('.chat-documents .docs-item input[type=file]')
+  Object.defineProperty(input, 'files', { value: [new File(['jpeg'], 'me.jpg', { type: 'image/jpeg' })], configurable: true })
+  await act(async () => input.dispatchEvent(new window.Event('change', { bubbles: true })))
+  await settle()
+  await settle()
+  // The upload re-ran the check that was on screen, without another click.
+  assert.equal(calls.filter(call => call.key === `GET /applications/${APP}/check`).length, 2)
+  assert.match(text(), /Nothing is missing/)
+  resetFeatureFlags()
+})
+
+test('the documents wait until every question is answered', async () => {
+  const { resetFeatureFlags } = await import('../src/features.ts')
+  resetFeatureFlags()
+  handlers = signedIn({
+    'GET /features': () => json({ supporting_documents: true }),
+    [`GET /applications/${APP}`]: () => json(state([[PURPOSE, 'tourism']], LONG_STAY)),
+  })
+  await render(`/apply/${APP}`)
+  assert.equal($('.chat-documents'), null)
+  resetFeatureFlags()
+})
+
 // --- Assistant actions (US 110) -------------------------------------------------
 
 const CHANGE = {

@@ -14,57 +14,56 @@ export const destinations = [
 ]
 
 export const trustBadges = [
-  'You approve before anything is submitted',
+  'You control submission',
   'Passport data stays private',
   'Not affiliated with any embassy',
 ]
 
 export const steps = [
-  { title: 'Pick your destination', body: 'Choose the country and visa type. We load that embassy\'s requirements.' },
+  { title: 'Pick your destination', body: 'Choose a destination and visa type to start the matching questionnaire.' },
   { title: 'Upload your passport', body: 'We read your details from the passport. You check and confirm them.' },
-  { title: 'Answer a few questions', body: 'Tell us about your trip and upload the documents on your checklist.' },
-  { title: 'Review and submit', body: 'Check the prepared application, then submit it when you are ready.' },
+  { title: 'Answer a few questions', body: 'Tell us about your trip. Your answers are saved as you go.' },
+  { title: 'Review and submit', body: 'Check your answers and follow the instructions from your consulate.' },
 ]
 
 export const whatWeDo = [
-  'Fill in the embassy\'s application form from your passport and answers',
-  'Write a cover letter for your trip',
-  'Give you a document checklist for your destination',
-  'Check that your documents match each other before you submit',
-  'Tell you exactly how and where to submit',
+  'Read passport details so you can check them before saving',
+  'Ask the questions that apply to your trip',
+  'Flag missing answers and inconsistencies before review',
+  'Save your application so you can pick up where you stopped',
 ]
 
 export const requiredDocuments = [
-  'A passport valid for at least 3 to 6 months after your trip',
+  'Your current passport',
   'A recent passport photo',
-  'Your last 3 to 6 months of bank statements',
+  'Bank statements or other proof of funds',
   'Flight and hotel reservations',
   'A letter from your employer or university',
   'Travel insurance (for Schengen visas)',
 ]
 
 export const privacyPoints = [
-  { title: 'Private storage', body: 'Your passport and documents are stored privately. Only your account can open them.' },
+  { title: 'Private storage', body: 'Uploaded files are stored privately and access to them is restricted to your account.' },
   { title: 'Location data removed', body: 'Photos are cleaned when you upload them, so hidden location data is removed.' },
-  { title: 'You stay in control', body: 'Nothing is sent to an embassy until you review it and confirm.' },
+  { title: 'You stay in control', body: 'You review your saved information and submit through the embassy’s process.' },
 ]
 
 export const faqs = [
   {
     question: 'What does Taasheera do?',
-    answer: 'Taasheera is an AI visa agent. It reads your passport, works out what your embassy needs, asks you the right questions, checks your documents against each other, and prepares the official application and a cover letter. You review everything and decide when it is submitted.',
+    answer: 'Taasheera reads your passport, asks questions about your trip and checks your saved answers for missing or inconsistent information. You review the details before taking them to the embassy.',
   },
   {
     question: 'Will anything be submitted without my approval?',
-    answer: 'No. The agent stops before every submission and shows you the application field by field. Nothing is sent to an embassy until you explicitly confirm it.',
+    answer: 'You decide when to submit. Taasheera prepares your information for review, and you submit it through your consulate’s process.',
   },
   {
     question: 'Which destinations can I apply for?',
-    answer: 'We are adding embassies one at a time, starting with common tourist visas such as Schengen, the UK, the US and Canada. When you choose a destination, we tell you exactly how much of the application we can complete for you.',
+    answer: 'Guided questionnaires are available for Schengen short stays, the UK Standard Visitor visa, the US B-2 visa and the Canadian visitor visa.',
   },
   {
-    question: 'How does the agent submit my application?',
-    answer: 'It depends on the embassy. For PDF forms we fill the official form and build a print-ready packet. For online portals we fill the portal and stop at its review page. If a portal has a CAPTCHA, we fill up to it and hand it over to you. If an embassy cannot be automated, we give you a field-by-field guide instead.',
+    question: 'How do I use my application at the embassy?',
+    answer: 'Follow the instructions from your consulate. When PDF preparation is available for your Schengen application, you can compare each prefilled value with your saved answers, download the form, then complete and sign it.',
   },
   {
     question: 'How do you read my passport?',
@@ -72,7 +71,7 @@ export const faqs = [
   },
   {
     question: 'What if my passport photo can\'t be read?',
-    answer: 'We tell you what went wrong, for example glare or a cropped page, so you can retake it. You can also type your details in by hand and carry on.',
+    answer: 'Retake the photo in even light with the entire passport page visible, or type the details by hand in the application.',
   },
   {
     question: 'Is my passport data safe?',
@@ -80,11 +79,11 @@ export const faqs = [
   },
   {
     question: 'Do I still need to go to the embassy?',
-    answer: 'Often, yes. Many visas require you to give fingerprints or attend an interview in person. Taasheera prepares everything you need to bring and tells you what to expect.',
+    answer: 'Your consulate may ask for an interview or fingerprints in person. Check its instructions for how to book and what to bring.',
   },
   {
     question: 'Does Taasheera guarantee my visa?',
-    answer: 'No. Only the embassy or consulate decides whether to issue a visa. We make sure your application is complete and consistent, which removes the most common avoidable reasons for refusal.',
+    answer: 'Only the embassy or consulate decides whether to issue a visa. Our checks help you catch missing or inconsistent information before you submit.',
   },
   {
     question: 'Is this legal or immigration advice?',

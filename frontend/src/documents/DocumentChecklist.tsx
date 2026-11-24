@@ -7,8 +7,10 @@ import CrossCheckPanel from './CrossCheckPanel'
 import './documents.css'
 
 // The supporting documents an application needs (CMPS271-29): a checklist the answers decide,
-// with upload, replace and delete for each file. `version` reloads it when the answers change.
-export default function DocumentChecklist({ applicationId, version }: { applicationId: string; version?: string }) {
+// with upload, replace and delete for each file. `version` reloads it when the answers change, and
+// `onChange` tells the page after an upload, replacement or deletion (the questions page re-runs its check).
+export default function DocumentChecklist({ applicationId, version, onChange, focusRequirement }:
+  { applicationId: string; version?: string; onChange?: () => void; focusRequirement?: string | null }) {
   const [checklist, setChecklist] = useState<Checklist | Error | null>(null)
   const [attempt, setAttempt] = useState(0)
 
@@ -20,7 +22,17 @@ export default function DocumentChecklist({ applicationId, version }: { applicat
     return () => { active = false }
   }, [applicationId, version, attempt])
 
-  const reload = () => setAttempt(count => count + 1)
+  useEffect(() => {
+    if (!focusRequirement || !checklist || checklist instanceof Error) return
+    const heading = document.getElementById(`doc-${focusRequirement}`)
+    heading?.scrollIntoView?.({ block: 'center' })
+    heading?.focus()
+  }, [checklist, focusRequirement])
+
+  const reload = () => {
+    setAttempt(count => count + 1)
+    onChange?.()
+  }
 
   if (checklist === null) return <section className="docs" aria-labelledby="docs-title">
     <h2 id="docs-title">Supporting documents</h2>
@@ -86,7 +98,7 @@ function RequirementRow({ applicationId, requirement, readOnly, onChange }:
   return <li className={`docs-item${has ? ' is-done' : ''}`} aria-labelledby={titleId}>
     <span className="docs-mark" aria-hidden="true">{has ? '✓' : ''}</span>
     <div className="docs-body">
-      <h3 id={titleId}>
+      <h3 id={titleId} tabIndex={-1}>
         {requirement.label}
         {!requirement.required && <span className="docs-tag">Optional</span>}
         <span className="visually-hidden">{has ? ', uploaded' : ', not uploaded yet'}</span>

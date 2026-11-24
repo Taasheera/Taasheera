@@ -35,6 +35,8 @@ export const routes: RouteObject[] = [
           // Every application and one application's timeline (US 19, US 20). Same reason as above.
           { path: 'dashboard', element: <Dashboard /> },
           { path: 'dashboard/:applicationId', element: <ApplicationDetail /> },
+          // The account page uses the same header, sections and assistant as every signed-in page.
+          { path: 'account', loader: () => readNavigation(window), element: <AuthRoute accountPage embedded /> },
           { path: '*', element: <NotFound /> },
         ],
       },
@@ -52,7 +54,6 @@ export const routes: RouteObject[] = [
     ],
   },
   { path: 'sign-in', loader: () => readNavigation(window), element: <AuthRoute /> },
-  { path: 'account', loader: () => readNavigation(window), element: <AuthRoute accountPage /> },
   { path: 'backoffice', element: <AdminDashboard />, errorElement: <ServerError standalone /> },
   { path: 'reset-password', loader: () => readNavigation(window), element: <AuthRoute /> },
 ]

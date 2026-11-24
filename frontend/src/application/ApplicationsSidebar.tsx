@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { ApplicationSummary, Status } from './api'
+import { isRecorded, type ApplicationSummary, type Status } from './api'
 import { destinationFlag } from './flags'
 import { formatShortDate } from './format'
 
@@ -8,6 +8,9 @@ const statusCopy: Record<Status, string> = {
   DRAFT: 'In progress',
   INELIGIBLE: 'Needs a change',
   ANSWERS_COMPLETE: 'Answers complete',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  REFUSED: 'Refused',
 }
 
 type Props = {
@@ -21,8 +24,9 @@ type Props = {
 export default function ApplicationsSidebar({ applications, currentId }: Props) {
   // Below 900px the list folds away behind a button, so the chat comes first on a phone.
   const [open, setOpen] = useState(false)
-  const active = applications?.filter(application => application.status !== 'ANSWERS_COMPLETE') ?? []
+  const active = applications?.filter(application => application.status === 'DRAFT' || application.status === 'INELIGIBLE') ?? []
   const complete = applications?.filter(application => application.status === 'ANSWERS_COMPLETE') ?? []
+  const recorded = applications?.filter(application => isRecorded(application.status)) ?? []
 
   const item = (application: ApplicationSummary) => {
     const flag = destinationFlag(application.destination)
@@ -67,6 +71,10 @@ export default function ApplicationsSidebar({ applications, currentId }: Props) 
       {complete.length > 0 && <>
         <h2 className="apps-heading">Answers complete</h2>
         <ul className="apps-list">{complete.map(item)}</ul>
+      </>}
+      {recorded.length > 0 && <>
+        <h2 className="apps-heading">Submitted</h2>
+        <ul className="apps-list">{recorded.map(item)}</ul>
       </>}
     </div>
   </aside>

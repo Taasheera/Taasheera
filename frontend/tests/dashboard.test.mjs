@@ -68,6 +68,8 @@ const signedIn = extra => ({
   'POST /auth/refresh': () => json({ access_token: 'token' }),
   'GET /auth/me': () => json({ id: 1, name: 'Anna', email: 'anna@example.com' }),
   'POST /activity/events': () => new Response(null, { status: 204 }),
+  // The dashboard asks whether the traveler is staff; a traveler gets the server's 403.
+  'GET /admin-api/me': () => json({ detail: 'Forbidden.' }, 403),
   ...extra,
 })
 
@@ -131,7 +133,7 @@ test('archived applications have their own tab, and archiving moves one there', 
   await click(button('Archive'))
   assert.ok(calls.includes(`POST /applications/${APP}/archive`))
   assert.equal(container.querySelectorAll('.dash-card').length, 0)
-  assert.match(text(), /no active applications/)
+  assert.match(text(), /Start your visa application/)
 
   handlers['GET /applications?archived=true'] = () => json([summary({ archived_at: '2026-10-31T10:00:00Z' })])
   await click(button('Archived'))
@@ -244,4 +246,226 @@ test('an archived application opened in the chat is read-only and stays off the 
   assert.equal(button('See it and restore it').getAttribute('href'), `/dashboard/${APP}`)
   assert.equal(container.querySelector('.apps-item'), null)
   assert.equal(container.querySelector('.chat-answer'), null)
+})
+
+// Recording submission and the embassy's decision (US 55, CMPS271-80).
+const SUBMITTED = { status: 'SUBMITTED', submitted_at: '2026-11-02T09:00:00Z', decided_at: null }
+
+test('a complete application asks before recording that the traveler submitted it', async () => {
+  let posted
+  let current = detail({ status: 'ANSWERS_COMPLETE', current: null })
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(current),
+    [`GET /applications/${APP}/timeline`]: () => json(timeline({ next: { kind: 'complete', text: 'Your answers are complete.' } })),
+    [`POST /applications/${APP}/decision`]: options => {
+      posted = JSON.parse(options.body)
+      current = detail({ ...SUBMITTED, current: null })
+      return json(summary(SUBMITTED))
+    },
+  })
+  await render(`/dashboard/${APP}`)
+  await click(button("I've submitted it"))
+  assert.match(text(), /Taasheera does not submit anything for you/)
+  assert.ok(!calls.includes(`POST /applications/${APP}/decision`))
+  await click(button('Cancel'))
+  assert.ok(button("I've submitted it"))
+
+  await click(button("I've submitted it"))
+  await click(button('Yes, record it'))
+  assert.deepEqual(posted, { record: 'SUBMITTED' })
+  // The page loads again, so the status, the timeline and the buttons follow the record.
+  assert.match(container.querySelector('.dash-chip').textContent, /Submitted/)
+  assert.equal(button('Review answers'), undefined)
+  assert.ok(button('Visa approved') && button('Visa refused') && button('Not submitted yet'))
+})
+
+test('a submitted application records the decision and shows it in the timeline', async () => {
+  let posted
+  let current = detail({ ...SUBMITTED, current: null })
+  let events = timeline({
+    events: [...timeline().events, { kind: 'submitted', at: '2026-11-02T09:00:00Z', text: 'You recorded submitting it to the embassy', question_id: null, step_title: null }],
+    next: { kind: 'submitted', text: "Waiting for the embassy's decision." },
+  })
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(current),
+    [`GET /applications/${APP}/timeline`]: () => json(events),
+    [`POST /applications/${APP}/decision`]: options => {
+      posted = JSON.parse(options.body)
+      const refused = { status: 'REFUSED', submitted_at: SUBMITTED.submitted_at, decided_at: '2026-11-10T09:00:00Z' }
+      current = detail({ ...refused, current: null })
+      events = { ...events, events: [...events.events, { kind: 'refused', at: refused.decided_at, text: 'You recorded that the embassy refused it', question_id: null, step_title: null }],
+        next: { kind: 'refused', text: 'The embassy refused this application.' } }
+      return json(summary(refused))
+    },
+  })
+  await render(`/dashboard/${APP}`)
+  assert.match(text(), /Waiting for the embassy's decision/)
+  assert.equal(button('Resume'), undefined)
+  await click(button('Visa refused'))
+  assert.deepEqual(posted, { record: 'REFUSED' })
+  assert.match(container.querySelector('.dash-chip').textContent, /Refused/)
+  assert.ok(container.querySelector('.dash-next-refused'))
+  assert.match([...container.querySelectorAll('.dash-event')].at(-1).textContent, /embassy refused it/)
+  assert.ok(button('It was approved') && button('No decision yet'))
+})
+
+test('recorded applications open their record from the dashboard, not the chat', async () => {
+  handlers = signedIn({ 'GET /applications': () => json([summary({ ...SUBMITTED, status: 'APPROVED', decided_at: '2026-11-10T09:00:00Z' })]) })
+  await render('/dashboard')
+  const card = container.querySelector('.dash-card')
+  assert.match(card.textContent, /Approved/)
+  assert.equal(button('View').getAttribute('href'), `/dashboard/${APP}`)
+  assert.equal(button('Resume'), undefined)
+})
+
+test('a recorded application opened in the chat is read-only', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary(SUBMITTED)]),
+    [`GET /applications/${APP}`]: () => json(detail({ ...SUBMITTED, current: null })),
+  })
+  await render(`/apply/${APP}`)
+  assert.match(text(), /You recorded this application as submitted, so its answers can't be changed\./)
+  assert.equal(button('See it and its decision').getAttribute('href'), `/dashboard/${APP}`)
+  assert.equal(container.querySelector('.chat-answer'), null)
+  assert.match(container.querySelector('.apps-sidebar').textContent, /Submitted/)
+})
+
+// Duplicating for another country (US 78, CMPS271-84).
+const NEW = 'd'.repeat(32)
+const choices = [{
+  destination: 'SCHENGEN', visa_type: 'short_stay', title: 'Schengen short-stay visa (type C)',
+  destination_label: 'Schengen area', visa_label: 'Short stay (type C)',
+  place_prompt: 'Which Schengen country is your main destination?',
+  places: [{ value: 'DEU', label: 'Germany' }, { value: 'ITA', label: 'Italy' }],
+}]
+
+test('duplicate asks for another country, creates the copy and opens it', async () => {
+  let posted
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+    [`POST /applications/${APP}/duplicate`]: options => {
+      posted = JSON.parse(options.body)
+      return json(summary({ id: NEW, place: 'Italy' }), 201)
+    },
+    [`GET /applications/${NEW}`]: () => json(detail({ id: NEW, place: 'Italy' })),
+  })
+  const router = await render('/dashboard')
+  await click(button('Duplicate'))
+  const select = container.querySelector('.dash-duplicate select')
+  assert.deepEqual([...select.options].map(option => option.textContent), ['Choose a country', 'Germany', 'Italy'])
+  assert.equal(document.activeElement, select)
+  assert.equal(button('Create copy').disabled, true)
+
+  await act(async () => {
+    select.value = 'ITA'
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.equal(button('Create copy').disabled, false)
+  await click(button('Create copy'))
+  assert.deepEqual(posted, { destination: 'SCHENGEN', visa_type: 'short_stay', place: 'ITA' })
+  assert.equal(router.state.location.pathname, `/apply/${NEW}`)
+})
+
+test('cancelling a duplicate creates nothing', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+  })
+  await render('/dashboard')
+  await click(button('Duplicate'))
+  await click(button('Cancel'))
+  assert.equal(container.querySelector('.dash-duplicate'), null)
+  assert.ok(button('Duplicate'))
+  assert.ok(!calls.includes(`POST /applications/${APP}/duplicate`))
+})
+
+// Exporting the record (US 80, CMPS271-83).
+const realObjectUrls = [URL.createObjectURL, URL.revokeObjectURL]
+afterEach(() => { [URL.createObjectURL, URL.revokeObjectURL] = realObjectUrls })
+
+test('the detail page downloads the record as a named JSON file', async () => {
+  const saved = []
+  const created = []
+  const revoked = []
+  URL.createObjectURL = blob => { created.push(blob); return 'blob:record' }
+  URL.revokeObjectURL = url => revoked.push(url)
+  const click = window.HTMLAnchorElement.prototype.click
+  window.HTMLAnchorElement.prototype.click = function () { saved.push([this.download, this.getAttribute('href')]) }
+  try {
+    handlers = signedIn({
+      [`GET /applications/${APP}`]: () => json(detail()),
+      [`GET /applications/${APP}/timeline`]: () => json(timeline()),
+      [`GET /applications/${APP}/export`]: () => new Response('{"format":"taasheera.application-record"}', {
+        status: 200, headers: { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="taasheera-france-2026-11-15.json"' },
+      }),
+    })
+    await render(`/dashboard/${APP}`)
+    await act(async () => button('Download record').click())
+    await settle()
+    assert.deepEqual(saved, [['taasheera-france-2026-11-15.json', 'blob:record']])
+    assert.equal(await created[0].text(), '{"format":"taasheera.application-record"}')
+    assert.equal(container.querySelector('a[download]'), null)
+    await act(() => new Promise(resolve => setTimeout(resolve, 1100)))
+    assert.deepEqual(revoked, ['blob:record'])
+  } finally {
+    window.HTMLAnchorElement.prototype.click = click
+  }
+})
+
+test('a failed export says so and saves nothing', async () => {
+  let saved = false
+  URL.createObjectURL = () => { saved = true; return 'blob:x' }
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(detail()),
+    [`GET /applications/${APP}/timeline`]: () => json(timeline()),
+    [`GET /applications/${APP}/export`]: () => json({ detail: 'Application not found.' }, 404),
+  })
+  await render(`/dashboard/${APP}`)
+  await click(button('Download record'))
+  assert.equal(saved, false)
+  assert.equal(button('Download record').disabled, false)
+})
+
+test('archive and delete wait while a duplicate is open', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    [`GET /applications/${APP}/duplicate`]: () => json(choices),
+  })
+  await render('/dashboard')
+  await click(button('Duplicate'))
+  assert.equal(button('Archive').disabled, true)
+  assert.equal(button('Delete').disabled, true)
+  await click(button('Cancel'))
+  assert.equal(button('Archive').disabled, false)
+  assert.equal(button('Delete').disabled, false)
+})
+
+test('the dashboard greets the traveler and, with nothing started, offers one clear way to begin', async () => {
+  handlers = signedIn({ 'GET /applications': () => json([]) })
+  await render('/dashboard')
+  assert.equal(container.querySelector('.dash-welcome').textContent, 'Welcome, Anna')
+  // The tabs stay: someone who archived everything still needs the way back to their archive.
+  assert.ok(container.querySelector('.dash-tabs'))
+  const start = container.querySelector('.dash-start')
+  assert.equal(start.querySelector('h2').textContent, 'Start your visa application')
+  assert.equal(start.querySelector('a.dash-start-cta').getAttribute('href'), '/apply')
+  assert.equal(start.querySelector('a.dash-ready').getAttribute('href'), '/passport')
+  // One start button on the page, not two: the page's New application waits until there is a list.
+  const head = container.querySelector('.dash-head')
+  assert.equal(head.querySelector('a[href="/apply"]'), null)
+  assert.equal(head.querySelector('a[href="/backoffice"]'), null)
+})
+
+test('staff see a link to the staff dashboard next to their applications', async () => {
+  handlers = signedIn({
+    'GET /applications': () => json([summary()]),
+    'GET /admin-api/me': () => json({ id: 1, name: 'Anna', email: 'anna@example.com', role: 'admin' }),
+  })
+  await render('/dashboard')
+  assert.equal(container.querySelector('.dash-welcome').textContent, 'Welcome back, Anna')
+  const head = container.querySelector('.dash-head')
+  assert.equal(head.querySelector('a[href="/backoffice"]').textContent, 'Staff dashboard')
+  assert.ok(head.querySelector('a[href="/apply"]'))
+  assert.equal(container.querySelector('.dash-start'), null)
 })

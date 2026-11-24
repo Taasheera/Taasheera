@@ -16,7 +16,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.runtime.migration import MigrationContext
 from fastapi.routing import iter_route_contexts
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 from sqlalchemy import event, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.engine import make_url
@@ -27,7 +27,7 @@ from app.activity import record_activity
 from app.auth import COOKIE_NAME
 from app.database import build_engine
 from app.main import create_app
-from app.models import (APPLICATION_STATUSES, AccountErasure, ActivityEvent, AuthSession, DocumentAccess,
+from app.models import (APPLICATION_STATUSES, AccountErasure, ActivityEvent, AgentRun, AuthSession, DocumentAccess,
     GoogleIdentity, PasswordResetChallenge, PasswordResetToken, RefreshToken, Traveler, TravelerProfile, Application, ApplicationAnswer)
 from app.monitoring import configure_monitoring, scrub_event
 from app.passport.extraction import Extraction, ExtractionStatus
@@ -78,7 +78,10 @@ def api(tmp_path, monkeypatch, request):
 
 
 def upload(api, key='one'):
-    image = io.BytesIO(); Image.new('RGB', (400, 300), 'white').save(image, format='JPEG')
+    image = io.BytesIO()
+    specimen = Image.new("RGB", (800, 500), "white")
+    ImageDraw.Draw(specimen).rectangle((100, 120, 700, 380), fill="black")
+    specimen.save(image, format="JPEG")
     response = api.client.post('/passports', files={'file': ('specimen.jpg', image.getvalue(), 'image/jpeg')},
                                headers=api.headers(key))
     assert response.status_code == 201
@@ -111,7 +114,17 @@ def test_application_registry_and_dashboard_show_real_owner_scoped_data(api):
     assert response.status_code == 200 and response.headers['cache-control'] == 'no-store'
     assert response.json()['applications_by_status'] == {status: 1 for status in APPLICATION_STATUSES}
     assert response.json()['total_applications'] == len(APPLICATION_STATUSES)
-    assert response.json()['agent_failures_available'] is False
+    assert response.json()['agent_failures_available'] is True
+    assert response.json()['agent_problems'] == []
+
+    with Session(api.app.state.engine) as session:
+        session.add(AgentRun(id=uuid4().hex, traveler_id=api.ids['one'], application_id=app_id,
+                             site='schengen-harmonised', status='stopped', finished_at=datetime.now(timezone.utc),
+                             message="the form has changed since Ta'asheera last saw it (specimen field)"))
+        session.commit()
+    [problem] = api.client.get('/admin/monitoring', headers=api.headers('admin')).json()['agent_problems']
+    assert problem['site'] == 'schengen-harmonised' and problem['kind'] == 'site_changed'
+    assert set(problem) == {'site', 'kind', 'occurred_at'}
     assert not {'traveler_id', 'email', 'destination'} & set(response.json())
 
 

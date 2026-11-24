@@ -433,7 +433,7 @@ def test_the_completeness_check_lists_what_is_missing_and_is_owner_scoped(api):
     assert response.status_code == 200 and response.headers["cache-control"] == "private, no-store"
     report = response.json()
     assert not report["ready"] and report["issues"][0] == {
-        "kind": "missing", "severity": "blocking", "question_id": "phone", "step_id": "personal",
+        "kind": "missing", "severity": "blocking", "question_id": "phone", "step_id": "personal", "document_id": None,
         "message": report["issues"][0]["message"]}
     assert client.get(f"/applications/{application_id}/check", headers=headers[1]).status_code == 404
     assert client.get(f"/applications/{application_id}/check").status_code == 401
