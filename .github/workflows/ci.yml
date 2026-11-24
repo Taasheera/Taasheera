@@ -74,7 +74,8 @@ jobs:
 
   browser:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Cold runners also download Ubuntu libraries and Chromium within this budget.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
