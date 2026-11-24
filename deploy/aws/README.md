@@ -146,7 +146,10 @@ It creates no infrastructure and preserves private local configuration.
 `main` commit whose push CI passed, publishes immutable SHA tags to private ECR, and deploys their
 exact digests through `redeploy.sh`. The host pulls instead of building, verifies both image revision
 labels, backs up SQLite, migrates and checks readiness. `TAASHEERA_PRESERVE_CONFIG=1` keeps its private
-environment. A concurrency group shared with manual dev deploys prevents overlap. A manual main
+environment. When there is less than 2 GiB free on the Docker filesystem, the host reclaims unused
+build cache before pulling, preserving containers, images and volumes. If a pull still runs out of
+space, check the EC2 root volume capacity before retrying. A concurrency group shared with manual
+dev deploys prevents overlap. A manual main
 run must also have passing push CI; a superseded commit is refused before publication and again
 before host deployment. Ahmad Zeid leads deployment/AWS operations from November 2, 2026.
 The following one-time setup needs AWS IAM/CloudFormation and GitHub repository-settings permissions;
