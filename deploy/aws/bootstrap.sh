@@ -94,6 +94,7 @@ if [ ! -d /opt/taasheera/.git ]; then
 fi
 cd /opt/taasheera
 test -z "$(git status --porcelain)"
+git remote set-url origin https://github.com/Taasheera/Taasheera.git
 git fetch origin "$TAASHEERA_REVISION"
 git checkout --detach "$TAASHEERA_REVISION"
 test -f deploy/aws/compose.yaml

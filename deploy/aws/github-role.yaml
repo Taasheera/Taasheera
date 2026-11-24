@@ -16,13 +16,12 @@ Parameters:
       - repo:Taasheera@357495043/Taasheera@1387089236:ref:refs/heads/dev
       - repo:Taasheera@357495043/Taasheera@1387089236:environment:production
     Description: >-
-      Deploy once for the dev branch and once for the production environment.
-      GitHub uses the immutable subject after the repository transfer.
+      Who may assume the role. Deploy this template once per value: the dev role for the manual
+      dev workflow, the production-environment role for deploy-main-aws.yml.
+      Subjects include the organization and repository IDs; production permits only the production environment.
 Conditions:
   NewProvider: !Equals [!Ref CreateOidcProvider, 'true']
-  ProductionDeploy: !Equals
-    - !Ref TrustedSubject
-    - 'repo:Taasheera@357495043/Taasheera@1387089236:environment:production'
+  ProductionDeploy: !Equals [!Ref TrustedSubject, 'repo:Taasheera@357495043/Taasheera@1387089236:environment:production']
 Resources:
   Provider:
     Type: AWS::IAM::OIDCProvider

@@ -95,6 +95,8 @@ def test_invalid_release_identity_cannot_run_commands(revision):
                                                 (SHA, False, "no successful")])
 def test_only_current_main_with_successful_push_ci_can_deploy(main, ci_ok, expected):
     def run(command, **kwargs):
+        assert command[:2] == ["gh", "api"]
+        assert command[-1].startswith("repos/Taasheera/Taasheera/")
         if command[-1].endswith("git/ref/heads/main"):
             data = {"object": {"sha": main}}
         else:
@@ -112,11 +114,10 @@ def test_only_current_main_with_successful_push_ci_can_deploy(main, ci_ok, expec
     else:
         verify_release.verify(SHA, "Taasheera/Taasheera", run=run)
 
-
-@pytest.mark.parametrize("repository", ["mhs86/Taasheera", "different/Taasheera"])
-def test_release_guard_rejects_other_repository_identities(repository):
+@pytest.mark.parametrize("repository", ["mhs86/Taasheera", "other/Taasheera", "Taasheera/other"])
+def test_other_repositories_cannot_authorize_a_release(repository):
     def run(*args, **kwargs):
-        pytest.fail("A different repository reached the release API")
+        pytest.fail("Invalid repository ran a command")
 
     with pytest.raises(ValueError, match="Invalid release identity"):
         verify_release.verify(SHA, repository, run=run)
