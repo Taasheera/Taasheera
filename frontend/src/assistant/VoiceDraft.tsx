@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { MicrophoneIcon } from '../icons'
 
 type Recognition = {
   lang: string
@@ -61,9 +62,10 @@ export default function VoiceDraft({ onText, disabled }: { onText: (text: string
   }
 
   return <div className="voice-draft">
-    <button type="button" className="button button-secondary" aria-pressed={listening}
+    <button type="button" className="button button-secondary assistant-icon-button" aria-pressed={listening}
       aria-describedby={hintId} disabled={disabled && !listening} onClick={start}>
-      {listening ? 'Stop dictation' : 'Dictate'}
+      <MicrophoneIcon />
+      <span className="visually-hidden">{listening ? 'Stop dictation' : 'Dictate'}</span>
     </button>
     <span className="visually-hidden" id={hintId}>Your browser processes audio. Review the text before sending.</span>
     {error && <span role="status">{error}</span>}
