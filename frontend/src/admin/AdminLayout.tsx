@@ -49,7 +49,7 @@ export default function AdminLayout() {
     <header className="admin-header">
       <div className="admin-header-inner">
         <Link to="/" className="logo" aria-label="Taasheera home">
-          <span className="logo-mark" aria-hidden="true">T</span>Taasheera
+          <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
         </Link>
         <span className="admin-badge">Admin</span>
         {admin && <nav className="admin-nav" aria-label="Admin">
@@ -74,6 +74,6 @@ export default function AdminLayout() {
     </main>
     <IdleGuard />
     {admin && <GlobalAssistant key={admin.id} />}
-    <Toaster position="top-center" richColors closeButton />
+    <Toaster position="top-center" theme="system" closeButton />
   </div>
 }

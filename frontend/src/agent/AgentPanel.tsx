@@ -111,7 +111,7 @@ function RunView({ applicationId, run, demo }: { applicationId: string; run: Run
   const lastShot = runDetail?.screenshots.at(-1)
   const currentPage = (lastEntry?.page ?? 0) > (lastShot?.page ?? 0) ? lastEntry : lastShot
   return <div className={`agent-run is-${run.status}`}>
-    <p className="agent-status" role="status">
+    <p className="agent-status status-dot" role="status">
       <strong>{demo && run.status === 'ready' ? 'Preview complete. Review the filled fields below.' : STATUS_TEXT[run.status]}</strong>
       {run.status !== 'ready' && run.message && ended && <>: {run.message}</>}
       {run.finished_at && <span className="agent-when"> · {formatDateTime(run.finished_at)}</span>}

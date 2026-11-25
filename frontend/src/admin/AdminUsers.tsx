@@ -137,7 +137,7 @@ export default function AdminUsers() {
                 <td><Link to={`/admin/users/${user.id}`}>{user.name}</Link></td>
                 <td>{user.email}</td>
                 <td>{roleLabels[user.role]}</td>
-                <td><span className={`admin-status admin-status-${user.status}`}>{statusLabels[user.status]}</span></td>
+                <td><span className={`admin-status status-dot status-dot--${user.status === 'active' ? 'ok' : 'danger'}`}>{statusLabels[user.status]}</span></td>
                 <td>{readableDate(user.created_at, false)}</td>
                 <td>{readableDate(user.last_sign_in_at)}</td>
               </tr>)}

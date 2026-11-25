@@ -52,7 +52,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | OCR | Tesseract/pytesseract plus our MRZ locator and checksum repair | Vision-model fallback proposed |
 | Assistant | Backend-only official `google-genai` SDK, `gemini-3.5-flash-lite`, function calling | Provider behind adapters; no keys in browser |
 | Frontend | React 19, TypeScript, Vite, React Router data router, sonner | TanStack Query proposed |
-| Styling | Plain CSS/custom properties in `src/index.css`, DM Sans + Space Grotesk | No Tailwind; auth styles are scoped |
+| Styling | Plain CSS and shared Ink tokens in `frontend/public/tokens.css` · Schibsted Grotesk, Inter, IBM Plex Mono and IBM Plex Sans Arabic | No Tailwind; auth styles are scoped |
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
@@ -207,3 +207,6 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 43. **Scan quality and assistant.** Passport quality checks run before OCR behind `passport_scan_quality`.
     Application chat offers question explanations and supported browsers dictate into an editable draft.
     Policy citations resolve server-side to official guidance for the four supported visa types.
+
+44. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
+    the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.
