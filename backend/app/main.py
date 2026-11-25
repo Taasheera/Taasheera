@@ -39,6 +39,7 @@ from .passport.router import create_passport_router
 from .passport.storage import PassportImageStorage
 from .profile import create_profile_router
 from .consent import create_consent_requirement, create_consent_router
+from .notification_preferences import create_notification_preferences_router
 from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
@@ -148,6 +149,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_password_reset_router(get_session))
     app.include_router(create_profile_router(get_session, current_traveler))
     app.include_router(create_consent_router(get_session, current_traveler))
+    app.include_router(create_notification_preferences_router(get_session, current_traveler))
     # No identity document is accepted before the privacy policy is (CMPS271-115).
     privacy_consent = Depends(create_consent_requirement(get_session, current_traveler))
     app.include_router(create_notifications_router(get_session, current_traveler))

@@ -215,3 +215,4 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     a thread in the API process (`notification_jobs.py`, every `NOTIFICATION_JOB_SECONDS`, default 900, 0 = off)
     emails it through the reset email sender, so the worker's notifications are emailed too. Older than a day:
     skipped; 3 failures: failed. Development without SMTP logs them. One API process only. Behind `email_notifications`.
+    `NotificationPreference` (CMPS271-99, Account page) turns emails off per group of kinds; the bell shows all.

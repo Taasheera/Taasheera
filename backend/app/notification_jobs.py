@@ -3,8 +3,9 @@
 `run_notification_jobs` runs every NOTIFICATION_JOB_SECONDS (default 15 minutes) in one background
 thread of the API process, while the `email_notifications` flag is on. Each run:
 
-- emails every notification still marked "pending" (CMPS271-98). A notification is saved wherever its
-  event happens, including the agent worker's container, so its email copy waits here.
+- emails every notification still marked "pending" (CMPS271-98), unless the traveler turned that kind
+  of email off (CMPS271-99). A notification is saved wherever its event happens, including the agent
+  worker's container, so its email copy waits here.
 
 Each email is committed as sent right after sending, so a crash loses nothing and at worst sends one
 email twice. Only one API process runs (see deploy/aws/compose.yaml), so runs never overlap.
@@ -20,6 +21,7 @@ from sqlmodel import Session, select
 
 from .mailer import NotificationSender
 from .models import Notification, Traveler
+from .notification_preferences import wants_email
 
 logger = logging.getLogger("taasheera.notifications")
 
@@ -55,6 +57,7 @@ def email_body(notification: Notification, site_url: str) -> str:
         lines += [f"Open it in Taasheera: {site_url}{notification.link}", ""]
     lines += [
         "You get this email because you have a Taasheera account.",
+        f"Choose which emails you get on your account page: {site_url}/account",
         "Taasheera never asks for your password or passport details by email.",
     ]
     return "\n".join(lines) + "\n"
@@ -72,7 +75,8 @@ def send_pending_emails(engine, sender: NotificationSender | None, site_url: str
                                .order_by(Notification.id).limit(BATCH)).all()
         for notification in pending:
             traveler = session.get(Traveler, notification.traveler_id)
-            if traveler is None or traveler.status != "active" or _utc(notification.created_at) < now - EMAIL_MAX_AGE:
+            if (traveler is None or traveler.status != "active" or _utc(notification.created_at) < now - EMAIL_MAX_AGE
+                    or not wants_email(session, traveler.id, notification.kind)):
                 notification.email_status = "skipped"
                 result.skipped += 1
             else:

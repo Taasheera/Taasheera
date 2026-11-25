@@ -14,6 +14,8 @@ import Sessions from './Sessions'
 import DocumentHistory from './DocumentHistory'
 import DeleteAccount from './DeleteAccount'
 import DownloadData from './DownloadData'
+import EmailSettings from './EmailSettings'
+import Feature from './Feature'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import SectionNav from './SectionNav'
 import { readNavigation, type Navigation } from './navigation'
@@ -109,6 +111,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
               configurationStatus={googleConfigurationStatus} onConfigurationRetry={onGoogleConfigurationRetry}
               onConnected={setTraveler} />
             {traveler.password_enabled === true && <ChangePassword />}
+            <Feature name="email_notifications"><EmailSettings /></Feature>
             <Sessions />
             <DocumentHistory />
             <DownloadData />

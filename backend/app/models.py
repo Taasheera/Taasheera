@@ -314,6 +314,19 @@ class Notification(SQLModel, table=True):
     email_attempts: int = Field(default=0)
 
 
+class NotificationPreference(SQLModel, table=True):
+    """Which notification emails a traveler wants (CMPS271-99). No row means every email is on.
+
+    In-app notifications are always shown; these switches only stop the email copies.
+    """
+
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    application_updates: bool = True  # status changes and the form-filling agent
+    reminders: bool = True  # an application left unfinished (CMPS271-101)
+    passport_expiry: bool = True  # a passport that expires soon (CMPS271-36)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class SupportingDocument(SQLModel, table=True):
     """A file uploaded for one of an application's document requirements (CMPS271-29).
 
