@@ -211,3 +211,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     document uploads (POST/PUT) answer 403 with `X-Privacy-Consent: required` until the traveler accepts
     `PRIVACY_POLICY_VERSION` (`app/consent.py`, the date in `public/privacy.html`; bump both to ask everyone again).
     Signed-in pages show the prompt; demo seeds accept. Behind `privacy_consent`.
+45. **Notification emails (CMPS271-98).** `notify()` saves the notification with `email_status` "pending";
+    a thread in the API process (`notification_jobs.py`, every `NOTIFICATION_JOB_SECONDS`, default 900, 0 = off)
+    emails it through the reset email sender, so the worker's notifications are emailed too. Older than a day:
+    skipped; 3 failures: failed. Development without SMTP logs them. One API process only. Behind `email_notifications`.

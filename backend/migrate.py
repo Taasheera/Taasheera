@@ -104,7 +104,8 @@ def upgrade() -> None:
                                      ("add_table", "agentscreenshot"),
                                      ("add_index", "ix_agentscreenshot_run_id"),
                                      ("add_table", "privacyconsent"),
-                                     ("add_index", "ix_privacyconsent_traveler_id")}
+                                     ("add_index", "ix_privacyconsent_traveler_id"),
+                                     ("add_index", "ix_notification_email_status")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

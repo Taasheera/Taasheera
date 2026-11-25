@@ -20,6 +20,7 @@ FLAGS = {
     "agent_form_filling": "The agent fills an embassy online form (CMPS271-67)",
     "supporting_documents": "Supporting document upload (CMPS271-29)",
     "privacy_consent": "Accept the privacy policy before uploading documents (CMPS271-115)",
+    "email_notifications": "Email copies of notifications and reminders (CMPS271-98)",
 }
 
 

@@ -29,7 +29,9 @@ from .config import AuthSettings, RuntimeSettings
 from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
 from .observability import install_private_no_store, install_request_logging
-from .mailer import MailSettings, ResetSender, SesResetSender, SmtpResetSender
+from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
+from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
+                                run_notification_jobs, show_logs as show_notification_logs)
 from .security import audit, throttle
 from .password_reset import create_password_reset_router
 from .models import RegisterRequest, Traveler, TravelerPublic
@@ -49,7 +51,8 @@ from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
 
 
-def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
+def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
+               notification_sender: NotificationSender | None = None) -> FastAPI:
     engine = build_engine(database_url)
 
     @asynccontextmanager
@@ -69,13 +72,35 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         else:
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
+        notification_jobs = start_notification_jobs(app)
         monitoring = configure_monitoring()
         try:
             yield
         finally:
+            if notification_jobs is not None:
+                notification_jobs.stop()
             if monitoring is not None:
                 monitoring.close()
             engine.dispose()
+
+    def start_notification_jobs(app: FastAPI) -> NotificationJobThread | None:
+        """Email copies of notifications (CMPS271-98), sent by a timer in this process."""
+        if not app.state.feature_flags.is_on("email_notifications"):
+            return None
+        interval = job_interval()
+        sender = notification_sender or app.state.reset_sender
+        if not hasattr(sender, "send_notification"):
+            # Development without a mail server writes the emails to the log; production sends none.
+            sender = (LogNotificationSender(notification_logger)
+                      if app.state.runtime_settings.environment == "development" else None)
+        if not interval or sender is None:
+            return None
+        # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
+        site_url = app.state.auth_settings.allowed_origins[0]
+        show_notification_logs()
+        jobs = NotificationJobThread(lambda: run_notification_jobs(engine, sender, site_url), interval)
+        jobs.start()
+        return jobs
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine

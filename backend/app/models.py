@@ -308,6 +308,10 @@ class Notification(SQLModel, table=True):
     link: str | None = Field(default=None, max_length=200)  # A page on this site, such as /dashboard/<id>
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     read_at: datetime | None = None
+    # The email copy (CMPS271-98): "pending" until the notification job sends it, then "sent", "skipped"
+    # (emails turned off, or too old to send) or "failed" after EMAIL_ATTEMPTS tries.
+    email_status: str = Field(default="pending", max_length=10, index=True)
+    email_attempts: int = Field(default=0)
 
 
 class SupportingDocument(SQLModel, table=True):

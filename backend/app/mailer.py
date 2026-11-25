@@ -13,6 +13,12 @@ class ResetSender(Protocol):
     def send_reset(self, recipient: str, code: str) -> None: ...
 
 
+class NotificationSender(Protocol):
+    """Sends a plain-text notification email (CMPS271-98). Raises when the message was not accepted."""
+
+    def send_notification(self, recipient: str, subject: str, body: str) -> None: ...
+
+
 @dataclass(frozen=True)
 class MailSettings:
     frontend_url: str
@@ -78,12 +84,18 @@ class SmtpResetSender:
         self.settings = settings
 
     def send_reset(self, recipient: str, code: str) -> None:
+        self._send(recipient, "Reset your Taasheera password", otp_message(code))
+
+    def send_notification(self, recipient: str, subject: str, body: str) -> None:
+        self._send(recipient, subject, body)
+
+    def _send(self, recipient: str, subject: str, body: str) -> None:
         settings = self.settings
         message = EmailMessage()
         message["From"] = settings.from_email
         message["To"] = recipient
-        message["Subject"] = "Reset your Taasheera password"
-        message.set_content(otp_message(code))
+        message["Subject"] = subject
+        message.set_content(body)
         context = ssl.create_default_context()
         if settings.security == "ssl":
             connection = smtplib.SMTP_SSL(settings.host, settings.port, timeout=settings.timeout, context=context)
@@ -98,7 +110,7 @@ class SmtpResetSender:
             if settings.username:
                 smtp.login(settings.username, settings.password)
             if smtp.send_message(message):
-                raise smtplib.SMTPException("Reset email was not accepted.")
+                raise smtplib.SMTPException("The email was not accepted.")
 
 
 def otp_message(code: str) -> str:
@@ -115,6 +127,12 @@ class SesResetSender:
         self.settings = settings
 
     def send_reset(self, recipient: str, code: str) -> None:
+        self._send(recipient, "Your Taasheera password-reset code", otp_message(code))
+
+    def send_notification(self, recipient: str, subject: str, body: str) -> None:
+        self._send(recipient, subject, body)
+
+    def _send(self, recipient: str, subject: str, body: str) -> None:
         import boto3
         from botocore.config import Config
         # Uses the EC2 instance role, including IMDSv2. No long-lived access keys.
@@ -127,9 +145,24 @@ class SesResetSender:
                 FromEmailAddress=self.settings.from_email,
                 Destination={"ToAddresses": [recipient]},
                 Content={"Simple": {
-                    "Subject": {"Data": "Your Taasheera password-reset code", "Charset": "UTF-8"},
-                    "Body": {"Text": {"Data": otp_message(code), "Charset": "UTF-8"}},
+                    "Subject": {"Data": subject, "Charset": "UTF-8"},
+                    "Body": {"Text": {"Data": body, "Charset": "UTF-8"}},
                 }},
             )
         finally:
             client.close()
+
+
+class LogNotificationSender:
+    """Development without a mail server: write notification emails to the backend's log instead.
+
+    Never used in production, where a missing mail configuration means no email copies at all.
+    """
+
+    def __init__(self, logger):
+        self.logger = logger
+
+    def send_notification(self, recipient: str, subject: str, body: str) -> None:
+        name, _, domain = recipient.partition("@")
+        self.logger.info("Notification email (not sent, no mail server) to %s***@%s: %s\n%s",
+                         name[:1], domain, subject, body)
