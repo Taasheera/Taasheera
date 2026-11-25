@@ -23,9 +23,9 @@ from . import flow
 from .policy_sources import SOURCES
 
 GUIDES_FILE = Path(__file__).with_name("visa_guides.json")
-# Sources must be official, or at least institutional. A new site is a deliberate change here.
+# Sources must be official. A new site is a deliberate change here.
 OFFICIAL_DOMAINS = ("europa.eu", "gov.uk", "state.gov", "cbp.gov", "canada.ca", "auswaertiges-amt.de",
-                    "mzv.gov.cz", "bu.edu")
+                    "mzv.gov.cz")
 CACHE = "public, max-age=3600"
 
 

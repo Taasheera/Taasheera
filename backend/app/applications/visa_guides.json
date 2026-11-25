@@ -4,7 +4,7 @@
     {
       "questionnaire_id": "schengen-short-stay",
       "need": {
-        "rule": "Citizens of countries on the EU's visa list need this visa. Everyone else can visit the Schengen area for up to 90 days in any 180 days without one.",
+        "rule": "For short visits, travelers with a passport from a visa-required country generally need a Schengen visa. Visa-exempt travelers can usually visit for up to 90 days in a 180-day period. Check the official rules for your passport and circumstances.",
         "notes": [
           "The EU's planned online travel permit for visa-free visitors (ETIAS) is not running yet, and no start date has been announced."
         ],
@@ -17,7 +17,7 @@
           {"label": "Children aged 6 to 11", "amount": "€45"},
           {"label": "Children under 6", "amount": "Free"}
         ],
-        "note": "The same in every Schengen country. A visa centre (such as VFS or TLS) may add its own service fee.",
+        "note": "These are standard fees. Reductions or exemptions can apply. A visa centre may also charge a service fee.",
         "source": {"label": "German Federal Foreign Office: Schengen visa fee", "url": "https://www.auswaertiges-amt.de/en/-/2658682"}
       },
       "time": {
@@ -26,7 +26,7 @@
       },
       "coverage": {
         "level": "filled_for_you",
-        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. It can also fill in the official Schengen application PDF for you to print, and its agent can type your answers into the Schengen online form (tested on a practice copy of the form). The agent always stops before the declaration: you check everything and submit it yourself."
+        "text": "Ta'asheera asks you questions in plain language and checks your answers. When the PDF review feature is available, you can review and print a filled Schengen application form. The form-filling agent has been tested on a practice form. You review and submit the application yourself."
       },
       "extra_sources": [
         {"label": "European Commission: ETIAS", "url": "https://home-affairs.ec.europa.eu/policies/schengen/smart-borders/european-travel-information-authorisation-system_en"}
@@ -35,7 +35,7 @@
     {
       "questionnaire_id": "uk-standard-visitor",
       "need": {
-        "rule": "Citizens of countries on the UK's visa list need this visa. Most other visitors need an electronic travel authorisation (ETA) instead, which they apply for online.",
+        "rule": "Depending on your passport and circumstances, a short visit can require a Standard Visitor visa, an electronic travel authorisation (ETA), or neither. Use the official checker to see which applies.",
         "notes": [],
         "checker": {"label": "GOV.UK: Check if you need a UK visa", "url": "https://www.gov.uk/check-uk-visa"},
         "checked_nationalities": {"LBN": "visa"}
@@ -61,7 +61,7 @@
     {
       "questionnaire_id": "us-b2-tourist",
       "need": {
-        "rule": "Citizens of Visa Waiver Program countries can usually visit for up to 90 days with an ESTA instead of a visa. Everyone else needs a visitor visa (B-2).",
+        "rule": "Eligible Visa Waiver Program travelers can visit for up to 90 days with an approved ESTA. Other travelers generally need a visitor visa for tourism, with some exceptions. Check the official rules for your passport and circumstances.",
         "notes": [],
         "checker": {"label": "US Customs and Border Protection: Visa Waiver Program", "url": "https://www.cbp.gov/travel/international-visitors/visa-waiver-program"},
         "checked_nationalities": {"LBN": "visa"}
@@ -70,7 +70,7 @@
         "items": [
           {"label": "Visa application fee", "amount": "$185"}
         ],
-        "note": "Paid before the interview and not refunded. Some US embassies also charge a $250 visa integrity fee when the visa is issued; not every embassy charges it yet, so check with yours.",
+        "note": "This is the non-refundable application fee. An issuance fee may also apply based on your nationality. Check the State Department's reciprocity schedule and your embassy's instructions.",
         "source": {"label": "US Department of State: Fees for visa services", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/fees/fees-visa-services.html"}
       },
       "time": {
@@ -82,7 +82,7 @@
         "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then fill in the official DS-160 form yourself, using your saved answers, and go to the interview."
       },
       "extra_sources": [
-        {"label": "Boston University international office: Visa integrity fee", "url": "https://www.bu.edu/isso/2026/05/19/visa-integrity-fee/"}
+        {"label": "US Department of State: Visa reciprocity and issuance fees", "url": "https://travel.state.gov/content/travel/en/us-visas/Visa-Reciprocity-and-Civil-Documents-by-Country.html"}
       ]
     },
     {
@@ -102,8 +102,8 @@
         "source": {"label": "IRCC: Fee list", "url": "https://ircc.canada.ca/english/information/fees/fees.asp"}
       },
       "time": {
-        "text": "It depends on the country you apply from, from a couple of weeks to several months.",
-        "source": {"label": "IRCC: Visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/visitor-visa.html"}
+        "text": "Processing times vary by country and can change. Use the current IRCC estimate for your country of residence.",
+        "source": {"label": "IRCC: Check processing times", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application/check-processing-times.html"}
       },
       "coverage": {
         "level": "guided",

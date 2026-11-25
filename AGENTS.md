@@ -87,7 +87,7 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
 `/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.

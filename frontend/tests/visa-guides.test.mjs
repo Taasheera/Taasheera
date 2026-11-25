@@ -54,7 +54,7 @@ let handlers
 beforeEach(() => {
   resetFeatureFlags()
   handlers = {
-    '/features': () => json({ visa_guide: true }),
+    '/features': () => json({ visa_guide: true, embassy_pdf: true }),
     '/auth/refresh': () => json({ detail: 'Not signed in.' }, 401),
     '/activity/events': () => new Response(null, { status: 204 }),
     '/visa-guides': () => json([guide(), guide({ id: 'schengen-short-stay', title: 'Schengen short-stay visa (type C)',
@@ -84,6 +84,7 @@ async function render(path, ready) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   await act(async () => root.render(createElement(RouterProvider, { router })))
   for (let tries = 0; tries < 60 && !ready(); tries += 1) await settle()
+  return router
 }
 const main = () => container.querySelector('main') ?? container
 const heading = () => main().querySelector('h1')?.textContent
@@ -95,7 +96,7 @@ test('the list shows every guide with its starting fee and what Ta\'asheera does
   assert.equal(cards.length, 2)
   assert.match(cards[0].textContent, /From £135/)
   assert.match(cards[0].textContent, /Guided, you submit/)
-  assert.match(cards[1].textContent, /Form filled for you/)
+  assert.match(cards[1].textContent, /PDF form available/)
   assert.equal(cards[0].querySelector('a').getAttribute('href'), '/visas/uk-standard-visitor')
   assert.match(container.querySelector('.guide-checked').textContent, /25 November 2026/)
 })
@@ -120,7 +121,7 @@ test('one guide shows the checklist with its conditions, fees, time and sources'
   assert.equal(container.querySelector('.guide-start .pill-label').textContent, 'Create a free account')
 })
 
-test('a checked nationality gets a definite answer, any other is sent to the official checker', async () => {
+test('a checked nationality gets a qualified answer, any other is sent to the official checker', async () => {
   await render('/visas/uk-standard-visitor', () => container.querySelector('select'))
   const select = container.querySelector('#need-heading').parentElement.querySelector('select')
   const choose = async code => {
@@ -131,7 +132,7 @@ test('a checked nationality gets a definite answer, any other is sent to the off
   }
   await choose('LBN')
   let answer = container.querySelector('.guide-answer').textContent
-  assert.match(answer, /Yes\. Citizens of Lebanon need a visa/)
+  assert.match(answer, /passport from Lebanon generally need a visa/)
   assert.match(answer, /Confirm it with the official checker/)
 
   await choose('FRA')
@@ -145,6 +146,21 @@ test('an unknown guide looks like any unknown page', async () => {
   await render('/visas/mars-tourist', () => heading() === 'Page not found')
   assert.equal(heading(), 'Page not found')
   assert.equal(container.querySelector('#need-heading'), null)
+})
+
+test('navigating from an unknown guide loads the next guide', async () => {
+  const router = await render('/visas/mars-tourist', () => heading() === 'Page not found')
+  await act(async () => { await router.navigate('/visas/uk-standard-visitor') })
+  for (let tries = 0; tries < 60 && heading() !== 'UK Standard Visitor visa'; tries += 1) await settle()
+  assert.equal(heading(), 'UK Standard Visitor visa')
+})
+
+test('the PDF badge appears only when PDF review is available', async () => {
+  handlers['/features'] = () => json({ visa_guide: true, embassy_pdf: false })
+  await render('/visas', () => container.querySelector('.guide-card'))
+  const schengen = [...container.querySelectorAll('.guide-card')].find(card => card.textContent.includes('Schengen'))
+  assert.match(schengen.textContent, /Guided, you submit/)
+  assert.doesNotMatch(schengen.textContent, /PDF form available/)
 })
 
 test('with the flag off the guides do not exist', async () => {

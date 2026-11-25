@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router'
 import type { LayoutContext } from '../Layout'
+import { useFeature } from '../features'
 import { countries } from '../countries'
 import { ArrowIcon } from '../icons'
 import { createAccountPath } from '../paths'
@@ -12,8 +13,7 @@ function External({ link }: { link: SourceLink }) {
   return <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}<span className="visually-hidden"> (opens in a new tab)</span></a>
 }
 
-// Do I need a visa? (CMPS271-19). A definite answer only for nationalities checked against the official
-// list; for everyone else, the government's own checker. Never a guess.
+// Show the general rule for checked nationalities and the official checker for every nationality.
 function NeedVisa({ guide }: { guide: VisaGuide }) {
   const [nationality, setNationality] = useState('')
   const country = countries.find(item => item.code === nationality)
@@ -33,8 +33,8 @@ function NeedVisa({ guide }: { guide: VisaGuide }) {
         </select>
       </label>
       {country && <div className="guide-answer" role="status">
-        {answer === 'visa' && <p><strong>Yes.</strong> Citizens of {country.name} need a visa for this trip.</p>}
-        {answer === 'no_visa' && <p><strong>No visa needed</strong> for citizens of {country.name} on a short visit.</p>}
+        {answer === 'visa' && <p>Travelers using a passport from {country.name} generally need a visa for this type of visit.</p>}
+        {answer === 'no_visa' && <p>Travelers using a passport from {country.name} can usually make short visits without a visa.</p>}
         {answer === undefined && <p>We haven't checked the rules for citizens of {country.name} ourselves yet.</p>}
         <p>{answer ? 'Confirm it' : 'Find out'} with the official checker: <External link={guide.need.checker} />.</p>
       </div>}
@@ -53,6 +53,11 @@ function StartButton() {
 
 export default function VisaGuidePage() {
   const { guideId = '' } = useParams()
+  return <GuideDetail key={guideId} guideId={guideId} />
+}
+
+function GuideDetail({ guideId }: { guideId: string }) {
+  const pdfAvailable = useFeature('embassy_pdf')
   const [guide, setGuide] = useState<VisaGuide | null>(null)
   const [error, setError] = useState<GuideError | null>(null)
 
@@ -121,7 +126,7 @@ export default function VisaGuidePage() {
 
           <section className="guide-section" aria-labelledby="coverage-heading">
             <h2 id="coverage-heading">What Ta'asheera does for you</h2>
-            <p><span className="guide-level">{guide.coverage.level === 'filled_for_you' ? 'Form filled for you' : 'Guided, you submit'}</span></p>
+            <p><span className="guide-level">{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Guided, you submit'}</span></p>
             <p>{guide.coverage.text}</p>
             <StartButton />
           </section>
@@ -131,7 +136,7 @@ export default function VisaGuidePage() {
             <ul>{guide.sources.map(link => <li key={link.url}><External link={link} /></li>)}</ul>
             <p className="guide-checked">
               Checked on {checkedDate(guide.checked_on)}. Rules and fees change, so always confirm on the official
-              site before you pay or travel. Ta'asheera is not affiliated with any embassy.
+              site before you pay or travel. This is general information, not legal or immigration advice.
             </p>
           </section>
         </>}

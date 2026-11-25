@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { useFeature } from '../features'
 import { checkedDate, loadGuides, type VisaGuide } from './api'
 import './visaGuides.css'
 
 // Every supported visa, before signing in or starting an application.
 export default function VisaGuides() {
+  const pdfAvailable = useFeature('embassy_pdf')
   const [guides, setGuides] = useState<VisaGuide[] | null>(null)
   const [error, setError] = useState('')
 
@@ -33,7 +35,7 @@ export default function VisaGuides() {
               <p>{guide.destination_label}: {guide.destination_description}</p>
               <p className="guide-card-facts">
                 <span>From {guide.fees.items[0].amount}</span>
-                <span>{guide.coverage.level === 'filled_for_you' ? 'Form filled for you' : 'Guided, you submit'}</span>
+                <span>{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Guided, you submit'}</span>
               </p>
             </li>
           ))}
