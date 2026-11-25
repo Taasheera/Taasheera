@@ -25,7 +25,8 @@ from .policy_sources import SOURCES
 GUIDES_FILE = Path(__file__).with_name("visa_guides.json")
 # Sources must be official. A new site is a deliberate change here.
 OFFICIAL_DOMAINS = ("europa.eu", "gov.uk", "state.gov", "cbp.gov", "canada.ca", "auswaertiges-amt.de",
-                    "mzv.gov.cz")
+                    "mzv.gov.cz", "mfa.gov.cn", "nia.gov.cn", "visaforchina.cn", "mofa.go.jp", "emb-japan.go.jp",
+                    "indianvisaonline.gov.in", "indianembassybeirut.gov.in", "mfa.gov.tr", "evisa.gov.tr")
 CACHE = "public, max-age=3600"
 
 

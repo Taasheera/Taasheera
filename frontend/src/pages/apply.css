@@ -678,3 +678,20 @@ a.button {
   .guided-answers .chat-turn-inner { grid-template-columns: 1fr; }
   .guided-answers .chat-turn-inner > .bubble-assistant { padding-block-end: 0; }
 }
+
+/* Long free-text answers (Help me write this). */
+.answer-long { display: grid; gap: 8px; }
+.answer-long textarea {
+  inline-size: 100%;
+  min-block-size: 96px;
+  padding: 10px 12px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  resize: vertical;
+}
+.answer-long textarea:focus { border-color: var(--brand); }
+.answer-long textarea[aria-invalid='true'] { border-color: var(--danger); }
+.answer-draft-note { margin: 0; font-size: 13px; color: var(--fg-muted); }

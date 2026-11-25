@@ -7,12 +7,11 @@ A field with no value here is left empty, and the filler stops if the form requi
 
 from datetime import date
 
+from ..applications.form_wording import occupation_on_form
 from .sites import FormSite
 
 # ICAO codes that differ from the ISO 3166 codes the embassy forms use.
 _ISO = {"D": "DEU", "RKS": "XKX"}
-_OCCUPATIONS = {"employed": "Employee", "self_employed": "Self-employed", "student": "Student",
-                "retired": "Retired", "unemployed": "Unemployed", "other": "Other"}
 
 
 def _country(code: str | None) -> str | None:
@@ -35,7 +34,6 @@ def _address(address: dict | None) -> str | None:
 def schengen_values(answers: dict, *, email: str, site: FormSite) -> dict[str, str]:
     """Form values for the harmonised Schengen form, by field key. Keys with no value are left out."""
     passport = answers.get("passport") or {}
-    occupation = answers.get("occupation")
     sponsored = answers.get("funding") == "sponsor"
     values = {
         "surname": passport.get("surname"),
@@ -55,7 +53,7 @@ def schengen_values(answers: dict, *, email: str, site: FormSite) -> dict[str, s
         "home_address": _address(answers.get("home_address")),
         "email": email,
         "phone": answers.get("phone"),
-        "occupation": _OCCUPATIONS.get(occupation) if occupation else None,
+        "occupation": occupation_on_form(answers),
         "employer": answers.get("employer") or answers.get("school"),
         "purpose": answers.get("purpose"),
         "main_destination": _country(answers.get("main_destination")),

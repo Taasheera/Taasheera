@@ -279,6 +279,8 @@
 .dash-actions {
   display: flex;
   flex-wrap: wrap;
+  /* An open confirmation or copy form is taller than the buttons beside it; don't stretch them. */
+  align-items: flex-start;
   gap: 8px;
 }
 

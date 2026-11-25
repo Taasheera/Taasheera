@@ -354,5 +354,8 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
     {done && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
       <Link to={`/dashboard/${applicationId}#embassy-pdf`} className="button button-primary">Review embassy PDF</Link>
     </Feature>}
+    {done && application.destination !== 'SCHENGEN' &&
+      <Link to={`/dashboard/${applicationId}#official-form`} className="button button-primary"
+        data-activity-id="application-portal-guide">Fill in the official form</Link>}
   </section>
 }

@@ -1,0 +1,64 @@
+{
+  "title": "GOV.UK: Apply for a Standard Visitor visa",
+  "portal": {"label": "Start your application on GOV.UK", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"},
+  "date_format": "%d %m %Y",
+  "before": [
+    "Apply online from outside the UK, up to 3 months before you travel. You create a UKVI account with your email; your progress saves as you go.",
+    "Dates on GOV.UK are three boxes: day, month, year. The dates below are written in that order.",
+    "Have your passport, the documents on your checklist and a card for the £135 fee ready."
+  ],
+  "sections": [
+    {"title": "Your name and contact details", "fields": [
+      {"label": "Given names", "sources": ["passport.given_names"]},
+      {"label": "Family name", "sources": ["passport.surname"]},
+      {"label": "Email address", "sources": ["account_email"], "note": "Use an email you check. UKVI sends your decision here."},
+      {"label": "Telephone number", "sources": ["phone"]},
+      {"label": "Home address", "sources": ["home_address"], "formatter": "address"}
+    ], "yourself": ["Whether you have used other names", "How long you have lived at your address and whether you own or rent it"]},
+    {"title": "Passport and nationality", "fields": [
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Issuing authority", "sources": ["passport.issuing_country"], "formatter": "country"},
+      {"label": "Issue date", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Expiry date", "sources": ["passport.expiry_date"], "formatter": "date"},
+      {"label": "Nationality", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "Other nationality", "sources": ["other_nationality_country"], "formatter": "country"},
+      {"label": "Sex", "sources": ["passport.sex"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "Place of birth", "sources": ["place_of_birth"]},
+      {"label": "Country of birth", "sources": ["country_of_birth"], "formatter": "country"},
+      {"label": "Relationship status", "sources": ["relationship_status"]}
+    ], "yourself": ["National identity card number, if you have one"]},
+    {"title": "Employment and money", "fields": [
+      {"label": "Employment status", "sources": ["employment"], "formatter": "occupation"},
+      {"label": "Job title", "sources": ["job_title"]},
+      {"label": "Employer name and address", "sources": ["employer"]},
+      {"label": "Monthly income after tax", "sources": ["monthly_income"]},
+      {"label": "Total cost of your trip", "sources": ["trip_cost"]},
+      {"label": "Who is paying for your trip", "sources": ["funding"]},
+      {"label": "Sponsor details", "sources": ["sponsor_details"]}
+    ], "yourself": ["Your employer's phone number and your start date", "Savings and how much you spend each month"]},
+    {"title": "Your trip", "fields": [
+      {"label": "Main reason for your visit", "sources": ["purpose"]},
+      {"label": "Date you plan to arrive", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "Date you plan to leave", "sources": ["departure_date"], "formatter": "date"},
+      {"label": "Address where you'll stay", "sources": ["uk_address"]},
+      {"label": "Staying with family or friends", "sources": ["host"]},
+      {"label": "Host's name and address", "sources": ["host_details"]}
+    ]},
+    {"title": "Family", "yourself": ["Your parents' names, dates of birth and nationalities", "Your partner's and children's details, if any", "Whether you have family in the UK"]},
+    {"title": "Travel and immigration history", "fields": [
+      {"label": "Been to the UK in the last 10 years", "sources": ["previous_uk_visit"]},
+      {"label": "Ever refused a visa", "sources": ["refused_visa"]}
+    ], "yourself": ["Countries you visited in the last 10 years, with dates", "Criminal record, immigration breaches and character questions"]}
+  ],
+  "after": [
+    "Pay the £135 fee and, if offered, choose a priority service.",
+    "Book a biometrics appointment at the visa application centre (TLScontact or VFS Global, depending on your country) and bring your passport and documents.",
+    "Use the print-ready packet from Ta'asheera so your documents are in order at the appointment.",
+    "A decision usually comes within 3 weeks of your appointment. Record it on your dashboard when it arrives."
+  ],
+  "sources": [
+    {"label": "GOV.UK: Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor"},
+    {"label": "GOV.UK: Apply for a Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"}
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "title": "Visa Application Form to Enter Japan",
+  "portal": {"label": "Get the form from the embassy", "url": "https://www.lb.emb-japan.go.jp/itpr_en/visa.html"},
+  "date_format": "%d %b %Y",
+  "before": [
+    "Download the application form from your Japanese embassy's website and fill it in typed or in block capitals. It's a paper form: there is no online portal for residents of Lebanon.",
+    "The boxes below follow the form from top to bottom. Leave nothing blank: write N/A where a box doesn't apply.",
+    "Book your appointment with the Embassy of Japan before you go; the Beirut visa section only sees applicants by appointment."
+  ],
+  "sections": [
+    {"title": "Identity", "fields": [
+      {"label": "Surname (as shown in passport)", "sources": ["passport.surname"]},
+      {"label": "Given and middle names", "sources": ["passport.given_names"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "Place of birth (city, country)", "sources": ["place_of_birth"]},
+      {"label": "Country of birth", "sources": ["country_of_birth"], "formatter": "country"},
+      {"label": "Sex", "sources": ["passport.sex"]},
+      {"label": "Marital status", "sources": ["marital_status"]},
+      {"label": "Nationality or citizenship", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "ID number issued by your government", "sources": ["passport.personal_number"], "note": "Write N/A if your passport shows none."}
+    ], "yourself": ["Other names, former nationalities"]},
+    {"title": "Passport", "fields": [
+      {"label": "Passport type", "sources": ["passport"], "formatter": "fixed", "fixed": "ordinary"},
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Place of issue", "sources": ["passport_issue_place"]},
+      {"label": "Date of issue", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Issuing authority", "sources": ["passport.issuing_country"], "formatter": "country"},
+      {"label": "Date of expiry", "sources": ["passport.expiry_date"], "formatter": "date"}
+    ]},
+    {"title": "Your trip", "fields": [
+      {"label": "Purpose of visit to Japan", "sources": ["purpose"]},
+      {"label": "Date of arrival in Japan", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "Date of departure", "sources": ["departure_date"], "formatter": "date", "note": "The form asks for the intended length of stay: count the days between these."},
+      {"label": "Port of entry into Japan", "sources": ["port_of_entry"]},
+      {"label": "Name of ship or airline", "sources": ["airline"]},
+      {"label": "Hotel or person you'll stay with: name, address, phone", "sources": ["accommodation_details", "host_details"]},
+      {"label": "Previous stays in Japan", "sources": ["previous_japan_visit"], "note": "If Yes, give the dates of your last stay."}
+    ]},
+    {"title": "Your home and work", "fields": [
+      {"label": "Current residential address", "sources": ["home_address"], "formatter": "address"},
+      {"label": "Telephone and mobile number", "sources": ["phone"]},
+      {"label": "Email", "sources": ["account_email"]},
+      {"label": "Current profession or occupation", "sources": ["job_title", "occupation"], "formatter": "occupation"},
+      {"label": "Name and address of employer", "sources": ["employer", "school"]}
+    ], "yourself": ["Employer's telephone number", "Partner's profession or occupation (or parents', for a minor)"]},
+    {"title": "Guarantor and inviter in Japan", "fields": [
+      {"label": "Guarantor: name, address, phone, relationship, status in Japan", "sources": ["guarantor_details"], "note": "Write N/A if nobody is inviting you."}
+    ], "yourself": ["Guarantor's date of birth, sex, nationality and occupation, as on their letter"]},
+    {"title": "Questions and signature", "yourself": ["The yes/no questions on criminal convictions, deportation and other offences", "Date and sign the form yourself"]}
+  ],
+  "after": [
+    "Bring the signed form, a 45 x 35 mm photo glued on it, your passport and the documents on your checklist to your appointment.",
+    "The embassy may call you for an interview. You pay the fee only if the visa is issued.",
+    "Collect your passport in person and record the decision on your dashboard."
+  ],
+  "sources": [
+    {"label": "Embassy of Japan in Lebanon: visas", "url": "https://www.lb.emb-japan.go.jp/itpr_en/visa.html"},
+    {"label": "MOFA Japan: visas", "url": "https://www.mofa.go.jp/j_info/visit/visa/index.html"}
+  ]
+}

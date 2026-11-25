@@ -1,0 +1,246 @@
+{
+  "id": "turkiye-evisa",
+  "version": 1,
+  "destination": "TUR",
+  "visa_type": "e_visa",
+  "title": "Türkiye e-Visa",
+  "destination_label": "Türkiye",
+  "destination_description": "All provinces, for tourism or business",
+  "visa_label": "e-Visa",
+  "visa_description": "An online visa for tourism or business trips, issued in minutes. Many passports don't need one at all.",
+  "summary": {
+    "place": null,
+    "date": "arrival_date"
+  },
+  "source": "Republic of Türkiye Electronic Visa Application System (evisa.gov.tr)",
+  "steps": [
+    {
+      "id": "eligibility",
+      "title": "Eligibility",
+      "questions": [
+        {
+          "id": "purpose",
+          "type": "choice",
+          "prompt": "What's the main purpose of your trip to Türkiye?",
+          "options": [
+            {
+              "value": "tourism",
+              "label": "Tourism"
+            },
+            {
+              "value": "business",
+              "label": "Business meetings"
+            }
+          ]
+        },
+        {
+          "id": "work_or_study",
+          "type": "yes_no",
+          "prompt": "Will you work or study in Türkiye?",
+          "stop_if": {
+            "in": [
+              true
+            ],
+            "message": "Work and study need a visa from a Turkish embassy, not an e-Visa."
+          }
+        },
+        {
+          "id": "supporting_visa",
+          "type": "yes_no",
+          "prompt": "Do you hold a valid Schengen, US, UK or Irish visa or residence permit?",
+          "help": "Some passports can only get an e-Visa with one of these."
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "title": "Passport",
+      "questions": [
+        {
+          "id": "passport",
+          "type": "passport",
+          "prefill": "passport",
+          "prompt": "Let's add your passport. You can upload a photo of its details page and confirm what we read, or type the details yourself."
+        },
+        {
+          "id": "passport_issue_date",
+          "type": "date",
+          "prompt": "When was your passport issued?",
+          "help": "It's printed on the details page, usually next to the expiry date.",
+          "rules": [
+            {
+              "op": "<=",
+              "ref": "today",
+              "message": "The issue date can't be in the future."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "personal",
+      "title": "About you",
+      "questions": [
+        {
+          "id": "place_of_birth",
+          "type": "text",
+          "prompt": "Which city or town were you born in?",
+          "max_length": 120
+        },
+        {
+          "id": "father_name",
+          "type": "text",
+          "prompt": "What's your father's first name?",
+          "max_length": 80
+        },
+        {
+          "id": "mother_name",
+          "type": "text",
+          "prompt": "What's your mother's first name?",
+          "max_length": 80
+        },
+        {
+          "id": "home_address",
+          "type": "address",
+          "prompt": "What's your home address?"
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "prompt": "What phone number can the authorities reach you on?",
+          "help": "Include the country code, for example +961 71 123 456."
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "title": "Your trip",
+      "questions": [
+        {
+          "id": "arrival_date",
+          "type": "date",
+          "prompt": "When do you plan to arrive in Türkiye?",
+          "rules": [
+            {
+              "op": ">=",
+              "ref": "today",
+              "days": 1,
+              "message": "Your arrival date needs to be in the future."
+            }
+          ]
+        },
+        {
+          "id": "departure_date",
+          "type": "date",
+          "prompt": "And when will you leave?",
+          "rules": [
+            {
+              "op": ">=",
+              "ref": "arrival_date",
+              "message": "You can't leave before you arrive."
+            },
+            {
+              "op": "<=",
+              "ref": "arrival_date",
+              "days": 90,
+              "message": "An e-Visa allows up to 90 days (30 for some passports)."
+            },
+            {
+              "op": "<=",
+              "ref": "passport.expiry_date",
+              "message": "Your passport must be valid for your whole stay: a visa can't outlast it."
+            }
+          ]
+        },
+        {
+          "id": "accommodation",
+          "type": "choice",
+          "prompt": "Where will you stay in Türkiye?",
+          "options": [
+            {
+              "value": "hotel",
+              "label": "A hotel"
+            },
+            {
+              "value": "rental",
+              "label": "A rented flat or house"
+            },
+            {
+              "value": "host",
+              "label": "With family or friends"
+            },
+            {
+              "value": "other",
+              "label": "Somewhere else"
+            }
+          ]
+        },
+        {
+          "id": "accommodation_details",
+          "type": "text",
+          "prompt": "What's the name, address and phone number of the place you're staying?",
+          "max_length": 300,
+          "show_if": {
+            "question": "accommodation",
+            "in": [
+              "hotel",
+              "rental",
+              "other"
+            ]
+          }
+        },
+        {
+          "id": "host_details",
+          "type": "text",
+          "prompt": "Who's hosting you? Give their full name, address, phone number and how you know them.",
+          "max_length": 300,
+          "show_if": {
+            "question": "accommodation",
+            "in": [
+              "host"
+            ]
+          }
+        },
+        {
+          "id": "return_ticket",
+          "type": "yes_no",
+          "prompt": "Do you have a return ticket booked?"
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "id": "supporting_visa",
+      "label": "Your Schengen, US, UK or Irish visa",
+      "help": "A copy of the visa or residence permit, if your passport needs one.",
+      "required": false,
+      "show_if": {
+        "question": "supporting_visa",
+        "in": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "accommodation_proof",
+      "label": "Hotel booking",
+      "help": "Some passports need it at the border.",
+      "required": false,
+      "show_if": {
+        "question": "accommodation",
+        "in": [
+          "hotel",
+          "rental",
+          "other"
+        ]
+      }
+    },
+    {
+      "id": "flight_booking",
+      "label": "Return ticket",
+      "help": "Some passports need it at the border.",
+      "required": false
+    }
+  ]
+}

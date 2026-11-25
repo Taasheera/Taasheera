@@ -31,7 +31,7 @@ export default function Home() {
     <>
       <section className="hero" aria-labelledby="hero-heading">
         <div className="container hero-inner">
-          <p className="eyebrow status-dot status-dot--ok">Schengen · UK · US · Canada</p>
+          <p className="eyebrow status-dot status-dot--ok">Schengen · UK · US · Canada · Japan · China · India · Türkiye</p>
           <h1 id="hero-heading" className="hero-title" aria-label="Prepare your visa application with AI">
             Visa paperwork,<br className="hero-break" /> done properly.
             <span className="visually-hidden"> Prepare your visa application with AI</span>

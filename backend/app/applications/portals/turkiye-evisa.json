@@ -1,0 +1,46 @@
+{
+  "title": "Türkiye e-Visa application",
+  "portal": {"label": "Open evisa.gov.tr", "url": "https://www.evisa.gov.tr/en/"},
+  "date_format": "%d/%m/%Y",
+  "before": [
+    "Check first whether your passport needs a visa at all: Lebanese citizens, for example, can visit for tourism without one.",
+    "Use only evisa.gov.tr. Other sites that sell Turkish e-Visas charge extra.",
+    "Each traveler, including children, needs their own e-Visa. Have a card ready to pay."
+  ],
+  "sections": [
+    {"title": "Start", "fields": [
+      {"label": "Country/region (nationality)", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "Travel document", "sources": ["passport"], "formatter": "fixed", "fixed": "ordinary"},
+      {"label": "Arrival date", "sources": ["arrival_date"], "formatter": "date"}
+    ], "yourself": ["The security check (CAPTCHA)"]},
+    {"title": "Preliminary questions", "fields": [
+      {"label": "Valid Schengen, US, UK or Irish visa or residence permit", "sources": ["supporting_visa"]},
+      {"label": "Return ticket", "sources": ["return_ticket"]},
+      {"label": "Hotel reservation", "sources": ["accommodation_details", "host_details"]}
+    ], "yourself": ["Your airline, if your passport only qualifies with certain carriers"]},
+    {"title": "Personal information", "fields": [
+      {"label": "Given/first name(s)", "sources": ["passport.given_names"]},
+      {"label": "Surname(s)", "sources": ["passport.surname"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "Place of birth", "sources": ["place_of_birth"]},
+      {"label": "Mother's name", "sources": ["mother_name"]},
+      {"label": "Father's name", "sources": ["father_name"]},
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Passport issue date", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Passport expiry date", "sources": ["passport.expiry_date"], "formatter": "date"},
+      {"label": "Email", "sources": ["account_email"]},
+      {"label": "Phone number", "sources": ["phone"]},
+      {"label": "Address", "sources": ["home_address"], "formatter": "address"}
+    ]},
+    {"title": "Verify and pay", "yourself": ["Check every value, accept the declaration and pay by card."]}
+  ],
+  "after": [
+    "Download the e-Visa PDF (it's also emailed to you) and keep it on your phone or printed for the border.",
+    "Carry your return ticket and hotel booking in case the border officer asks.",
+    "Record the e-Visa on your dashboard as submitted and approved."
+  ],
+  "sources": [
+    {"label": "Republic of Türkiye e-Visa", "url": "https://www.evisa.gov.tr/en/"},
+    {"label": "Ministry of Foreign Affairs of Türkiye: visa information", "url": "https://www.mfa.gov.tr/visa-information-for-foreigners.en.mfa"}
+  ]
+}

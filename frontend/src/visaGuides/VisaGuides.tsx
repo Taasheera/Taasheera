@@ -35,7 +35,7 @@ export default function VisaGuides() {
               <p>{guide.destination_label}: {guide.destination_description}</p>
               <p className="guide-card-facts">
                 <span>From {guide.fees.items[0].amount}</span>
-                <span>{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Guided, you submit'}</span>
+                <span>{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Form guide, you submit'}</span>
               </p>
             </li>
           ))}

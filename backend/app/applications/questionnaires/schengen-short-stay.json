@@ -166,6 +166,20 @@
           ]
         },
         {
+          "id": "job_title",
+          "type": "text",
+          "prompt": "What's your job title?",
+          "help": "As your employer would write it, for example Accountant or Software engineer. It goes in the form's occupation field.",
+          "max_length": 120,
+          "show_if": {
+            "question": "occupation",
+            "in": [
+              "employed",
+              "self_employed"
+            ]
+          }
+        },
+        {
           "id": "employer",
           "type": "text",
           "prompt": "What's the name of your employer or business?",

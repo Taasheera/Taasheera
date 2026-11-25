@@ -3,6 +3,7 @@ import {
   fieldSpecs, fieldTrust, trustCopy,
   type Extraction, type FieldKey, type PassportFields,
 } from './fields'
+import { expiryWarning } from './expiry'
 
 const statusCopy: Record<Extraction['status'], { title: string; body: string; tone: string }> = {
   verified: {
@@ -47,6 +48,14 @@ export default function ReviewForm({ fields, extraction, edited, errors, saving,
       <p className={`notice-title status-dot status-dot--${status.tone}`}>{status.title}</p>
       <p>{status.body}</p>
     </div>}
+
+    {(() => {
+      const warning = expiryWarning(fields.expiry_date)
+      return warning && <div className={`notice notice-${warning.tone}`} role="alert">
+        <p className={`notice-title status-dot status-dot--${warning.tone}`}>{warning.tone === 'danger' ? 'Passport expired' : 'Passport expires soon'}</p>
+        <p>{warning.text}</p>
+      </div>
+    })()}
 
     <div className="review-grid">
       {fieldSpecs.map(spec => {

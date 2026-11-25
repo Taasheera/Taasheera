@@ -11,7 +11,9 @@ import './dashboard.css'
 
 type View = 'active' | 'archived'
 
-const destinationCodes: Record<string, string> = { SCHENGEN: 'EU', UK: 'GB', US: 'US', CANADA: 'CA' }
+const destinationCodes: Record<string, string> = {
+  SCHENGEN: 'EU', UK: 'GB', US: 'US', CANADA: 'CA', GBR: 'GB', USA: 'US', CAN: 'CA', CHN: 'CN', JPN: 'JP', IND: 'IN', TUR: 'TR',
+}
 
 // Every application the traveler has started, with where it stands (US 19). Archived ones sit
 // behind their own tab until restored or deleted (US 79).

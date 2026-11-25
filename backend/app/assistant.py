@@ -103,6 +103,30 @@ class AssistantReply(BaseModel):
     proposal: Proposal | None = None
 
 
+class DraftRequest(BaseModel):
+    """Help me write this: draft a free-text answer for the traveler to edit (inspired by Veeza's helper)."""
+    model_config = ConfigDict(extra="forbid")
+    application_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    question_id: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=60)
+    notes: str = Field(default="", max_length=500)
+
+
+class DraftReply(BaseModel):
+    draft: str
+
+
+DRAFT_PROMPT = (
+    "You help a traveler fill in one free-text question of a visa application. Their application is below "
+    "for context only.\n\n{application}\n\n"
+    "Write the traveler's answer to this question, and only this one, even if the application says they are "
+    "on a different question:\n\"{prompt}\"\n\n"
+    "Write it in the first person, plainly and factually, in English, as the traveler would write it on the "
+    "form. Use only the traveler's notes and the application; never invent names, addresses, dates, amounts "
+    "or plans. Where a needed detail is missing, write a short placeholder in square brackets, like "
+    "[hotel name]. No greeting, no advice, no markdown: just the answer, at most {limit} characters."
+)
+
+
 class AssistantUnavailable(Exception):
     """The model couldn't produce an answer (network, rate limit, outage, bad key)."""
 
@@ -259,6 +283,8 @@ def create_assistant_router(
     propose: Callable[[int, str, str, dict], Proposal | None] | None = None,
     tools_prompt: str | None = None,
     load_history: Callable[[int, str | None], list[dict]] | None = None,
+    # (application context, question prompt, max length) for a free-text question the traveler can answer now.
+    load_draft_context: Callable[[int, str, str], tuple[str, str, int] | None] | None = None,
     save_turn: Callable[[int, str | None, str, str], None] | None = None,
     record_event=None,
     today: Callable[[], date] = date.today,
@@ -322,5 +348,31 @@ def create_assistant_router(
             save_turn(traveler_id, data.application_id, data.message, reply)
         record(traveler_id, "proposal" if proposal else "success")
         return AssistantReply(reply=reply, used_passport=passport is not None, proposal=proposal)
+
+    @router.post("/draft", response_model=DraftReply)
+    def draft_answer(data: DraftRequest, request: Request, traveler_id: TravelerId, session: SessionDep):
+        """A draft for one free-text answer. Nothing is saved: the traveler edits it and saves it as usual."""
+        if ask is None:
+            raise HTTPException(status_code=503, detail="The assistant isn't set up on this server yet.")
+        context = load_draft_context(traveler_id, data.application_id, data.question_id) if load_draft_context else None
+        if context is None:
+            raise HTTPException(status_code=404, detail="That question can't be drafted.")
+        if not admitted(request, session, [
+            ("assistant-account", str(traveler_id), 20, 600),
+            ("assistant-ip", client_address(request), 60, 600),
+        ]):
+            audit(request, "assistant", "throttled", traveler_id)
+            raise HTTPException(status_code=429, detail="You're sending messages quickly. Wait a minute and try again.")
+        application, prompt, limit = context
+        system = DRAFT_PROMPT.format(limit=limit, prompt=prompt, application=application)
+        notes = data.notes.strip() or "(no notes: draft from the application)"
+        try:
+            text = ask(system, [{"role": "user", "content": f"My notes: {notes}"}])
+        except AssistantUnavailable:
+            record(traveler_id, "unavailable")
+            raise HTTPException(status_code=503,
+                                detail="The assistant couldn't write a draft right now. Please try again in a moment.") from None
+        record(traveler_id, "draft")
+        return DraftReply(draft=" ".join(text.split())[:limit])
 
     return router

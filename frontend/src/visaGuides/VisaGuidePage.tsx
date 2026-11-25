@@ -126,7 +126,7 @@ function GuideDetail({ guideId }: { guideId: string }) {
 
           <section className="guide-section" aria-labelledby="coverage-heading">
             <h2 id="coverage-heading">What Ta'asheera does for you</h2>
-            <p><span className="guide-level">{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Guided, you submit'}</span></p>
+            <p><span className="guide-level">{guide.coverage.level === 'filled_for_you' && pdfAvailable ? 'PDF form available' : 'Form guide, you submit'}</span></p>
             <p>{guide.coverage.text}</p>
             <StartButton />
           </section>

@@ -45,7 +45,8 @@ TOOLS_PROMPT = (
     "missing. Use a question id from the list above. A tool call only prepares the action: the traveler "
     "sees it and confirms it before anything is saved, so say \"here's the change, confirm it below\", never "
     "\"I've changed it\". Never change an answer they didn't ask to change. Nothing is ever submitted to an "
-    "embassy from this chat."
+    "embassy from this chat. If the message also asks a question, answer it in your text as well as "
+    "calling the tool, so nothing the traveler asked is left out."
 )
 
 

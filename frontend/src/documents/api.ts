@@ -83,6 +83,18 @@ export async function openDocument(applicationId: string, document: UploadedDocu
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
+// One printable PDF (CMPS271-71): a cover checklist, then every upload in the embassy's order.
+export async function downloadPacket(applicationId: string): Promise<void> {
+  const response = await protectedFetch(`${base(applicationId)}/packet`, { cache: 'no-store', silent: true })
+  if (!response.ok) throw new DocumentError('Could not prepare your packet. Please try again.')
+  const url = URL.createObjectURL(await response.blob())
+  const link = Object.assign(window.document.createElement('a'), { href: url, download: 'application-packet.pdf' })
+  window.document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`

@@ -1,0 +1,64 @@
+{
+  "title": "IRCC: Visitor visa (temporary resident visa) online application",
+  "portal": {"label": "Apply in the IRCC portal", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/apply-visitor-visa.html"},
+  "date_format": "%Y-%m-%d",
+  "before": [
+    "Sign in to the IRCC portal (or create an account), answer the eligibility questions, and it builds your list of forms and uploads.",
+    "IRCC dates are year-month-day. The dates below are already in that order.",
+    "You'll pay CAN$100 for the visa and CAN$85 for biometrics online at the end."
+  ],
+  "sections": [
+    {"title": "Personal details", "fields": [
+      {"label": "Family name", "sources": ["passport.surname"]},
+      {"label": "Given name(s)", "sources": ["passport.given_names"]},
+      {"label": "Sex", "sources": ["passport.sex"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "City/town of birth", "sources": ["place_of_birth"]},
+      {"label": "Country of birth", "sources": ["country_of_birth"], "formatter": "country"},
+      {"label": "Citizenship", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "Current country of residence", "sources": ["country_of_residence"], "formatter": "country"},
+      {"label": "Purpose of visit", "sources": ["purpose"]}
+    ], "yourself": ["Other names used", "Previous countries of residence in the last five years"]},
+    {"title": "Marital status", "fields": [
+      {"label": "Current marital status", "sources": ["marital_status"]}
+    ], "yourself": ["Spouse or partner's name and date of marriage, if any", "Previous marriages"]},
+    {"title": "Languages", "yourself": ["Native language and whether you can communicate in English or French"]},
+    {"title": "Passport", "fields": [
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Country of issue", "sources": ["passport.issuing_country"], "formatter": "country"},
+      {"label": "Issue date", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Expiry date", "sources": ["passport.expiry_date"], "formatter": "date"}
+    ], "yourself": ["National identity document, if you have one"]},
+    {"title": "Contact information", "fields": [
+      {"label": "Current mailing address", "sources": ["home_address"], "formatter": "address"},
+      {"label": "Telephone number", "sources": ["phone"]},
+      {"label": "Email address", "sources": ["account_email"]}
+    ]},
+    {"title": "Details of visit to Canada", "fields": [
+      {"label": "From (arrival)", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "To (departure)", "sources": ["departure_date"], "formatter": "date"},
+      {"label": "Funds available for your stay", "sources": ["funds"]},
+      {"label": "Where you'll stay", "sources": ["canada_address"]},
+      {"label": "Person or institution you'll visit", "sources": ["host_details"]}
+    ]},
+    {"title": "Education", "fields": [
+      {"label": "Highest level of education", "sources": ["education"]}
+    ], "yourself": ["School name, field of study and years attended"]},
+    {"title": "Employment", "fields": [
+      {"label": "Current activity/occupation", "sources": ["job_title", "occupation"], "formatter": "occupation"},
+      {"label": "Company/employer and city", "sources": ["employer"]}
+    ], "yourself": ["Your past 10 years of activity, with no gaps"]},
+    {"title": "Background information", "fields": [
+      {"label": "Ever refused a visa or permit, or entry to Canada or another country", "sources": ["previous_refusal"]}
+    ], "yourself": ["Health, criminal record, military service and other background questions"]}
+  ],
+  "after": [
+    "Upload your passport, photo, financial proof, travel plans and any invitation letter, then pay CAN$100 plus CAN$85 for biometrics.",
+    "Give your fingerprints and photo at a visa application centre within 30 days of the biometrics instruction letter.",
+    "If approved, IRCC asks for your passport to place the visa in it. Record the decision on your dashboard."
+  ],
+  "sources": [
+    {"label": "IRCC: Visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/visitor-visa.html"},
+    {"label": "IRCC: How to apply for a visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/apply-visitor-visa.html"}
+  ]
+}
