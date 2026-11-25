@@ -52,7 +52,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | OCR | Tesseract/pytesseract plus our MRZ locator and checksum repair | Vision-model fallback proposed |
 | Assistant | Backend-only official `google-genai` SDK, `gemini-3.5-flash-lite`, function calling | Provider behind adapters; no keys in browser |
 | Frontend | React 19, TypeScript, Vite, React Router data router, sonner | TanStack Query proposed |
-| Styling | Plain CSS/custom properties in `src/index.css`, DM Sans + Space Grotesk | No Tailwind; auth styles are scoped |
+| Styling | Plain CSS, Midnight passport tokens in `src/index.css`, Schibsted Grotesk, Inter and IBM Plex | No Tailwind; auth styles are scoped |
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
@@ -65,7 +65,7 @@ Layout: `backend/app/` (`applications/` pure engine/router and destination JSON 
 `backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
 Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
 (the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant button calls `openAssistant()`, which every
-`AssistantPanel` listens for. It makes the sticky header about 60px taller; `sectionNav.css` adjusts offsets below it.
+`AssistantPanel` listens for. The signed-in header uses the section pill track, with a collapsible menu on narrow screens.
 
 ## Local commands and routing
 
@@ -207,3 +207,5 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 43. **Scan quality and assistant.** Passport quality checks run before OCR behind `passport_scan_quality`.
     Application chat offers question explanations and supported browsers dictate into an editable draft.
     Policy citations resolve server-side to official guidance for the four supported visa types.
+44. **Midnight passport (CMPS271-238).** Traveler pages share a navy ground, sand actions, gold accents,
+    monospaced document values and dot-and-text statuses. Public legal pages carry the same palette.
