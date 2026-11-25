@@ -230,6 +230,36 @@ test('signed-in travelers get the assistant on every page, with its earlier conv
   assert.match(container.querySelector('.assistant-panel').textContent, /Ta'asheera assistant.*Yes, only you can see it\./s)
 })
 
+test("on an application's page the assistant answers about that application", async (t) => {
+  const id = 'b'.repeat(32)
+  const asked = []
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    if (url === '/auth/refresh') return Response.json({ access_token: 'test-access-token' })
+    if (url === '/auth/me') return Response.json({ id: 1, name: 'Anna', email: 'anna@example.com' })
+    if (url === `/assistant/history?application_id=${id}`) return Response.json([])
+    if (url === '/assistant/messages') {
+      asked.push(JSON.parse(init.body))
+      return Response.json({ reply: 'Two things are missing. See https://home-affairs.ec.europa.eu/policies/schengen . Upload them first.',
+        used_passport: true, proposal: null })
+    }
+    return new Response(null, { status: 404 })
+  })
+  await render(`/dashboard/${id}`)
+  await settle()
+  const launcher = [...container.querySelectorAll('button')].find(b => b.textContent.includes('Ask the assistant'))
+  await click(launcher)
+  await settle()
+  const panel = container.querySelector('.assistant-panel')
+  assert.match(panel.textContent, /Application assistant/)
+  const suggestion = [...panel.querySelectorAll('button')].find(b => b.textContent === 'Is my application ready?')
+  await click(suggestion)
+  await settle()
+  assert.deepEqual([asked[0].step, asked[0].application_id], ['application', id])
+  const bubble = panel.querySelector('.bubble-assistant')
+  assert.match(bubble.textContent, /missing\. See\. Upload them first\.Sources: European Commission/)
+  assert.equal(bubble.querySelector('a').getAttribute('href'), 'https://home-affairs.ec.europa.eu/policies/schengen')
+})
+
 test('signed-out visitors get no assistant button', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => new Response(null, { status: 401 }))
   await render('/faq')

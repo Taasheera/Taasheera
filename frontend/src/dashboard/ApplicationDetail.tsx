@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { APPLICATION_CHANGED_EVENT } from '../assistant/openAssistant'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { getApplication, getTimeline, isRecorded, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
@@ -46,6 +47,14 @@ function Detail({ applicationId }: { applicationId: string }) {
       .catch(() => { if (active) setLoaded(new Error('Could not load this application.')) })
     return () => { active = false }
   }, [traveler, applicationId, attempt])
+  // The assistant saved a change the traveler confirmed: show the new answers and checks.
+  useEffect(() => {
+    const reload = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === applicationId) setAttempt(value => value + 1)
+    }
+    window.addEventListener(APPLICATION_CHANGED_EVENT, reload)
+    return () => window.removeEventListener(APPLICATION_CHANGED_EVENT, reload)
+  }, [applicationId])
 
   if (traveler === undefined) return <section className="dash-page container"><p className="dash-status" role="status">Checking your session…</p></section>
   if (traveler === null) return <section className="dash-page container"><SignedOut /></section>

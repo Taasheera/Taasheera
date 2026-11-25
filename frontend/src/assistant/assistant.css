@@ -271,3 +271,7 @@
 .voice-draft { display: grid; gap: 5px; }
 .voice-draft span[role='status'] { color: var(--danger-text); font-size: 12px; }
 :dir(rtl) .assistant-icon-button[type='submit'] .icon { transform: scaleX(-1); }
+
+/* Official links the reply cited, listed once beneath it. */
+.assistant-sources { display: block; margin-top: 8px; font-size: 0.85em; color: var(--fg-muted); }
+.assistant-sources-label { font-weight: 600; }
