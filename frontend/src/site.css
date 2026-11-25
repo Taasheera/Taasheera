@@ -791,3 +791,10 @@
     transition: none;
   }
 }
+
+/* Link from each destination card to its visa guide (Sprint 5, behind visa_guide). */
+.destination .destination-guide {
+  color: var(--brand);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}

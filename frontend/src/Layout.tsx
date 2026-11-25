@@ -20,6 +20,7 @@ function MainLinks({ signedIn }: { signedIn: boolean }) {
     <>
       <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
       <Link to="/#destinations" data-activity-id="destinations-link">Destinations</Link>
+      <Feature name="visa_guide"><NavLink to="/visas" data-activity-id="visa-guides-link">Visa guides</NavLink></Feature>
       <Link to="/#privacy" data-activity-id="privacy-link">Privacy</Link>
       <NavLink to="/faq" data-activity-id="faq-link">FAQ</NavLink>
     </>
@@ -151,6 +152,7 @@ export default function Layout() {
             <nav className="footer-links" aria-label="Footer">
               <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
               <Link to="/faq" data-activity-id="faq-link">FAQ</Link>
+              <Feature name="visa_guide"><Link to="/visas" data-activity-id="visa-guides-link">Visa guides</Link></Feature>
               {traveler
                 ? <>
                     <Link to="/dashboard" data-activity-id="dashboard-link">Your applications</Link>

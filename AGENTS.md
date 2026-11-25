@@ -87,7 +87,7 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
 `/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
@@ -219,3 +219,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.
     Confirming a passport saves only its expiry date (`PassportExpiry`, CMPS271-36); the timer reminds at 180, 30
     and 0 days, once each per date. Reminder texts never contain dates or passport fields.
+46. **Visa guides (CMPS271-19/20/21/22/24/25).** Public `GET /visa-guides` and pages `/visas`, `/visas/:id`.
+    Checklist and limits come from the questionnaires; fees, times, rules and sources from
+    `applications/visa_guides.json` (official https domains only, `checked_on` date). A definite
+    "need a visa" answer only for nationalities checked against the official list; others get the checker.
+    Re-check the figures before each release. Behind `visa_guide`.

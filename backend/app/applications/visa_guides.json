@@ -1,0 +1,117 @@
+{
+  "checked_on": "2026-11-25",
+  "guides": [
+    {
+      "questionnaire_id": "schengen-short-stay",
+      "need": {
+        "rule": "For short visits, travelers with a passport from a visa-required country generally need a Schengen visa. Visa-exempt travelers can usually visit for up to 90 days in a 180-day period. Check the official rules for your passport and circumstances.",
+        "notes": [
+          "The EU's planned online travel permit for visa-free visitors (ETIAS) is not running yet, and no start date has been announced."
+        ],
+        "checker": {"label": "The EU's list of who needs a visa", "url": "https://home-affairs.ec.europa.eu/policies/schengen/visa-policy_en"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Adults and children aged 12 and over", "amount": "€90"},
+          {"label": "Children aged 6 to 11", "amount": "€45"},
+          {"label": "Children under 6", "amount": "Free"}
+        ],
+        "note": "These are standard fees. Reductions or exemptions can apply. A visa centre may also charge a service fee.",
+        "source": {"label": "German Federal Foreign Office: Schengen visa fee", "url": "https://www.auswaertiges-amt.de/en/-/2658682"}
+      },
+      "time": {
+        "text": "Usually decided within 15 calendar days after the consulate accepts your application. It can take up to 45 days if they need to check more.",
+        "source": {"label": "EU Visa Code, article 23 (Czech Ministry of Foreign Affairs)", "url": "https://mzv.gov.cz/london/en/visa_and_consular_information/visa_information/visa_decision/index.html"}
+      },
+      "coverage": {
+        "level": "filled_for_you",
+        "text": "Ta'asheera asks you questions in plain language and checks your answers. When the PDF review feature is available, you can review and print a filled Schengen application form. The form-filling agent has been tested on a practice form. You review and submit the application yourself."
+      },
+      "extra_sources": [
+        {"label": "European Commission: ETIAS", "url": "https://home-affairs.ec.europa.eu/policies/schengen/smart-borders/european-travel-information-authorisation-system_en"}
+      ]
+    },
+    {
+      "questionnaire_id": "uk-standard-visitor",
+      "need": {
+        "rule": "Depending on your passport and circumstances, a short visit can require a Standard Visitor visa, an electronic travel authorisation (ETA), or neither. Use the official checker to see which applies.",
+        "notes": [],
+        "checker": {"label": "GOV.UK: Check if you need a UK visa", "url": "https://www.gov.uk/check-uk-visa"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Standard Visitor visa (up to 6 months)", "amount": "£135"},
+          {"label": "Long-term visa, 2 years (6 months per visit)", "amount": "£506"}
+        ],
+        "note": "Fees are not refunded if the visa is refused.",
+        "source": {"label": "GOV.UK: Apply for a Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"}
+      },
+      "time": {
+        "text": "Usually about 3 weeks after your appointment at the visa application centre.",
+        "source": {"label": "GOV.UK: Visa processing times", "url": "https://www.gov.uk/visa-processing-times"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then fill in the official online form on GOV.UK yourself, using your saved answers."
+      },
+      "extra_sources": []
+    },
+    {
+      "questionnaire_id": "us-b2-tourist",
+      "need": {
+        "rule": "Eligible Visa Waiver Program travelers can visit for up to 90 days with an approved ESTA. Other travelers generally need a visitor visa for tourism, with some exceptions. Check the official rules for your passport and circumstances.",
+        "notes": [],
+        "checker": {"label": "US Customs and Border Protection: Visa Waiver Program", "url": "https://www.cbp.gov/travel/international-visitors/visa-waiver-program"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Visa application fee", "amount": "$185"}
+        ],
+        "note": "This is the non-refundable application fee. An issuance fee may also apply based on your nationality. Check the State Department's reciprocity schedule and your embassy's instructions.",
+        "source": {"label": "US Department of State: Fees for visa services", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/fees/fees-visa-services.html"}
+      },
+      "time": {
+        "text": "There is no fixed time: it depends on how long you wait for an interview at your embassy, from a few days to many months.",
+        "source": {"label": "US Department of State: Visa appointment wait times", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/wait-times.html"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then fill in the official DS-160 form yourself, using your saved answers, and go to the interview."
+      },
+      "extra_sources": [
+        {"label": "US Department of State: Visa reciprocity and issuance fees", "url": "https://travel.state.gov/content/travel/en/us-visas/Visa-Reciprocity-and-Civil-Documents-by-Country.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "canada-visitor",
+      "need": {
+        "rule": "Most travellers need either a visitor visa or an electronic travel authorization (eTA), not both. Which one depends on your passport.",
+        "notes": [],
+        "checker": {"label": "IRCC: Find out if you need a visa", "url": "https://ircc.canada.ca/visit-visiter/en/visas"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Visitor visa, per person", "amount": "CAD 100"},
+          {"label": "Fingerprints and photo (biometrics), per person", "amount": "CAD 85"}
+        ],
+        "note": "Biometrics cost at most CAD 170 for a family applying together.",
+        "source": {"label": "IRCC: Fee list", "url": "https://ircc.canada.ca/english/information/fees/fees.asp"}
+      },
+      "time": {
+        "text": "Processing times vary by country and can change. Use the current IRCC estimate for your country of residence.",
+        "source": {"label": "IRCC: Check processing times", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application/check-processing-times.html"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then apply online in your IRCC account yourself, using your saved answers, and give your biometrics."
+      },
+      "extra_sources": [
+        {"label": "Government of Canada: Biometrics", "url": "https://www.canada.ca/biometrics"}
+      ]
+    }
+  ]
+}

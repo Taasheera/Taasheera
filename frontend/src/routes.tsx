@@ -6,6 +6,9 @@ import AdminUsers from './admin/AdminUsers'
 import { readNavigation } from './navigation'
 import Layout from './Layout'
 import Faq from './pages/Faq'
+import Feature from './Feature'
+import VisaGuidePage from './visaGuides/VisaGuidePage'
+import VisaGuides from './visaGuides/VisaGuides'
 import Home from './pages/Home'
 import Passport from './pages/Passport'
 import Apply from './pages/Apply'
@@ -27,6 +30,9 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: 'faq', element: <Faq /> },
+          // Not /visa-guides: that prefix is the API. Behind visa_guide; unknown while the flag is off.
+          { path: 'visas', element: <Feature name="visa_guide" fallback={<NotFound />}><VisaGuides /></Feature> },
+          { path: 'visas/:guideId', element: <Feature name="visa_guide" fallback={<NotFound />}><VisaGuidePage /></Feature> },
           { path: 'passport', element: <Passport /> },
           { path: 'passport/:uploadId', element: <Passport /> },
           // Not /applications: that prefix is the API, proxied to the backend.

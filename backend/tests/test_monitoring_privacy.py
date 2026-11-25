@@ -286,7 +286,9 @@ def test_google_only_deletion_verifies_connected_subject(api, monkeypatch):
 def test_all_private_endpoints_reject_anonymous_requests_before_body_validation(api):
     public = {'/auth/register', '/auth/login', '/auth/config', '/auth/google', '/auth/google/link-login', '/auth/refresh', '/auth/logout',
               '/auth/forgot-password', '/auth/verify-reset-code', '/auth/reset-password',
-              '/health/live', '/health/ready', '/features'}
+              '/health/live', '/health/ready', '/features',
+              # Visa guides are meant for everyone, before signing in (Sprint 5).
+              '/visa-guides', '/visa-guides/{guide_id}'}
     for route in iter_route_contexts(api.app.routes):
         if route.path in public or not hasattr(route, 'dependant'):
             continue
