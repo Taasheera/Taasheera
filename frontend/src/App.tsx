@@ -4,6 +4,7 @@ import GoogleAccountLink from './GoogleAccountLink'
 import GoogleSignIn from './GoogleSignIn'
 import { disableGoogleAutoSelect } from './googleIdentity'
 import './App.css'
+import AppearanceSelect from './AppearanceSelect'
 import CreateAccount from './CreateAccount'
 import ForgotPassword from './ForgotPassword'
 import SetNewPassword from './SetNewPassword'
@@ -81,12 +82,14 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
       {!embedded && <header className="brand">
         {/* The sign-in screens sit outside the site layout, so this is their only way home. */}
         <a href="/" className="brand-link" aria-label="Taasheera home" data-activity-id="home-link">
-          <span className="brand-mark" aria-hidden="true">T</span>
-          Taasheera
+          <img className="brand-mark" src="/mark-ink.svg" alt="" />
+          taasheera
         </a>
+        <AppearanceSelect />
       </header>}
       {!embedded && traveler && !isRecoveryPage && !checking && !redirecting && <SectionNav pathname={window.location.pathname} />}
 
+      <div className="auth-body">
       {isResetPage ? <SetNewPassword
         key={route.version}
         token={route.resetToken}
@@ -156,7 +159,14 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
       </>}
       {sessionError && !isRecoveryPage && <p className="auth-status auth-error" role="alert">{sessionError}</p>}
 
-      {!embedded && <footer>Your next chapter starts with a journey.</footer>}
+      </div>
+      {!embedded && <aside className="auth-privacy">
+        <span lang="ar">تأشيرة</span>
+        <div>
+          <p>Your answers save after every question. You decide when to submit.</p>
+          <ul><li>Owner-only storage</li><li>Private sign-in</li></ul>
+        </div>
+      </aside>}
     </Shell>
     {!embedded && traveler && !isRecoveryPage && !redirecting && <GlobalAssistant key={traveler.id} />}</>
   )
@@ -209,9 +219,15 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
 
   return (
     <section className="sign-in-card" aria-labelledby="sign-in-heading">
-      <p className="eyebrow">YOUR JOURNEY STARTS HERE</p>
+      <p className="eyebrow">Sign in</p>
       <h1 id="sign-in-heading">Welcome back</h1>
-      <p className="intro">Sign in to your traveler account.</p>
+      <p className="intro">Pick up your application where you left it.</p>
+
+      <GoogleSignIn clientId={googleClientId} disabled={submitting}
+        configurationStatus={googleConfigurationStatus} onConfigurationRetry={onGoogleConfigurationRetry}
+        onCredential={googleCredential} onMessage={setMessage} />
+
+      <div className="divider"><span>or with email</span></div>
 
       <form
         aria-busy={submitting}
@@ -268,12 +284,6 @@ function SignIn({ onSignedIn, googleClientId, initialMessage, googleConfiguratio
 
         <button className="primary-button" data-activity-id="submit-login" type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</button>
       </form>
-
-      <div className="divider"><span>or</span></div>
-
-      <GoogleSignIn clientId={googleClientId} disabled={submitting}
-        configurationStatus={googleConfigurationStatus} onConfigurationRetry={onGoogleConfigurationRetry}
-        onCredential={googleCredential} onMessage={setMessage} />
 
       <p className="create-account">
         New to Taasheera?{' '}
