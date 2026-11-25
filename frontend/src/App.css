@@ -362,3 +362,15 @@
 .danger-button:disabled { opacity: .5; cursor: default; }
 .access-history { padding-inline-start: 1.3rem; line-height: 1.6; }
 .access-history li { margin-bottom: 1rem; }
+
+/* The provider redraws its button on resize. Constrain the previous frame while it catches up. */
+.google-button-host {
+  max-inline-size: 100%;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+
+.google-button-host > div,
+.google-button-host iframe {
+  max-inline-size: 100%;
+}
