@@ -216,3 +216,4 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     emails it through the reset email sender, so the worker's notifications are emailed too. Older than a day:
     skipped; 3 failures: failed. Development without SMTP logs them. One API process only. Behind `email_notifications`.
     `NotificationPreference` (CMPS271-99, Account page) turns emails off per group of kinds; the bell shows all.
+    The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.

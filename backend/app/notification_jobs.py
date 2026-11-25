@@ -3,6 +3,8 @@
 `run_notification_jobs` runs every NOTIFICATION_JOB_SECONDS (default 15 minutes) in one background
 thread of the API process, while the `email_notifications` flag is on. Each run:
 
+- reminds the owner of each draft application left untouched for STALL_AFTER (CMPS271-101), once
+  per stall: working on it again and leaving it another week earns a new reminder;
 - emails every notification still marked "pending" (CMPS271-98), unless the traveler turned that kind
   of email off (CMPS271-99). A notification is saved wherever its event happens, including the agent
   worker's container, so its email copy waits here.
@@ -20,8 +22,9 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
 
 from .mailer import NotificationSender
-from .models import Notification, Traveler
+from .models import Application, Notification, Traveler
 from .notification_preferences import wants_email
+from .notifications import application_name, notify
 
 logger = logging.getLogger("taasheera.notifications")
 
@@ -29,11 +32,13 @@ EMAIL_ATTEMPTS = 3
 # An email about something older than this is no longer useful, for example after the flag was off.
 EMAIL_MAX_AGE = timedelta(days=1)
 BATCH = 100
+STALL_AFTER = timedelta(days=7)
 
 SUBJECTS = {
     "status_changed": "Update on your visa application",
     "agent_finished": "Your embassy form is filled in",
     "agent_stopped": "The agent stopped filling your embassy form",
+    "application_stalled": "Your visa application is waiting for you",
 }
 DEFAULT_SUBJECT = "News from Taasheera"
 
@@ -99,9 +104,38 @@ def send_pending_emails(engine, sender: NotificationSender | None, site_url: str
     return result
 
 
+def remind_stalled_applications(engine, *, now: datetime | None = None) -> int:
+    """Add one reminder for each draft application untouched for a week. Returns how many were added."""
+    now = now or datetime.now(timezone.utc)
+    added = 0
+    with Session(engine) as session:
+        drafts = session.exec(select(Application).where(Application.status == "DRAFT",
+                                                        Application.archived_at.is_(None))).all()
+        for application in drafts:
+            touched = _utc(application.updated_at)
+            if touched > now - STALL_AFTER:
+                continue
+            owner = session.get(Traveler, application.traveler_id)
+            if owner is None or owner.status != "active":
+                continue
+            reminders = session.exec(select(Notification.created_at).where(
+                Notification.application_id == application.id, Notification.kind == "application_stalled")).all()
+            if any(_utc(sent) >= touched for sent in reminders):
+                continue  # Already reminded about this stall.
+            reminder = notify(session, application.traveler_id, "application_stalled",
+                              f"Your {application_name(application)} application has been waiting for a week. "
+                              "Open it to continue where you left off.",
+                              application_id=application.id, link=f"/dashboard/{application.id}")
+            reminder.created_at = now
+            session.commit()
+            added += 1
+    return added
+
+
 def run_notification_jobs(engine, sender: NotificationSender | None, site_url: str, *,
                           now: datetime | None = None) -> EmailResult:
-    """One run of every notification job."""
+    """One run of every notification job: first add the reminders that are due, then email."""
+    remind_stalled_applications(engine, now=now)
     return send_pending_emails(engine, sender, site_url, now=now)
 
 
