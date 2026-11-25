@@ -16,6 +16,7 @@ from sqlmodel import Session, SQLModel, select
 
 from .database import build_engine
 from .applications.form_review import create_form_review_router
+from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
 from .activity import activity_directory_from_environment, create_activity_router, record_activity
 from .admin_api import create_admin_router, install_admin_no_store
@@ -209,6 +210,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_agent_router(get_session, current_traveler, agent_files))
     app.include_router(create_form_review_router(get_session, current_traveler,
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
+    app.include_router(create_portal_guide_router(get_session, current_traveler))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:

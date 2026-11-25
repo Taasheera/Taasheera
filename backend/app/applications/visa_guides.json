@@ -54,7 +54,7 @@
       },
       "coverage": {
         "level": "guided",
-        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then fill in the official online form on GOV.UK yourself, using your saved answers."
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out the GOV.UK form section by section with your answers ready to copy, and you submit it yourself."
       },
       "extra_sources": []
     },
@@ -79,7 +79,7 @@
       },
       "coverage": {
         "level": "guided",
-        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then fill in the official DS-160 form yourself, using your saved answers, and go to the interview."
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out each DS-160 page with your answers ready to copy. You submit it yourself and go to the interview."
       },
       "extra_sources": [
         {"label": "US Department of State: Visa reciprocity and issuance fees", "url": "https://travel.state.gov/content/travel/en/us-visas/Visa-Reciprocity-and-Civil-Documents-by-Country.html"}
@@ -107,7 +107,7 @@
       },
       "coverage": {
         "level": "guided",
-        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. You then apply online in your IRCC account yourself, using your saved answers, and give your biometrics."
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out the IRCC application with your answers ready to copy. You submit it yourself and give your biometrics."
       },
       "extra_sources": [
         {"label": "Government of Canada: Biometrics", "url": "https://www.canada.ca/biometrics"}
