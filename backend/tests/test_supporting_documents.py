@@ -50,6 +50,12 @@ def make_png() -> bytes:
 
 
 @pytest.fixture(autouse=True)
+def consent_not_required(monkeypatch):
+    # Uploading before accepting the privacy policy is tested in test_privacy_consent.py.
+    monkeypatch.setenv("FEATURE_PRIVACY_CONSENT", "false")
+
+
+@pytest.fixture(autouse=True)
 def no_ocr(monkeypatch):
     # Image text comes from Tesseract, which isn't needed to test the API.
     monkeypatch.setattr("app.documents.files.pytesseract.image_to_string", lambda image, timeout: "OCR TEXT")

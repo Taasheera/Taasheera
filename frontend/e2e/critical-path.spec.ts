@@ -24,6 +24,11 @@ async function signIn(page: Page, email: string, name: string) {
   // Signing in lands on the dashboard, which greets the traveler by first name.
   await expect(page).toHaveURL('/dashboard')
   await expect(page.getByText(new RegExp(`^Welcome( back)?, ${name.split(' ')[0]}$`))).toBeVisible()
+  // A new account is asked to accept the privacy policy before uploading anything (CMPS271-115).
+  const policy = page.getByRole('dialog', { name: 'Before you upload documents' })
+  await expect(policy).toBeVisible()
+  await policy.getByRole('button', { name: 'I accept', exact: true }).click()
+  await expect(policy).toHaveCount(0)
 }
 
 test('sign-in refuses a wrong password, then signs in, survives a reload and logs out', async ({ page, context }) => {

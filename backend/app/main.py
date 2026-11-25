@@ -36,6 +36,7 @@ from .models import RegisterRequest, Traveler, TravelerPublic
 from .passport.router import create_passport_router
 from .passport.storage import PassportImageStorage
 from .profile import create_profile_router
+from .consent import create_consent_requirement, create_consent_router
 from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
@@ -121,6 +122,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))
     app.include_router(create_profile_router(get_session, current_traveler))
+    app.include_router(create_consent_router(get_session, current_traveler))
+    # No identity document is accepted before the privacy policy is (CMPS271-115).
+    privacy_consent = Depends(create_consent_requirement(get_session, current_traveler))
     app.include_router(create_notifications_router(get_session, current_traveler))
 
     def current_traveler_id(traveler: Annotated[Traveler, Depends(current_traveler)]) -> int:
@@ -138,6 +142,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         passport_storage, current_traveler_id, record_event=record_passport_activity,
         uploads_enabled=uploads_setting == "true",
         check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
+        upload_dependencies=[privacy_consent],
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
@@ -175,7 +180,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
 
     app.include_router(create_documents_router(get_session, current_traveler, document_storage,
                                                record_event=record_document_activity,
-                                               load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check")))
+                                               load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
+                                               upload_dependencies=[privacy_consent]))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:
