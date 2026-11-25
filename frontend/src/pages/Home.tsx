@@ -3,6 +3,7 @@ import { Link, useOutletContext } from 'react-router'
 import type { LayoutContext } from '../Layout'
 import { destinations, faqs, privacyPoints, requiredDocuments, steps, trustBadges, whatWeDo } from '../content'
 import { ArrowIcon, CheckIcon } from '../icons'
+import Feature from '../Feature'
 import { createAccountPath } from '../paths'
 import FaqList from './FaqList'
 
@@ -101,6 +102,10 @@ export default function Home() {
                 <div>
                   <h3>{item.name}</h3>
                   <p>{item.visa}</p>
+                  <Feature name="visa_guide">
+                    <p><Link to={`/visas/${item.guide}`} className="destination-guide" data-activity-id={`visa-guide-${item.guide}`}>
+                      Read the guide<span className="visually-hidden"> for {item.name}</span></Link></p>
+                  </Feature>
                 </div>
               </li>
             ))}

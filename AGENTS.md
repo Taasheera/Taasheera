@@ -219,3 +219,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.
     Confirming a passport saves only its expiry date (`PassportExpiry`, CMPS271-36); the timer reminds at 180, 30
     and 0 days, once each per date. Reminder texts never contain dates or passport fields.
+46. **Visa guides (CMPS271-19/20/21/22/24/25).** Public `GET /visa-guides` and pages `/visas`, `/visas/:id`.
+    Checklist and limits come from the questionnaires; fees, times, rules and sources from
+    `applications/visa_guides.json` (official https domains only, `checked_on` date). A definite
+    "need a visa" answer only for nationalities checked against the official list; others get the checker.
+    Re-check the figures before each release. Behind `visa_guide`.
