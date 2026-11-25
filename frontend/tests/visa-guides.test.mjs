@@ -95,7 +95,7 @@ test('the list shows every guide with its starting fee and what Ta\'asheera does
   const cards = [...container.querySelectorAll('.guide-card')]
   assert.equal(cards.length, 2)
   assert.match(cards[0].textContent, /From £135/)
-  assert.match(cards[0].textContent, /Guided, you submit/)
+  assert.match(cards[0].textContent, /Form guide, you submit/)
   assert.match(cards[1].textContent, /PDF form available/)
   assert.equal(cards[0].querySelector('a').getAttribute('href'), '/visas/uk-standard-visitor')
   assert.match(container.querySelector('.guide-checked').textContent, /25 November 2026/)
@@ -159,7 +159,7 @@ test('the PDF badge appears only when PDF review is available', async () => {
   handlers['/features'] = () => json({ visa_guide: true, embassy_pdf: false })
   await render('/visas', () => container.querySelector('.guide-card'))
   const schengen = [...container.querySelectorAll('.guide-card')].find(card => card.textContent.includes('Schengen'))
-  assert.match(schengen.textContent, /Guided, you submit/)
+  assert.match(schengen.textContent, /Form guide, you submit/)
   assert.doesNotMatch(schengen.textContent, /PDF form available/)
 })
 

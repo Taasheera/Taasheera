@@ -4,12 +4,10 @@ export const OFFICIAL_SOURCES: Record<string, string> = {
   'www.gov.uk': 'GOV.UK',
   'travel.state.gov': 'U.S. Department of State',
   'www.canada.ca': 'Government of Canada',
-  'www.evisa.gov.tr': 'Republic of Türkiye e-Visa',
-  'indianvisaonline.gov.in': 'Government of India',
-  'www.visaforchina.cn': 'Chinese Visa Application Service Center',
+  'www.mfa.gov.tr': 'Ministry of Foreign Affairs of Türkiye',
+  'indianvisaonline.gov.in': 'Indian Visa Online',
+  'bio.visaforchina.cn': 'Chinese Visa Application Service Center',
   'www.mofa.go.jp': 'Ministry of Foreign Affairs of Japan',
-  'immi.homeaffairs.gov.au': 'Australian Department of Home Affairs',
-  'visa2egypt.gov.eg': 'Egypt e-Visa portal',
 }
 
 const URL_PATTERN = /https:\/\/[^\s<>\])]+/g
