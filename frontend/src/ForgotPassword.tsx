@@ -9,6 +9,7 @@ function ForgotPassword() {
   const inProgress = useRef(false)
   const mounted = useRef(false)
   const [requestedEmail, setRequestedEmail] = useState('')
+  const [codeRequested, setCodeRequested] = useState(false)
   const [resetToken, setResetToken] = useState<string | null>(null)
   const [codeMessage, setCodeMessage] = useState('')
   const [verifying, setVerifying] = useState(false)
@@ -18,8 +19,17 @@ function ForgotPassword() {
     return () => { mounted.current = false }
   }, [])
 
+  function restartRecovery(problem = '') {
+    setResetToken(null)
+    setCodeRequested(false)
+    setCodeMessage('')
+    setHasError(Boolean(problem))
+    setMessage(problem)
+  }
+
   if (resetToken) return <SetNewPassword token={resetToken}
-    onTokenCleared={() => { setResetToken(null); setRequestedEmail('') }}
+    onRequestNewCode={restartRecovery}
+    onTokenCleared={restartRecovery}
     onSuccess={() => { /* SetNewPassword retains its success view and clears auth state. */ }} />
 
   return (
@@ -46,6 +56,7 @@ function ForgotPassword() {
             if (mounted.current) {
               setMessage(confirmation)
               setRequestedEmail(email)
+              setCodeRequested(true)
               setCodeMessage('')
             }
           } catch (error) {
@@ -63,6 +74,7 @@ function ForgotPassword() {
           name="email"
           type="email"
           autoComplete="email"
+          defaultValue={requestedEmail}
           disabled={submitting}
           maxLength={254}
           placeholder="you@example.com"
@@ -71,13 +83,13 @@ function ForgotPassword() {
         />
 
         <button className="primary-button" data-activity-id="reset-request" type="submit" disabled={submitting}>
-          {submitting ? 'Sending…' : requestedEmail ? 'Resend reset code' : 'Request password reset'}
+          {submitting ? 'Sending…' : codeRequested ? 'Resend reset code' : 'Request password reset'}
         </button>
       </form>
 
       <p className={`auth-status${hasError ? ' auth-error' : ''}`} role={hasError ? 'alert' : 'status'}>{message}</p>
 
-      {requestedEmail && <form aria-label="Verify reset code" aria-busy={verifying}
+      {codeRequested && <form aria-label="Verify reset code" aria-busy={verifying}
         onSubmit={async event => {
           event.preventDefault()
           if (verifyingRef.current || inProgress.current) return

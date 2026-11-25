@@ -130,7 +130,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
    timeout and one retry. Update `PRODUCT_FACTS` when capabilities change.
 10. **Google linking.** Verified `sub` is identity; password accounts explicitly link with password confirmation.
 11. **OTP recovery.** Ten-minute/five-attempt codes issue five-minute single-use reset grants; reset revokes
-    sessions and cannot enable Google-only passwords. SES sandbox/owner setup: `docs/AUTH_OTP_AWS.md`.
+    sessions and cannot enable Google-only passwords. Restarting recovery keeps the email and discards the browser’s reset grant.
+    SES sandbox/owner setup: `docs/AUTH_OTP_AWS.md`.
 12. **Password change (US 43).** Current password required; current session stays and all others are revoked.
 13. **Traveler profile.** Separate owned row; `PUT` replaces fields, validates dates/codes/names and E.164 phone.
 14. **Account page.** Profile, sign-in methods, password and sessions; country options use UN M49/ICAO codes.

@@ -288,6 +288,34 @@ test('email OTP verification opens the password form without placing secrets in 
   assert.match(text(), /password has been changed/)
 })
 
+for (const action of ['start over', 'expired grant']) {
+  test(`the verified password form returns to the email form after ${action}`, async () => {
+    await mount('/sign-in#forgot-password')
+    replies.push({ status: 202, body: { detail: GENERIC } })
+    fill('email', 'maya@example.com')
+    await submit()
+    fill('code', '012345')
+    replies.push({ status: 200, body: { reset_token: TOKEN, expires_in: 300 } })
+    await act(async () => document.querySelector('[aria-label="Verify reset code"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+
+    if (action === 'start over') {
+      const requestLink = [...document.querySelectorAll('a')].find(link => link.textContent === 'Request a new code')
+      await act(async () => requestLink.click())
+      assert.equal(calls.length, 2, 'Returning to the form does not send another email')
+    } else {
+      replies.push({ status: 400 })
+      passwords()
+      await submit()
+      assert.match(document.querySelector('[role="alert"]').textContent, /reset session is invalid, expired, or already used/)
+    }
+
+    assert.equal(document.querySelector('h1').textContent, 'Forgot password?')
+    assert.equal(document.querySelector('[name="email"]').value, 'maya@example.com')
+    assert.equal(document.querySelector('[name="code"]'), null)
+    assert.equal(document.querySelector('[name="password"]'), null)
+  })
+}
+
 for (const [status, pattern] of [[400, /invalid, expired/], [422, /six-digit/], [429, /15 minutes/], [500, /try again later/]]) {
   test(`OTP HTTP ${status} keeps the code form retryable and hides backend diagnostics`, async () => {
     await mount('/sign-in#forgot-password')
