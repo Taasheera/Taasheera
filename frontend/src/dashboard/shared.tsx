@@ -15,7 +15,8 @@ export function Flag({ destination }: { destination: string }) {
 }
 
 export function StatusChip({ application }: { application: ApplicationSummary }) {
-  return <span className={`dash-chip dash-chip-${application.status.toLowerCase()}`}>
+  const tone = { ANSWERS_COMPLETE: 'ok', APPROVED: 'ok', INELIGIBLE: 'warn', REFUSED: 'danger', SUBMITTED: 'neutral', DRAFT: '' }[application.status]
+  return <span className={`dash-chip status-dot${tone ? ` status-dot--${tone}` : ''}`}>
     {statusCopy[application.status]}
     {application.status === 'DRAFT' && ` · ${application.answered} of ${application.total}`}
   </span>
