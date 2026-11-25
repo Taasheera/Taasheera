@@ -44,8 +44,9 @@ def test_a_draft_untouched_for_a_week_gets_one_reminder_by_bell_and_email(api): 
                                 "Open it to continue where you left off.")
     assert reminder.link == f"/dashboard/{application_id}"
     [(_, subject, body)] = outbox.sent
-    assert subject == "Your visa application is waiting for you"
-    assert f"{SITE}/dashboard/{application_id}" in body
+    assert subject == "New notification from Taasheera"
+    assert f"{SITE}/dashboard" in body
+    assert application_id not in body and TITLE not in body
     assert [item["kind"] for item in client.get("/notifications", headers=headers[0]).json()] == ["application_stalled"]
 
     # The next runs, even days later, add nothing while it stays untouched.

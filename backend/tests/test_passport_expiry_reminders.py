@@ -101,14 +101,15 @@ def test_a_passport_without_an_expiry_date_forgets_the_old_one(api):  # noqa: F8
     assert saved(app) is None
 
 
-def test_the_reminder_is_emailed_without_the_date_and_links_to_the_passport_page(api):  # noqa: F811
+def test_email_has_no_passport_details_and_the_bell_links_to_the_passport_page(api):  # noqa: F811
     client, app, headers, _ = api
     confirm_passport(client, headers[0], expires_in(150))
     outbox = Outbox()
     assert run_notification_jobs(app.state.engine, outbox, SITE).sent == 1
     [(_, subject, body)] = outbox.sent
-    assert subject == "A reminder about your passport"
-    assert body.startswith(EXPIRY_REMINDERS[180]) and f"{SITE}/passport" in body
+    assert subject == "New notification from Taasheera"
+    assert f"{SITE}/dashboard" in body
+    assert EXPIRY_REMINDERS[180] not in body and f"{SITE}/passport" not in body
     assert expires_in(150).isoformat() not in body and "L898902C3" not in body
     [item] = client.get("/notifications", headers=headers[0]).json()
     assert (item["kind"], item["link"]) == ("passport_expiring", "/passport")

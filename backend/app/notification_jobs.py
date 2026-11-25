@@ -7,7 +7,7 @@ thread of the API process, while the `email_notifications` flag is on. Each run:
   per stall: working on it again and leaving it another week earns a new reminder;
 - reminds travelers whose confirmed passport expires within six months, within a month, or has
   expired (CMPS271-36), once each per passport;
-- emails every notification still marked "pending" (CMPS271-98), unless the traveler turned that kind
+- sends an email for every notification still marked "pending" (CMPS271-98), unless the traveler turned that kind
   of email off (CMPS271-99). A notification is saved wherever its event happens, including the agent
   worker's container, so its email copy waits here.
 
@@ -36,14 +36,7 @@ EMAIL_MAX_AGE = timedelta(days=1)
 BATCH = 100
 STALL_AFTER = timedelta(days=7)
 
-SUBJECTS = {
-    "status_changed": "Update on your visa application",
-    "agent_finished": "Your embassy form is filled in",
-    "agent_stopped": "The agent stopped filling your embassy form",
-    "application_stalled": "Your visa application is waiting for you",
-    "passport_expiring": "A reminder about your passport",
-}
-DEFAULT_SUBJECT = "News from Taasheera"
+EMAIL_SUBJECT = "New notification from Taasheera"
 
 
 @dataclass
@@ -58,17 +51,14 @@ def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
-def email_body(notification: Notification, site_url: str) -> str:
-    """The plain-text email: the notification's fixed sentence and a link, never personal data."""
-    lines = [notification.message, ""]
-    if notification.link:
-        lines += [f"Open it in Taasheera: {site_url}{notification.link}", ""]
-    lines += [
-        "You get this email because you have a Taasheera account.",
-        f"Choose which emails you get on your account page: {site_url}/account",
-        "Taasheera never asks for your password or passport details by email.",
-    ]
-    return "\n".join(lines) + "\n"
+def email_body(site_url: str) -> str:
+    """Keep visa, passport and application details in the signed-in app."""
+    return (
+        "You have a new notification. Sign in to Taasheera and open the bell to read it.\n\n"
+        f"Open Taasheera: {site_url}/dashboard\n"
+        f"Choose which emails you get: {site_url}/account\n"
+        "Taasheera never asks for your password or passport details by email.\n"
+    )
 
 
 def send_pending_emails(engine, sender: NotificationSender | None, site_url: str, *,
@@ -89,8 +79,7 @@ def send_pending_emails(engine, sender: NotificationSender | None, site_url: str
                 result.skipped += 1
             else:
                 try:
-                    sender.send_notification(traveler.email, SUBJECTS.get(notification.kind, DEFAULT_SUBJECT),
-                                             email_body(notification, site_url))
+                    sender.send_notification(traveler.email, EMAIL_SUBJECT, email_body(site_url))
                 except Exception as error:  # A mail server problem must not stop the other emails.
                     notification.email_attempts += 1
                     if notification.email_attempts >= EMAIL_ATTEMPTS:
@@ -243,7 +232,7 @@ class NotificationJobThread:
         while True:
             try:
                 self._run()
-            except Exception:
-                logger.exception("Notification jobs failed; trying again next time.")
+            except Exception as error:
+                logger.warning("Notification jobs failed (%s); trying again next time.", type(error).__name__)
             if self._stop.wait(self._interval):
                 return

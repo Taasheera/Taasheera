@@ -46,7 +46,7 @@ def add(app, traveler_id=1, *, created_at=None, kind="status_changed", link="/da
         return row.id
 
 
-def test_a_status_change_is_emailed_once_with_a_link_and_no_personal_data(api):  # noqa: F811
+def test_a_status_change_is_emailed_once_with_no_private_details(api):  # noqa: F811
     client, app, headers, _ = api
     application_id = start(client, headers[0])["id"]
     answer_all(client, headers[0], application_id)
@@ -59,11 +59,11 @@ def test_a_status_change_is_emailed_once_with_a_link_and_no_personal_data(api): 
     [(recipient, subject, body)] = outbox.sent
     with Session(app.state.engine) as session:
         assert recipient == session.get(Traveler, 1).email
-    assert subject == "Update on your visa application"
-    assert body.startswith(f"Every question in your {TITLE} application is answered.\n")
-    assert f"{SITE}/dashboard/{application_id}" in body
+    assert subject == "New notification from Taasheera"
+    assert body.startswith("You have a new notification.")
+    assert f"{SITE}/dashboard\n" in body
     # Fixed sentences only: no passport fields, answers or the traveler's name.
-    for private in ("ERIKSSON", "ANNA", "L898902C", "1974"):
+    for private in ("ERIKSSON", "ANNA", "L898902C", "1974", TITLE, application_id):
         assert private not in body
     assert stored(app)[0].email_status == "sent"
 
@@ -71,14 +71,14 @@ def test_a_status_change_is_emailed_once_with_a_link_and_no_personal_data(api): 
     assert len(outbox.sent) == 1
 
 
-def test_each_kind_has_its_own_subject(api):  # noqa: F811
+def test_all_kinds_use_the_same_generic_alert(api):  # noqa: F811
     _, app, _, _ = api
     for kind in ("agent_finished", "agent_stopped", "something_new"):
         add(app, kind=kind)
     outbox = Outbox()
     send_pending_emails(app.state.engine, outbox, SITE)
-    assert [subject for _, subject, _ in outbox.sent] == [
-        "Your embassy form is filled in", "The agent stopped filling your embassy form", "News from Taasheera"]
+    assert len(outbox.sent) == 3
+    assert len({(subject, body) for _, subject, body in outbox.sent}) == 1
 
 
 def test_a_notification_without_a_link_still_reads_well(api):  # noqa: F811
@@ -87,7 +87,8 @@ def test_a_notification_without_a_link_still_reads_well(api):  # noqa: F811
     outbox = Outbox()
     send_pending_emails(app.state.engine, outbox, SITE)
     [(_, _, body)] = outbox.sent
-    assert "Open it in Taasheera" not in body and body.startswith("Your visa application has news.\n")
+    assert f"{SITE}/dashboard" in body
+    assert "Your visa application has news." not in body
 
 
 def test_without_a_mail_server_nothing_is_sent_or_marked(api):  # noqa: F811
@@ -198,7 +199,7 @@ def test_the_api_starts_the_timer_only_while_the_flag_is_on(monkeypatch, tmp_pat
     assert len(started(monkeypatch, tmp_path, flag="true")) == 1
 
 
-def test_development_without_a_mail_server_logs_the_email_instead(api, caplog):  # noqa: F811
+def test_development_without_a_mail_server_logs_only_the_attempt(api, caplog):  # noqa: F811
     from app.mailer import LogNotificationSender
     from app.notification_jobs import logger
 
@@ -209,7 +210,10 @@ def test_development_without_a_mail_server_logs_the_email_instead(api, caplog): 
     assert "not sent, no mail server" in caplog.text
     with Session(app.state.engine) as session:
         email = session.get(Traveler, 1).email
-    assert email not in caplog.text  # the address is masked
+    assert email not in caplog.text
+    assert email.split("@")[1] not in caplog.text
+    assert SITE not in caplog.text
+    assert "Your visa application has news." not in caplog.text
 
 
 def test_notification_messages_are_shown_in_the_api_output():
