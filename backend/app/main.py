@@ -35,7 +35,8 @@ from .notification_jobs import (NotificationJobThread, job_interval, logger as n
                                 record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
 from .security import audit, throttle
 from .password_reset import create_password_reset_router
-from .models import RegisterRequest, Traveler, TravelerPublic
+from .models import Application, RegisterRequest, Traveler, TravelerPublic
+from .applications import flow
 from .passport.router import create_passport_router
 from .passport.storage import PassportImageStorage
 from .profile import create_profile_router
@@ -242,6 +243,20 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                                        latest_passport=passport_storage.latest_review(traveler_id),
                                        document_issues=document_issues)
 
+    def draft_context(traveler_id: int, application_id: str, question_id: str):
+        # Only a reachable free-text question long enough to need help, in an application that can change.
+        context = load_application_context(traveler_id, application_id)
+        if context is None:
+            return None
+        with Session(engine) as session:
+            application = session.get(Application, application_id)
+            if application is None or application.archived_at is not None:
+                return None
+            question = flow.load_questionnaire(application.questionnaire_id).question(question_id)
+        if question is None or question.type != "text" or (question.max_length or 0) < 150:
+            return None
+        return context, question.prompt, question.max_length
+
     def stored_history(traveler_id: int, application_id: str | None) -> list[dict]:
         with Session(engine) as session:
             return load_history(session, traveler_id, application_id)
@@ -260,7 +275,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         get_session, current_traveler_id, passport_storage.latest_review, assistant_ask,
         record_event=record_assistant_activity, load_application=load_application_context,
         ask_tools=assistant_ask_tools, propose=propose_action, tools_prompt=TOOLS_PROMPT,
-        load_history=stored_history, save_turn=store_turn,
+        load_history=stored_history, save_turn=store_turn, load_draft_context=draft_context,
     ))
     app.include_router(create_chat_history_router(get_session, current_traveler_id))
 
