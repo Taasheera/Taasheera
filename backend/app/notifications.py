@@ -9,8 +9,8 @@ the change and its notification are saved together or not at all:
   finishes or stops (CMPS271-67).
 
 Messages are fixed sentences about the traveler's own application. Never put passport fields,
-answer values or other personal data in them: each one is also emailed (CMPS271-98), by the timer in
-notification_jobs.py.
+answer values or other personal data in them. The timer in notification_jobs.py can email a
+generic alert that asks the traveler to sign in (CMPS271-98).
 """
 
 from datetime import datetime, timezone

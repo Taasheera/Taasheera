@@ -154,7 +154,7 @@ class SesResetSender:
 
 
 class LogNotificationSender:
-    """Development without a mail server: write notification emails to the backend's log instead.
+    """Development without a mail server: log that a notification would have been emailed.
 
     Never used in production, where a missing mail configuration means no email copies at all.
     """
@@ -163,6 +163,4 @@ class LogNotificationSender:
         self.logger = logger
 
     def send_notification(self, recipient: str, subject: str, body: str) -> None:
-        name, _, domain = recipient.partition("@")
-        self.logger.info("Notification email (not sent, no mail server) to %s***@%s: %s\n%s",
-                         name[:1], domain, subject, body)
+        self.logger.info("Notification email (not sent, no mail server)")

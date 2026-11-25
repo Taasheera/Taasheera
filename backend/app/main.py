@@ -92,7 +92,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         interval = job_interval()
         sender = notification_sender or app.state.reset_sender
         if not hasattr(sender, "send_notification"):
-            # Development without a mail server writes the emails to the log; production sends none.
+            # Development without a mail server logs the attempt; production sends none.
             sender = (LogNotificationSender(notification_logger)
                       if app.state.runtime_settings.environment == "development" else None)
         if not interval or sender is None:

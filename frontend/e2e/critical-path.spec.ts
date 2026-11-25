@@ -27,6 +27,9 @@ async function signIn(page: Page, email: string, name: string) {
   // A new account is asked to accept the privacy policy before uploading anything (CMPS271-115).
   const policy = page.getByRole('dialog', { name: 'Before you upload documents' })
   await expect(policy).toBeVisible()
+  await expect(policy.getByRole('heading')).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(policy.getByRole('link', { name: 'Read the full privacy policy' })).toBeFocused()
   await policy.getByRole('button', { name: 'I accept', exact: true }).click()
   await expect(policy).toHaveCount(0)
 }

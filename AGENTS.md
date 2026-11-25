@@ -101,7 +101,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 - Report application events through `backend/app/notifications.py` (US 28), in the same session as the change
   and before its commit: `notify_status_change(session, application, previous)` after setting a status, and
   `notify_agent_run(session, application, stopped_reason=None)` for the agent. Messages are fixed sentences
-  (no passport or answer values); application deletion and account erasure delete them. Email copies wait on CMPS271-233.
+  (no passport or answer values); application deletion and account erasure delete them. Email alerts link to the signed-in app.
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
 - A new table that refers to a traveler, application or session goes in `PERSONAL_DATA` (`backend/app/personal_data.py`)
@@ -213,8 +213,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     Signed-in pages show the prompt; demo seeds accept. Behind `privacy_consent`.
 45. **Notification emails (CMPS271-98).** `notify()` saves the notification with `email_status` "pending";
     a thread in the API process (`notification_jobs.py`, every `NOTIFICATION_JOB_SECONDS`, default 900, 0 = off)
-    emails it through the reset email sender, so the worker's notifications are emailed too. Older than a day:
-    skipped; 3 failures: failed. Development without SMTP logs them. One API process only. Behind `email_notifications`.
+    sends a generic sign-in alert through the reset email sender. Older than a day: skipped. At 3 failures,
+    it stops retrying. Development without SMTP logs only the attempt. One API process only. Behind `email_notifications`.
     `NotificationPreference` (CMPS271-99, Account page) turns emails off per group of kinds; the bell shows all.
     The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.
     Confirming a passport saves only its expiry date (`PassportExpiry`, CMPS271-36); the timer reminds at 180, 30
