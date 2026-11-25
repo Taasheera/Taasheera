@@ -1,33 +1,88 @@
 .form-review {
-  margin-block: 1.5rem;
-  scroll-margin-block-start: 10rem;
-  padding: clamp(1rem, 3vw, 1.5rem);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--card);
+  margin-block: 2rem;
+  min-inline-size: 0;
+  scroll-margin-block-start: 155px;
 }
 
 .form-review-head {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
   flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.form-review h2 { margin-top: 0; }
-.form-review p { margin-block: .5rem; }
+.form-review-head h2 {
+  margin: 0;
+  font: 700 clamp(30px, 4vw, 38px)/1.05 var(--font-display);
+  letter-spacing: -0.045em;
+}
 
-.form-review-table { overflow: auto; }
-.form-review table { width: 100%; border-collapse: collapse; }
-.form-review th, .form-review td {
-  padding: .65rem .5rem;
-  border-bottom: 1px solid var(--border);
+.form-review p { margin-block: 8px; }
+.form-review-head p:not(.eyebrow), .form-review-source { color: var(--fg-muted); }
+.form-review-source a { display: inline-flex; align-items: center; min-block-size: 44px; }
+
+.form-review-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.form-review-table {
+  min-inline-size: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.form-review table {
+  inline-size: 100%;
+  min-inline-size: 480px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.form-review th,
+.form-review td {
+  padding: 12px;
+  border-block-end: 1px solid var(--border);
   text-align: start;
   vertical-align: top;
   overflow-wrap: anywhere;
 }
-.form-review td small { display: block; margin-top: .25rem; }
 
-.form-review-confirm { display: grid; justify-items: start; gap: .75rem; margin-top: 1rem; }
-.form-review-confirm label { display: flex; align-items: baseline; gap: .5rem; }
+.form-review th:first-child { padding-inline-start: 18px; }
+.form-review :is(th, td):last-child { padding-inline-end: 18px; inline-size: 102px; }
+.form-review thead { background: var(--bg-raised); color: var(--fg-muted); font: 500 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.form-review tbody th { font-weight: 500; }
+.form-review td:nth-child(2), .form-review td:nth-child(3) { font-family: var(--font-mono); }
+.form-review td small { display: block; margin-block-start: 4px; color: var(--fg-muted); font-family: var(--font-sans); }
+
+.form-review-summary {
+  min-inline-size: 0;
+  padding: clamp(18px, 2vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--fg);
+}
+.form-review-summary .eyebrow { margin: 0; color: var(--fg-muted); }
+.form-review-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
+.form-review-counts > div { display: flex; flex-direction: column-reverse; align-items: center; gap: 5px; padding: 12px 4px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.form-review-counts dt { color: var(--panel-muted); font-size: 13px; }
+.form-review-counts dd { margin: 0; font: 700 clamp(30px, 4vw, 44px)/1 var(--font-display); letter-spacing: -0.05em; }
+.form-review-counts div:nth-child(2) dd { color: var(--warn-text); }
+.form-review-confirm { display: grid; gap: 12px; margin-block-start: 16px; padding-block-start: 16px; border-block-start: 1px solid var(--border); }
+.form-review-confirm p { color: var(--panel-muted); font-size: 14px; }
+.form-review-confirm ul { display: grid; gap: 6px; margin: 0; padding: 0; }
+.form-review-confirm label { display: flex; min-block-size: 44px; align-items: baseline; gap: 8px; font-size: 14px; cursor: pointer; }
+.form-review-confirm input { flex: none; inline-size: 18px; block-size: 18px; margin: 3px 0 0; accent-color: var(--brand); }
+
+@media (max-width: 760px) {
+  .form-review-body { grid-template-columns: minmax(0, 1fr); }
+  .form-review table { min-inline-size: 0; table-layout: fixed; font-size: 12px; }
+  .form-review :is(th, td), .form-review th:first-child, .form-review th:last-child, .form-review td:last-child { padding: 8px 6px; }
+  .form-review :is(th, td):last-child { inline-size: 60px; }
+}
