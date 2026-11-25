@@ -1,18 +1,4 @@
 :root {
-  --bg: #f2f7f5;
-  --bg-raised: #e7f0ec;
-  --card: #ffffff;
-  --fg: #0f1f1c;
-  --fg-muted: #4a5d59;
-  --fg-dim: #8a9b97;
-  --border: #0f1f1c14;
-  --brand: #1f6b5e;
-  --brand-dark: #154a41;
-  --brand-muted: #1f6b5e12;
-  --dark: #0d2420;
-  --font-sans: 'DM Sans', system-ui, 'Segoe UI', sans-serif;
-  --font-display: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
-
   font-family: var(--font-sans);
   color: var(--fg);
   background: var(--bg);
@@ -20,7 +6,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: light;
   line-height: 1.6;
 }
 
@@ -28,13 +13,14 @@
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
+html, body { overflow-x: clip; }
+
+body { margin: 0; }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -48,22 +34,25 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 3px solid #288577;
+  outline: 3px solid var(--brand);
   outline-offset: 3px;
 }
 
-/* Status and trust tokens: passport review and assistant (added for US 6–8, US 23-lite).
-   Each pair keeps text on its tinted background above 4.5:1 contrast. */
-:root {
-  --ok: oklch(45% 0.11 160);
-  --ok-bg: oklch(95% 0.035 160);
-  --warn: oklch(47% 0.1 70);
-  --warn-bg: oklch(96% 0.045 85);
-  --danger: oklch(48% 0.16 27);
-  --danger-bg: oklch(95.5% 0.03 27);
-  --field-border: #a9bab3;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --shadow-float: 0 18px 48px #0d24202e, 0 2px 6px #0d242014;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-quick: 160ms;
+:lang(ar) {
+  font-family: var(--font-arabic);
+}
+
+::placeholder {
+  color: var(--fg-muted);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--brand);
+}
+
+[data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--card);
+  --normal-border: var(--field-border);
+  --normal-text: var(--fg);
 }

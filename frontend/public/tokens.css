@@ -1,0 +1,63 @@
+/* Hallmark · macrostructure: centered hero and specimen preview · tone: editorial · anchor hue: graphite */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#fff, #141415);
+  --bg-raised: light-dark(#fafaf8, #1b1b1d);
+  --card: light-dark(#fff, #1d1d1f);
+  --surface-2: light-dark(#f5f5f3, #272729);
+  --field-bg: light-dark(#fff, #141415);
+  --fg: light-dark(#0b0b0c, #f0f0ed);
+  --fg-muted: light-dark(#66666a, #b5b5ba);
+  --fg-dim: light-dark(#6e6e72, #9d9da4);
+  --border: light-dark(#e8e8e5, #353537);
+  --field-border: light-dark(#dcdcd8, #57575c);
+  --brand: var(--fg);
+  --brand-dark: light-dark(#29292b, #dcdcd8);
+  --brand-muted: var(--surface-2);
+  --on-brand: var(--bg);
+
+  --panel-bg: light-dark(#0b0b0c, #29292b);
+  --panel-hover: light-dark(#29292b, #353537);
+  --panel-fg: #f0f0ed;
+  --panel-muted: #b5b5ba;
+  --panel-line: #57575c;
+  --panel-warn: #e2b04a;
+  --panel-danger: #ff8b79;
+
+  --ok: light-dark(#2f7d55, #70c69a);
+  --warn: light-dark(#c08a1e, #e2b04a);
+  --warn-text: light-dark(#7a5410, #e2b04a);
+  --danger: light-dark(#c8432f, #ff8b79);
+  --danger-fill: light-dark(#a33325, #ff8b79);
+  --paper-bg: #eeede7;
+  --shadow-float: 0 24px 48px -24px rgb(0 0 0 / .38);
+  --shadow-tab: 0 1px 2px rgb(0 0 0 / .09);
+  --focus-ring: 0 0 0 3px #8c8c92;
+  --mark-filter: none;
+
+  --font-sans: 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --font-display: 'Schibsted Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-arabic: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-quick: 160ms;
+  --radius-pill: 999px;
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 20px;
+  --radius-sm: 12px;
+  --container: 1192px;
+}
+
+:root[data-appearance='light'] { color-scheme: light; }
+:root[data-appearance='dark'] { color-scheme: dark; --mark-filter: invert(.94); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance]) { --mark-filter: invert(.94); }
+}
+
+.logo-mark,
+.brand-mark,
+.legal-brand img { filter: var(--mark-filter); }
