@@ -11,9 +11,9 @@
   align-items: center;
   justify-content: center;
   width: 44px;
-  height: 40px;
+  height: 44px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-pill);
   background: none;
   color: var(--fg-muted);
   cursor: pointer;
@@ -33,13 +33,13 @@
 .notification-count {
   position: absolute;
   top: 3px;
-  right: 3px;
+  inset-inline-end: 3px;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 18px;
@@ -49,16 +49,16 @@
 .notification-panel {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 55;
   width: min(380px, calc(100vw - 32px));
   max-height: min(480px, calc(100svh - 180px));
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--card);
-  box-shadow: 0 12px 32px #0f1f1c1f;
-  text-align: left;
+  box-shadow: var(--shadow-float);
+  text-align: start;
 }
 
 .notification-panel-header {
@@ -80,6 +80,7 @@
 }
 
 .notification-action {
+  min-block-size: 44px;
   padding: 4px 6px;
   border: 0;
   border-radius: 6px;
@@ -113,8 +114,7 @@
 }
 
 .notification-list li.is-unread {
-  background: var(--brand-muted);
-  box-shadow: inset 3px 0 0 var(--brand);
+  border-inline-start: 3px solid var(--fg-muted);
 }
 
 .notification-message {
@@ -137,7 +137,7 @@ a.notification-message:hover {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   font-size: 0.8rem;
 }
 
@@ -150,5 +150,5 @@ a.notification-message:hover {
 }
 
 .notification-error {
-  color: var(--danger, #a92d36);
+  color: var(--danger);
 }
