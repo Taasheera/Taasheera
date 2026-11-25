@@ -11,6 +11,10 @@ for (const name of ['Node', 'Element', 'HTMLAnchorElement', 'MutationObserver', 
 const { default: PrivacyConsent } = await import('../src/PrivacyConsent.tsx')
 const { CONSENT_REQUIRED_EVENT, reportConsentRequired } = await import('../src/consent.ts')
 
+// jsdom has the dialog element but does not implement the top-layer methods.
+dom.window.HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute('open', '') }
+dom.window.HTMLDialogElement.prototype.close ??= function () { this.removeAttribute('open') }
+
 const VERSION = '2026-11-25'
 let root, container, requests, status
 
@@ -47,7 +51,7 @@ async function render() {
   await settle()
 }
 
-const dialog = () => container.querySelector('[role="dialog"]')
+const dialog = () => container.querySelector('dialog[open]')
 const button = label => [...container.querySelectorAll('button')].find(item => item.textContent.trim() === label)
 const press = async label => { await act(async () => button(label).click()); await settle() }
 
@@ -55,7 +59,6 @@ test('a traveler who has not accepted sees the policy summary, with focus on its
   serve(t)
   await render()
   assert.ok(dialog())
-  assert.equal(dialog().getAttribute('aria-modal'), 'true')
   assert.equal(container.querySelector('h2').textContent, 'Before you upload documents')
   assert.equal(document.activeElement, container.querySelector('h2'))
   assert.ok(container.querySelectorAll('.consent-summary li').length >= 5)
@@ -103,7 +106,7 @@ test('Not now and Escape close it; a refused upload opens it again', async t => 
   await settle()
   assert.ok(dialog(), 'shown again after an upload was refused')
 
-  await act(async () => dialog().dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  await act(async () => dialog().dispatchEvent(new window.Event('cancel', { cancelable: true })))
   assert.equal(dialog(), null)
 })
 
