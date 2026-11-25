@@ -180,9 +180,17 @@ if [ -n "${TAASHEERA_API_IMAGE:-}" ] || [ -n "${TAASHEERA_WEB_IMAGE:-}" ]; then
   available_kib=$(df -Pk -- "$docker_root" | awk 'NR == 2 {print $4}')
   [[ "$available_kib" =~ ^[0-9]+$ ]]
   if (( available_kib < 2 * 1024 * 1024 )); then
-    # Immutable releases build in Actions. Reclaim only unused local build cache.
+    # Immutable releases build in Actions. Reclaim unused build cache first, then unused images.
     printf 'Docker has %s MiB free. Clearing unused build cache.\n' "$((available_kib / 1024))"
     docker builder prune --all --force | tail -n 1
+    available_kib=$(df -Pk -- "$docker_root" | awk 'NR == 2 {print $4}')
+    [[ "$available_kib" =~ ^[0-9]+$ ]]
+    if (( available_kib < 2 * 1024 * 1024 )); then
+      # Still low: drop images no container uses (old local builds, base layers). Running and stopped
+      # containers keep their images, volumes are untouched, and every release stays in ECR by digest.
+      printf 'Still %s MiB free. Removing images no container uses.\n' "$((available_kib / 1024))"
+      docker image prune --all --force | tail -n 1
+    fi
     df -hP -- "$docker_root"
   fi
   phase='pull and verify application images'

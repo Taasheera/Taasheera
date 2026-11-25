@@ -44,30 +44,44 @@ def test_existing_release_preserves_exact_private_config_and_requires_existing_f
     assert not (private / 'web.env').exists()  # Cannot silently generate missing settings.
 
 
-@pytest.mark.parametrize(('available_kib', 'reclaim'), [(2 * 1024 * 1024, False), (500 * 1024, True)])
-def test_immutable_image_pull_reclaims_only_build_cache_when_docker_disk_is_low(available_kib, reclaim):
+@pytest.mark.parametrize(('before_kib', 'after_cache_kib', 'cache', 'images'), [
+    (2 * 1024 * 1024, None, False, False),
+    (500 * 1024, 3 * 1024 * 1024, True, False),
+    (800 * 1024, 800 * 1024, True, True),
+])
+def test_immutable_image_pull_reclaims_cache_then_unused_images_when_docker_disk_is_low(before_kib, after_cache_kib,
+                                                                                         cache, images, tmp_path):
     source = (AWS / 'bootstrap.sh').read_text()
     preflight = source.split("phase='check Docker disk space before image pull'", 1)[1]
     preflight = preflight.split("phase='pull and verify application images'", 1)[0]
+    counter = tmp_path / 'df-calls'
+    counter.write_text('0')
     mocks = f'''\
 set -euo pipefail
 docker() {{
     case "$*" in
         'info --format {{{{.DockerRootDir}}}}') printf '/var/lib/docker\\n' ;;
         'builder prune --all --force') printf 'reclaimed cache\\n' ;;
+        'image prune --all --force') printf 'removed unused images\\n' ;;
         *) return 2 ;;
     esac
 }}
 df() {{
     case "$*" in
-        '-Pk -- /var/lib/docker') printf 'header\\ndev 0 0 {available_kib} 0 /\\n' ;;
+        '-Pk -- /var/lib/docker')
+            calls=$(cat {counter}); echo $((calls + 1)) > {counter}
+            if [ "$calls" = 0 ]; then free={before_kib}; else free={after_cache_kib or 0}; fi
+            printf 'header\\ndev 0 0 %s 0 /\\n' "$free" ;;
         '-hP -- /var/lib/docker') printf 'free disk space\\n' ;;
         *) return 2 ;;
     esac
 }}
 '''
     result = subprocess.run(['bash', '-c', mocks + preflight], check=True, capture_output=True, text=True)
-    assert ('reclaimed cache' in result.stdout) is reclaim
+    assert ('reclaimed cache' in result.stdout) is cache
+    assert ('removed unused images' in result.stdout) is images
+    # Containers, volumes and the system are never pruned.
+    assert 'container prune' not in preflight and 'volume prune' not in preflight and 'system prune' not in preflight
 
 
 def public_responses():
