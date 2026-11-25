@@ -5,7 +5,7 @@ noun a consular officer reads ("Employee"). Both outputs use this one table so t
 """
 
 OCCUPATION_ON_FORMS = {"employed": "Employee", "self_employed": "Self-employed", "student": "Student",
-                       "retired": "Retired", "unemployed": "Unemployed", "other": "Other"}
+                       "retired": "Retired", "unemployed": "Unemployed", "homemaker": "Homemaker", "other": "Other"}
 
 
 def occupation_on_form(answers: dict) -> str | None:
@@ -17,4 +17,5 @@ def occupation_on_form(answers: dict) -> str | None:
     return OCCUPATION_ON_FORMS.get(occupation) if occupation else None
 
 # Boxes ticked by a field's "fixed" value, as the review table names them.
-FIXED_ON_FORMS = {"ordinary": "Ordinary passport"}
+FIXED_ON_FORMS = {"ordinary": "Ordinary passport", "regular": "Regular"}
+SEX_ON_FORMS = {"F": "Female", "M": "Male", "X": "Unspecified (X)"}

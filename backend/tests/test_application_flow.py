@@ -25,8 +25,8 @@ ANSWERS = {
     "surname_at_birth": "", "place_of_birth": "Zenith", "country_of_birth": "UTO", "marital_status": "single",
     "home_address": {"line1": "1 Example Street", "line2": "", "city": "Beirut", "region": "",
                      "postal_code": "", "country": "LBN"},
-    "phone": "+96171123456", "occupation": "employed", "employer": "Example Company",
-    "arrival_date": "2027-01-10", "departure_date": "2027-01-24", "entries": "single",
+    "phone": "+96171123456", "occupation": "employed", "job_title": "Accountant",
+    "employer": "Example Company", "arrival_date": "2027-01-10", "departure_date": "2027-01-24", "entries": "single",
     "accommodation": "hotel", "accommodation_details": "Hotel Example, 1 Rue Exemple, Paris",
     "funding": "self", "previous_fingerprints": False,
 }
@@ -55,7 +55,7 @@ def test_a_complete_walk_asks_each_question_once_in_file_order(schengen):
     assert list(given) == list(ANSWERS)
     assert next_question(schengen, given) is None and stop_message(schengen, given) is None
     assert progress(schengen, given).model_dump() == {
-        "step_number": 4, "step_count": 4, "step_title": "Your trip", "answered": 20, "total": 20}
+        "step_number": 4, "step_count": 4, "step_title": "Your trip", "answered": 21, "total": 21}
 
 
 def test_progress_reports_the_current_step(schengen):
