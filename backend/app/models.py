@@ -308,6 +308,36 @@ class Notification(SQLModel, table=True):
     link: str | None = Field(default=None, max_length=200)  # A page on this site, such as /dashboard/<id>
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     read_at: datetime | None = None
+    # The email copy (CMPS271-98): "pending" until the notification job sends it, then "sent", "skipped"
+    # (emails turned off, or too old to send) or "failed" after EMAIL_ATTEMPTS tries.
+    email_status: str = Field(default="pending", max_length=10, index=True)
+    email_attempts: int = Field(default=0)
+
+
+class NotificationPreference(SQLModel, table=True):
+    """Which notification emails a traveler wants (CMPS271-99). No row means every email is on.
+
+    In-app notifications are always shown; these switches only stop the email copies.
+    """
+
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    application_updates: bool = True  # status changes and the form-filling agent
+    reminders: bool = True  # an application left unfinished (CMPS271-101)
+    passport_expiry: bool = True  # a passport that expires soon (CMPS271-36)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PassportExpiry(SQLModel, table=True):
+    """The expiry date of the traveler's latest confirmed passport, for reminders (CMPS271-36).
+
+    Only the date: the passport itself stays in passport storage. `reminded_days` is the closest
+    reminder already sent (180, 30 or 0 days before), so each one is sent once per passport.
+    """
+
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    expiry_date: date = Field(repr=False)
+    reminded_days: int | None = None
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SupportingDocument(SQLModel, table=True):

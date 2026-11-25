@@ -18,6 +18,8 @@ def auth_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("SCHEMA_AUTO_CREATE", "true")
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("REQUIRE_TESSERACT", "false")
+    # No background notification thread in tests; they call the jobs directly.
+    monkeypatch.setenv("NOTIFICATION_JOB_SECONDS", "0")
     monkeypatch.setenv("ACTIVITY_LOG_DIR", str(tmp_path / "activity-logs"))
     monkeypatch.setenv("PASSPORT_STORAGE_DIR", str(tmp_path / "passports"))
     monkeypatch.setenv("AUTH_ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://127.0.0.1:8000")

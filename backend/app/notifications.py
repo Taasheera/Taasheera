@@ -9,8 +9,8 @@ the change and its notification are saved together or not at all:
   finishes or stops (CMPS271-67).
 
 Messages are fixed sentences about the traveler's own application. Never put passport fields,
-answer values or other personal data in them. Email copies wait until the reset email bug
-(CMPS271-233) proves mail reaches every address.
+answer values or other personal data in them. The timer in notification_jobs.py can email a
+generic alert that asks the traveler to sign in (CMPS271-98).
 """
 
 from datetime import datetime, timezone
@@ -37,7 +37,8 @@ STATUS_MESSAGES = {
 }
 
 
-def _name(application: Application) -> str:
+def application_name(application: Application) -> str:
+    """The questionnaire's title, such as "Schengen short-stay visa (type C)"."""
     try:
         return load_questionnaire(application.questionnaire_id).title
     except KeyError:
@@ -63,7 +64,8 @@ def notify_status_change(session: Session, application: Application, previous: s
     if application.status == previous:
         return None
     template = STATUS_MESSAGES.get(application.status, "Your {name} application has a new status.")
-    return notify(session, application.traveler_id, "status_changed", template.format(name=_name(application)),
+    return notify(session, application.traveler_id, "status_changed",
+                  template.format(name=application_name(application)),
                   application_id=application.id, link=f"/dashboard/{application.id}")
 
 
@@ -73,7 +75,7 @@ def notify_agent_run(session: Session, application: Application, stopped_reason:
     `stopped_reason` is a short fixed explanation such as "the site asked for a CAPTCHA",
     never a value typed into the form.
     """
-    name = _name(application)
+    name = application_name(application)
     if stopped_reason is None:
         kind = "agent_finished"
         message = (f"The agent filled the embassy form for your {name} application and stopped before "
