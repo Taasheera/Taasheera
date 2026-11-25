@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from app.features import FLAGS, FeatureFlags, create_features_router, require_feature
+from app.features import FLAGS, RELEASED, FeatureFlags, create_features_router, require_feature
 from app.main import create_app
 
 
@@ -17,18 +17,27 @@ def test_every_flag_is_on_by_default_in_development(monkeypatch):
     assert FeatureFlags.from_environment().as_dict() == {name: True for name in FLAGS}
 
 
-def test_every_flag_is_off_by_default_on_the_live_site(monkeypatch):
+def test_only_released_flags_are_on_by_default_on_the_live_site(monkeypatch):
     clear_flag_overrides(monkeypatch)
     monkeypatch.setenv("APP_ENV", "production")
-    assert FeatureFlags.from_environment().as_dict() == {name: False for name in FLAGS}
+    assert RELEASED < set(FLAGS)
+    assert FeatureFlags.from_environment().as_dict() == {name: name in RELEASED for name in FLAGS}
+    assert not FeatureFlags.from_environment().is_on("agent_form_filling")
+
+
+def test_a_released_flag_can_still_be_switched_off_on_the_live_site(monkeypatch):
+    clear_flag_overrides(monkeypatch)
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("FEATURE_EMBASSY_PDF", "false")
+    assert not FeatureFlags.from_environment().is_on("embassy_pdf")
 
 
 def test_the_environment_can_turn_one_flag_on_in_production_and_off_in_development(monkeypatch):
     clear_flag_overrides(monkeypatch)
     monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.setenv("FEATURE_SUPPORTING_DOCUMENTS", "TRUE")
+    monkeypatch.setenv("FEATURE_EMAIL_NOTIFICATIONS", "TRUE")
     live = FeatureFlags.from_environment()
-    assert live.is_on("supporting_documents") and not live.is_on("agent_form_filling")
+    assert live.is_on("email_notifications") and not live.is_on("agent_form_filling")
 
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("FEATURE_AGENT_FORM_FILLING", "false")

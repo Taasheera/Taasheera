@@ -58,7 +58,9 @@ def test_fees_and_times_are_the_figures_checked_on_official_sites(client):
     guides = {guide["id"]: guide for guide in client.get("/visa-guides").json()}
     amounts = {key: [item["amount"] for item in guide["fees"]["items"]] for key, guide in guides.items()}
     assert amounts == {"canada-visitor": ["CAD 100", "CAD 85"], "schengen-short-stay": ["€90", "€45", "Free"],
-                       "uk-standard-visitor": ["£135", "£506"], "us-b2-tourist": ["$185"]}
+                       "uk-standard-visitor": ["£135", "£506"], "us-b2-tourist": ["$185"],
+                       "china-tourist-l": ["US$23", "US$45", "US$44.40"], "japan-short-stay": ["About ¥15,000", "About ¥30,000"],
+                       "india-tourist": ["US$103", "US$25", "US$40"], "turkiye-evisa": ["Varies by passport"]}
     assert "15 calendar days" in guides["schengen-short-stay"]["time"]["text"]
     assert "3 weeks" in guides["uk-standard-visitor"]["time"]["text"]
     assert {guide["checked_on"] for guide in guides.values()} == {"2026-11-25"}
@@ -83,7 +85,8 @@ def test_a_link_to_an_unofficial_site_is_refused(url):
 
 def test_lebanese_travellers_get_a_checked_answer_for_every_visa(client):
     for guide in client.get("/visa-guides").json():
-        assert guide["need"]["checked_nationalities"] == {"LBN": "visa"}
+        expected = "no_visa" if guide["id"] == "turkiye-evisa" else "visa"
+        assert guide["need"]["checked_nationalities"] == {"LBN": expected}
         assert guide["need"]["checker"]["url"].startswith("https://")
 
 

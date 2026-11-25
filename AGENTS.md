@@ -112,7 +112,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
   add the name to `FLAGS` and to `FeatureName` in `frontend/src/features.ts`, guard its router with
   `dependencies=[Depends(require_feature("name"))]` (404 while off) and its UI with `<Feature name="name">`
   (pass `fallback={<NotFound />}` on a page route). Flags are on in development and off in production
-  unless `FEATURE_<NAME>=true|false` is set; delete the flag once the feature is released.
+  unless `FEATURE_<NAME>=true|false` is set. Add a tested flag to `RELEASED` to turn it on in production too
+  (env `false` stays a kill switch); delete it once it no longer needs one.
 
 ## Decisions log
 
@@ -182,7 +183,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     Files sit in the owner's passport folder (erased with it); PDFs are kept as uploaded but only downloaded,
     images re-encoded. A pure cross-check compares name/birth date/passport number with document text; missing
     required uploads block and mismatches warn in the completeness check. Behind `supporting_documents`.
-35. **Destinations.** Schengen, UK Standard Visitor, US B-2 and Canada visitor questionnaires; data files only.
+35. **Destinations.** Schengen, UK, US B-2, Canada, Japan, China (L), India and Türkiye e-Visa questionnaires; data files only.
 36. **Form-filling agent (CMPS271-236/67/70).** API queues `agentrun` rows; `agent_worker.py` claims them, fills
     a site configured in `agent/site_configs/` and streams typed fields and screenshots by polling. Retries
     transient operations in the same browser and surfaces selector changes in admin monitoring. The local
@@ -195,6 +196,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
     nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
+    `RELEASED` (Sprint 5: scan quality, PDF, documents, privacy consent, visa guides) defaults on in production.
 39. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
     agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
 40. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
@@ -232,3 +234,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
 48. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
     the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.
+49. **Official form guides.** Destinations whose application is an online portal or paper form get
+    `applications/portals/<questionnaire>.json`: the portal's pages in order, fields mapped to answers in that
+    portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
+    PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).

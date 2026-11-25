@@ -1,7 +1,9 @@
 """Feature flags (US 127): merge unfinished work without showing it on the live site.
 
 A flag is on by default in development and off by default in production, so a merged but
-untested feature works locally and stays hidden on the live site. Set FEATURE_<NAME>=true
+untested feature works locally and stays hidden on the live site. A flag in RELEASED has passed
+testing and defaults on in production too; it stays a flag for now so FEATURE_<NAME>=false can
+switch it off on the live site without a release. Set FEATURE_<NAME>=true
 or false in the server's environment to override the default (for example
 FEATURE_SUPPORTING_DOCUMENTS=true in /etc/taasheera/app.env once the feature has passed testing).
 The frontend reads the same values from GET /features.
@@ -25,6 +27,10 @@ FLAGS = {
 }
 
 
+# Tested features that default on in production as well (Sprint 5 release). FEATURE_<NAME>=false still
+# turns one off. The agent waits for a larger host and email copies for SES production access.
+RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_documents", "privacy_consent", "visa_guide"})
+
 
 def _variable(name: str) -> str:
     return f"FEATURE_{name.upper()}"
@@ -42,7 +48,7 @@ class FeatureFlags:
             raw = os.environ.get(_variable(name), "").strip().lower()
             if raw not in {"", "true", "false"}:
                 raise RuntimeError(f"{_variable(name)} must be true or false.")
-            if raw == "true" or (raw == "" and default):
+            if raw == "true" or (raw == "" and (default or name in RELEASED)):
                 enabled.add(name)
         return cls(frozenset(enabled))
 

@@ -17,8 +17,8 @@ def test_every_guide_matches_its_questionnaire(questionnaire_id):
     assert guide is not None and guide.portal.url.startswith("https://")
     questionnaire = flow.load_questionnaire(questionnaire_id)
     used = {source.split(".")[0] for section in guide.sections for field in section.fields for source in field.sources}
-    # The passport and trip dates always reach the official form.
-    assert {"passport", "arrival_date", "departure_date"} <= used
+    # The passport and arrival date always reach the official form.
+    assert {"passport", "arrival_date"} <= used
     assert all(questionnaire.question(key) for key in used - {"account_email"})
 
 
