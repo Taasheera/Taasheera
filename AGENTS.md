@@ -238,3 +238,4 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `applications/portals/<questionnaire>.json`: the portal's pages in order, fields mapped to answers in that
     portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
     PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).
+    `POST /assistant/draft` (Help me write this) drafts one long free-text answer; the traveler edits and saves it.
