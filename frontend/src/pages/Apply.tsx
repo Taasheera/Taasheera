@@ -19,6 +19,7 @@ import {
 } from '../application/api'
 import { formatAnswer, formatDate, returnedPassport, sourceLabel, travellers } from '../application/format'
 import { signInPath } from '../paths'
+import { ArrowIcon } from '../icons'
 import '../ui.css'
 import '../assistant/assistant.css'
 import './passport.css'
@@ -61,7 +62,7 @@ export default function Apply() {
 
   if (traveler === undefined) return <section className="apply-page container"><p className="apply-status" role="status">Checking your session…</p></section>
   if (traveler === null) return <section className="apply-page container"><SignedOut /></section>
-  return <div className="workspace container">
+  return <div className={`workspace container${applicationId ? ' is-guided' : ''}`}>
     <ApplicationsSidebar applications={applications} currentId={applicationId} />
     <div className="workspace-main">
       {applicationId
@@ -84,10 +85,8 @@ function SignedOut() {
   return <p className="apply-status">Please <Link to={signInPath}>sign in</Link> to start an application.</p>
 }
 
-// A question typed to the assistant mid-flow. `at` is how many answers existed when it was
-// asked, so it shows at that point in the conversation and the flow carries on below it.
 // An assistant reply may carry an action for the traveler to confirm (US 110).
-type Aside = ChatTurn & { at: number; proposal?: Proposal | null }
+type Aside = ChatTurn & { proposal?: Proposal | null }
 
 type ChatProps = { applicationId: string; onChange: (state: ApplicationState) => void }
 
@@ -106,7 +105,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   // Counts document uploads/deletions on this page, so the check below can run again.
   const [documentChanges, setDocumentChanges] = useState(0)
   const [documentTarget, setDocumentTarget] = useState<string | null>(null)
-  const current = useRef<HTMLLIElement>(null)
+  const current = useRef<HTMLElement>(null)
   const askBox = useRef<HTMLTextAreaElement>(null)
   const upload = returnedPassport(location.search)
 
@@ -141,9 +140,8 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
       if (state) {
         onChange(state)
         // The conversation from earlier visits (US 111) picks up where the traveler is now.
-        const at = state.answers.length
         getHistory(applicationId).then(turns => {
-          if (active && turns.length) setAsides(current => [...turns.map(turn => ({ ...turn, at })), ...current])
+          if (active && turns.length) setAsides(current => [...turns, ...current])
         }).catch(() => { /* No history is just a fresh chat. */ })
       }
       if (upload) navigate(location.pathname, { replace: true })
@@ -156,7 +154,12 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   }, [applicationId])
 
   const currentId = application?.current?.id
-  useEffect(() => { current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }) }, [currentId, asides.length])
+  const assistantLog = useRef<HTMLOListElement>(null)
+  useEffect(() => { current.current?.scrollIntoView?.({ block: 'nearest' }) }, [currentId])
+  useEffect(() => {
+    const log = assistantLog.current
+    if (log) log.scrollTop = log.scrollHeight
+  }, [asides.length])
 
   async function answer(questionId: string, input: Answer) {
     const state = await saveAnswer(applicationId, questionId, input)
@@ -173,15 +176,14 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
     event?.preventDefault()
     const question = (explanation ?? draft).trim()
     if (!question || asking || !application) return
-    const at = application.answers.length
     const history = asides.map(({ role, content }) => ({ role, content }))
     if (!explanation) setDraft('')
     setAskError('')
     setAsking(true)
-    setAsides(turns => [...turns, { role: 'user', content: question, at }])
+    setAsides(turns => [...turns, { role: 'user', content: question }])
     try {
       const reply = await askAssistant(question, 'application', history, applicationId)
-      setAsides(turns => [...turns, { role: 'assistant', content: reply.reply, at, proposal: reply.proposal }])
+      setAsides(turns => [...turns, { role: 'assistant', content: reply.reply, proposal: reply.proposal }])
     } catch (error) {
       setAsides(turns => turns.slice(0, -1))
       if (!explanation) setDraft(question)
@@ -225,9 +227,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
 
   const { progress } = application
   const done = application.status === 'ANSWERS_COMPLETE'
-  const asidesAt = (index: number, last = false) => asides
-    .filter(turn => last ? turn.at >= index : turn.at === index)
-    .map((turn, n) => <li key={`aside-${index}-${n}`} className={`bubble bubble-${turn.role === 'user' ? 'user' : 'assistant'} bubble-aside`}>
+  const assistantTurns = asides.map((turn, index) => <li key={index} className={`bubble bubble-${turn.role === 'user' ? 'user' : 'assistant'} bubble-aside`}>
       <span className="bubble-label">{turn.role === 'user' ? 'You asked' : 'Assistant'}</span>
       {turn.role === 'assistant' ? <AssistantText text={turn.content} /> : turn.content}
       {turn.proposal && <ProposalCard proposal={turn.proposal} onGoTo={goTo}
@@ -236,10 +236,13 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
 
   const trip = [application.place, application.trip_date && `arriving ${formatDate(application.trip_date)}`]
     .filter(Boolean).join(' · ')
-  return <section aria-labelledby="chat-heading">
+  return <section className="guided-application" aria-labelledby="chat-heading">
     <header className="chat-header">
       <p className="badge">{done ? 'All questions answered' : `Step ${progress.step_number} of ${progress.step_count}`}</p>
-      <h1 id="chat-heading">{application.title}</h1>
+      <div className="guided-heading">
+        <Link className="guided-back button button-secondary" aria-label="Back to applications" to="/dashboard" data-activity-id="dashboard-link"><ArrowIcon /></Link>
+        <h1 id="chat-heading">{application.title}</h1>
+      </div>
       {trip && <p className="chat-lede">{trip}</p>}
       <ol className="chat-steps" aria-label="Steps">
         {application.steps.map((step, index) => {
@@ -250,67 +253,87 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
         })}
       </ol>
       <div className="chat-progress">
-        <progress value={progress.answered} max={progress.total} aria-label="Questions answered" />
+        <progress className="question-progress" value={progress.answered} max={progress.total} aria-label="Questions answered" />
         <span>{progress.answered} of {progress.total} questions answered</span>
       </div>
     </header>
 
-    <ol className="chat-log" aria-live="polite">
-      {/* The opening steps (US 4) chose this question file, so they can't change here: a new
-          destination or visa means a new application. */}
-      <li className="bubble bubble-assistant">Where are you travelling to?</li>
-      <li className="bubble bubble-user chat-reply chat-fixed">{application.destination_label}</li>
-      <li className="bubble bubble-assistant">Which visa do you need?</li>
-      <li className="bubble bubble-user chat-reply chat-fixed">{application.visa_label}</li>
-      <li className="bubble bubble-assistant">Are you applying just for yourself, or travelling with family or a group?</li>
-      <li className="bubble bubble-user chat-reply chat-fixed">{travellers(application.group_size)}</li>
-      <li className="bubble bubble-assistant">Great. Now the embassy's questions, one at a time. Your answers are saved as you go.</li>
-      {application.answers.map((saved, index) => <li key={saved.question.id} id={`answer-${saved.question.id}`} className="chat-turn">
-        <ol className="chat-turn-inner">
-          {asidesAt(index)}
-          <li className="bubble bubble-assistant">{saved.question.prompt}</li>
-          {editing === saved.question.id
-            ? <li className="chat-answer"><AnswerInput question={saved.question} applicationId={applicationId}
-                initial={saved.value} onAnswer={input => answer(saved.question.id, input)} onCancel={() => setEditing(null)} /></li>
-            : <li className="bubble bubble-user chat-reply">
-                <span>{formatAnswer(saved.question, saved.value)}</span>
-                {sourceLabel(saved.source) && <span className="reply-source">{sourceLabel(saved.source)}</span>}
-                <button type="button" className="reply-change" onClick={() => setEditing(saved.question.id)}
-                  aria-label={`Change your answer to: ${saved.question.prompt}`} data-activity-id="application-change">Change</button>
-              </li>}
+    <div className="guided-content chat-log">
+      <aside className="guided-assistant" aria-labelledby="guided-assistant-title">
+        <header><h2 id="guided-assistant-title" className="status-dot status-dot--neutral">Assistant</h2></header>
+        <ol className="guided-assistant-log" ref={assistantLog} aria-live="polite">
+          {assistantTurns}
         </ol>
-      </li>)}
-      {asidesAt(application.answers.length, true)}
-      {notice && <li className="bubble bubble-assistant bubble-notice">{notice}</li>}
-      {application.stopped && <li className="bubble bubble-assistant bubble-stop" role="status">
-        {application.stopped} If that's not right, change your answer above.
-      </li>}
-      {application.current && <li ref={current} className="chat-turn" id="current-question" tabIndex={-1}>
-        <ol className="chat-turn-inner">
-          <li className="bubble bubble-assistant">
-            {application.current.prompt}
-            {application.current.help && <span className="bubble-help">{application.current.help}</span>}
-            <button type="button" className="chat-explain" disabled={asking} onClick={() => {
-              const { prompt, help } = application.current!
-              void ask(undefined, `Explain this question in plain language without answering it for me: ${prompt}${help ? ` ${help}` : ''}`.slice(0, 1000))
-            }}>Explain this question</button>
-          </li>
-          <li className="chat-answer">
-            {handoffError && <p className="answer-error" role="alert">{handoffError}</p>}
-            {application.current.suggestion
-              ? <SuggestedAnswer key={application.current.id}
-                  question={{ ...application.current, suggestion: application.current.suggestion }}
-                  applicationId={applicationId} onAnswer={input => answer(application.current!.id, input)} />
-              : <AnswerInput key={application.current.id} question={application.current} applicationId={applicationId}
-                  onAnswer={input => answer(application.current!.id, input)} />}
-          </li>
+        <p className="guided-assistant-notice">Not legal or immigration advice.</p>
+        <form className="chat-ask" onSubmit={ask}>
+          <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>
+          <div className="answer-row">
+            <textarea ref={askBox} id="chat-ask-input" rows={1} maxLength={1000} value={draft} placeholder="Ask about this question…"
+              onChange={event => setDraft(event.target.value)} onKeyDown={askOnEnter} />
+            <VoiceDraft disabled={asking} onText={text =>
+              setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, 1000))} />
+            <button type="submit" className="button button-primary assistant-icon-button" disabled={asking || !draft.trim()}
+              aria-busy={asking || undefined} data-activity-id="application-ask"><ArrowIcon /><span className="visually-hidden">{asking ? 'Asking…' : 'Ask'}</span></button>
+          </div>
+          {askError && <p className="answer-error" role="alert">{askError}</p>}
+        </form>
+      </aside>
+      <div className="guided-questions">
+        {application.current && <section ref={current} className="current-question-card" id="current-question" tabIndex={-1}>
+            <header>
+              <p className="eyebrow">Question {progress.answered + 1} of {progress.total}</p>
+              <h2>{application.current.prompt}</h2>
+              {application.current.help && <span className="bubble-help">{application.current.help}</span>}
+              <button type="button" className="chat-explain" disabled={asking} onClick={() => {
+                const { prompt, help } = application.current!
+                void ask(undefined, `Explain this question in plain language without answering it for me: ${prompt}${help ? ` ${help}` : ''}`.slice(0, 1000))
+              }}>Explain this question</button>
+            </header>
+            <div className="chat-answer">
+              {handoffError && <p className="answer-error" role="alert">{handoffError}</p>}
+              {application.current.suggestion
+                ? <SuggestedAnswer key={application.current.id}
+                    question={{ ...application.current, suggestion: application.current.suggestion }}
+                    applicationId={applicationId} onAnswer={input => answer(application.current!.id, input)} />
+                : <AnswerInput key={application.current.id} question={application.current} applicationId={applicationId}
+                    onAnswer={input => answer(application.current!.id, input)} />}
+            </div>
+        </section>}
+        <ol className="guided-answers" aria-label="Application conversation" aria-live="polite">
+          {/* The opening steps (US 4) chose this question file, so they can't change here: a new
+              destination or visa means a new application. */}
+          <li className="bubble bubble-assistant">Where are you travelling to?</li>
+          <li className="bubble bubble-user chat-reply chat-fixed">{application.destination_label}</li>
+          <li className="bubble bubble-assistant">Which visa do you need?</li>
+          <li className="bubble bubble-user chat-reply chat-fixed">{application.visa_label}</li>
+          <li className="bubble bubble-assistant">Are you applying just for yourself, or travelling with family or a group?</li>
+          <li className="bubble bubble-user chat-reply chat-fixed">{travellers(application.group_size)}</li>
+          <li className="bubble bubble-assistant">Great. Now the embassy's questions, one at a time. Your answers are saved as you go.</li>
+          {application.answers.map(saved => <li key={saved.question.id} id={`answer-${saved.question.id}`} className="chat-turn">
+            <ol className="chat-turn-inner">
+              <li className="bubble bubble-assistant">{saved.question.prompt}</li>
+              {editing === saved.question.id
+                ? <li className="chat-answer"><AnswerInput question={saved.question} applicationId={applicationId}
+                    initial={saved.value} onAnswer={input => answer(saved.question.id, input)} onCancel={() => setEditing(null)} /></li>
+                : <li className="bubble bubble-user chat-reply">
+                    <span>{formatAnswer(saved.question, saved.value)}</span>
+                    {sourceLabel(saved.source) && <span className="reply-source">{sourceLabel(saved.source)}</span>}
+                    <button type="button" className="reply-change" onClick={() => setEditing(saved.question.id)}
+                      aria-label={`Change your answer to: ${saved.question.prompt}`} data-activity-id="application-change">Change</button>
+                  </li>}
+            </ol>
+          </li>)}
+          {notice && <li className="bubble bubble-assistant bubble-notice">{notice}</li>}
+          {application.stopped && <li className="bubble bubble-assistant bubble-stop" role="status">
+            {application.stopped} If that's not right, change your answer above.
+          </li>}
+          {done && <li ref={element => { current.current = element }} className="bubble bubble-assistant bubble-done" role="status">
+            That's every question for now. Your answers are saved, and you can still change any of them above.
+            Next, upload the documents the embassy asks for below, and we'll check them against these answers.
+          </li>}
         </ol>
-      </li>}
-      {done && <li ref={current} className="bubble bubble-assistant bubble-done" role="status">
-        That's every question for now. Your answers are saved, and you can still change any of them above.
-        Next, upload the documents the embassy asks for below, and we'll check them against these answers.
-      </li>}
-    </ol>
+      </div>
+    </div>
 
     {/* The checklist follows the answers, so it appears once every question is answered (CMPS271-29). */}
     {(done || documentTarget) && !application.stopped && <Feature name="supporting_documents">
@@ -331,18 +354,5 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
     {done && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
       <Link to={`/dashboard/${applicationId}#embassy-pdf`} className="button button-primary">Review embassy PDF</Link>
     </Feature>}
-
-    <form className="chat-ask" onSubmit={ask}>
-      <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>
-      <div className="answer-row">
-        <textarea ref={askBox} id="chat-ask-input" rows={1} maxLength={1000} value={draft} placeholder="Ask a question…"
-          onChange={event => setDraft(event.target.value)} onKeyDown={askOnEnter} />
-        <VoiceDraft disabled={asking} onText={text =>
-          setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, 1000))} />
-        <button type="submit" className="button button-secondary" disabled={asking || !draft.trim()}
-          aria-busy={asking || undefined} data-activity-id="application-ask">{asking ? 'Asking…' : 'Ask'}</button>
-      </div>
-      {askError && <p className="answer-error" role="alert">{askError}</p>}
-    </form>
   </section>
 }

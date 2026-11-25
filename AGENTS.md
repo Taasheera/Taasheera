@@ -52,7 +52,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | OCR | Tesseract/pytesseract plus our MRZ locator and checksum repair | Vision-model fallback proposed |
 | Assistant | Backend-only official `google-genai` SDK, `gemini-3.5-flash-lite`, function calling | Provider behind adapters; no keys in browser |
 | Frontend | React 19, TypeScript, Vite, React Router data router, sonner | TanStack Query proposed |
-| Styling | Plain CSS/custom properties in `src/index.css`, DM Sans + Space Grotesk | No Tailwind; auth styles are scoped |
+| Styling | Plain CSS and shared Ink tokens in `frontend/public/tokens.css` · Schibsted Grotesk, Inter, IBM Plex Mono and IBM Plex Sans Arabic | No Tailwind; auth styles are scoped |
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
@@ -222,11 +222,13 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     and 0 days, once each per date. Reminder texts never contain dates or passport fields.
 46. **Visa guides (CMPS271-19/20/21/22/24/25).** Public `GET /visa-guides` and pages `/visas`, `/visas/:id`.
     Checklist and limits come from the questionnaires; fees, times, rules and sources from
-    `applications/visa_guides.json` (official https domains only, `checked_on` date). A definite
-    "need a visa" answer only for nationalities checked against the official list; others get the checker.
+    `applications/visa_guides.json` (official https domains only, `checked_on` date). Show the general rule
+    for checked nationalities and link to the official checker for everyone.
     Re-check the figures before each release. Behind `visa_guide`.
 47. **Fast pages on slow connections (CMPS271-137).** nginx gzips pages and built files (`gzip_proxied any`:
     CloudFront sends Via, and its CachingDisabled policy does not compress); API answers stay uncompressed.
     `/assets/` keeps a year (`immutable`) and a missing file is a 404, never `index.html`. Signed-in, sign-in
     and staff pages are `lazy` routes (`later()` in `routes.tsx`), so home, FAQ and visa guides download less.
     Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
+48. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
+    the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.

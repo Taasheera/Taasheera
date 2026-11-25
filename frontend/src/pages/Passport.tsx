@@ -139,8 +139,8 @@ function PassportPage({ uploadId }: { uploadId?: string }) {
 
   return <section className="passport-page container" aria-labelledby="passport-heading">
     <header className="passport-intro">
-      <p className="badge">Your first step</p>
-      <h1 id="passport-heading">Upload and review your passport</h1>
+      <p className="badge">Step {current + 1} of {steps.length} · Passport</p>
+      <h1 id="passport-heading">{uploadId ? 'Check what we read.' : 'Upload and review your passport'}</h1>
       <p>We read the two machine-readable lines on your passport's photo page, check them, and show you what we found. Nothing is saved until you confirm it.</p>
     </header>
 
@@ -167,7 +167,7 @@ function PassportPage({ uploadId }: { uploadId?: string }) {
                   {imageUrl
                     ? <img src={imageUrl} alt="The passport photo you uploaded" />
                     : <div className="photo-placeholder" aria-hidden="true" />}
-                  <figcaption>Stored privately in your account, with location data removed.</figcaption>
+                  <figcaption className="status-dot status-dot--ok">Stored privately in your account, with location data removed.</figcaption>
                 </figure>
                 <Dropzone compact busyLabel={busyLabel} onFile={upload} />
               </>
@@ -182,7 +182,7 @@ function PassportPage({ uploadId }: { uploadId?: string }) {
           {fields && <ReviewForm fields={fields} extraction={extraction} edited={edited} errors={errors}
             saving={saving} saved={saved} onChange={change} onSubmit={save} />}
           {saved && <div className="passport-saved" role="status">
-            <p>Your details are confirmed. The assistant can now answer questions about them.</p>
+            <p className="status-dot status-dot--ok">Your details are confirmed. The assistant can now answer questions about them.</p>
             {returnTo && uploadId && <Link className="button button-primary" to={`${returnTo}?passport=${uploadId}`}
               data-activity-id="application-return">Continue your application</Link>}
             <button type="button" className="button button-secondary" onClick={() => setAssistantOpen(true)}

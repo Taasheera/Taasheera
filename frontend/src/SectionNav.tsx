@@ -47,12 +47,13 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
               : <a href={section.href} {...props}>{section.label}</a>}
           </li>
         })}
-        {hasAssistant && <li>
-          <button type="button" className="section-nav-link section-nav-assistant" data-activity-id="assistant-open"
-            onClick={() => { close(); openAssistant() }}>Assistant</button>
-        </li>}
       </ul>
-      {/* Outside the list, so the bell and its count stay visible when the list folds away on a phone. */}
+      {hasAssistant && <button type="button" className="section-nav-link section-nav-assistant" data-activity-id="assistant-open"
+        onClick={() => { close(); openAssistant() }}>
+        <svg className="icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
+        <span className="visually-hidden">Assistant</span><span aria-hidden="true" className="section-nav-ask" />
+      </button>}
       <NotificationBell pathname={pathname} routed={routed} />
     </nav>
   )

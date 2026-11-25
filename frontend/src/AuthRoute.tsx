@@ -30,7 +30,7 @@ export default function AuthRoute({ accountPage = false, embedded = false }: { a
   }, [])
 
   // Inside the site layout, the layout already tracks activity, guards idle sessions and shows toasts.
-  return <>{!embedded && <><ActivityTracker /><IdleGuard /><Toaster position="top-center" richColors closeButton /></>}
+  return <>{!embedded && <><ActivityTracker /><IdleGuard /><Toaster position="top-center" theme="system" closeButton /></>}
     <App embedded={embedded} initialNavigation={useLoaderData() as Navigation} accountPage={accountPage}
     googleClientId={clientId} googleConfigurationStatus={status}
     signedInRedirect={accountPage ? undefined : signedInHome(window.location.search)}

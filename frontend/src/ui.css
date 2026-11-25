@@ -1,6 +1,6 @@
-/* Hallmark · component: button + utilities · genre: modern-minimal · theme: site tokens (src/index.css)
+/* Hallmark · component: button + utilities · genre: modern-minimal · theme: Ink tokens (public/tokens.css)
  * states: default · hover · focus · active · disabled · loading (aria-busy) · error/success via surrounding notices
- * Shared by the passport page and the assistant. Every value is a token from index.css.
+ * Shared by the passport page and the assistant.
  */
 
 .button {
@@ -8,15 +8,16 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px 20px;
   border: 1px solid transparent;
-  border-radius: 999px;
-  font-family: var(--font-display);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.2;
-  white-space: nowrap;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color var(--dur-quick) var(--ease-out), border-color var(--dur-quick) var(--ease-out),
     transform var(--dur-quick) var(--ease-out);
@@ -24,22 +25,23 @@
 
 .button-primary {
   background: var(--brand);
-  color: var(--card);
+  color: var(--on-brand);
 }
 
 .button-primary:hover:not(:disabled) {
+  color: var(--on-brand);
   background: var(--brand-dark);
 }
 
 .button-secondary {
   border-color: var(--field-border);
-  background: var(--card);
+  background: transparent;
   color: var(--fg);
 }
 
 .button-secondary:hover:not(:disabled) {
   border-color: var(--brand);
-  color: var(--brand-dark);
+  color: var(--fg);
 }
 
 .button:active:not(:disabled) {
@@ -48,7 +50,8 @@
 
 .button:disabled,
 .button[aria-busy='true'] {
-  opacity: 0.55;
+  background: var(--border);
+  color: var(--fg-muted);
   cursor: not-allowed;
 }
 
@@ -72,4 +75,84 @@
   .button:active:not(:disabled) {
     transform: none;
   }
+}
+
+.eyebrow,
+.badge {
+  color: var(--fg-muted);
+  font: 500 12px/1.4 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status-dot {
+  --dot-color: var(--fg-dim);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.status-dot::before {
+  content: '';
+  flex: 0 0 6px;
+  inline-size: 6px;
+  block-size: 6px;
+  align-self: center;
+  border: 1.5px solid var(--dot-color);
+  border-radius: 50%;
+}
+
+.status-dot--ok { --dot-color: var(--ok); }
+.status-dot--warn { --dot-color: var(--warn-text); }
+.status-dot--danger { --dot-color: var(--danger); }
+.status-dot--neutral { --dot-color: var(--fg-muted); }
+
+.status-dot[class*='status-dot--']::before {
+  background: var(--dot-color);
+}
+
+.action-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.button-with-icon {
+  gap: 14px;
+  padding-inline-end: 6px;
+}
+
+progress.question-progress {
+  display: block;
+  inline-size: 100%;
+  block-size: 4px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  appearance: none;
+  background: var(--border);
+  color: var(--brand);
+}
+
+.question-progress::-webkit-progress-bar {
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+
+.question-progress::-webkit-progress-value {
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+}
+
+.question-progress::-moz-progress-bar {
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+}
+
+:dir(rtl) .action-icon .icon {
+  transform: scaleX(-1);
 }

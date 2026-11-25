@@ -26,7 +26,7 @@ export default function CrossCheckPanel({ applicationId, version }: { applicatio
   const ok = report.findings.length === 0
   return <div className={`xcheck${ok ? ' is-ok' : ' is-warn'}`} aria-labelledby="xcheck-title">
     <h3 id="xcheck-title">Consistency check</h3>
-    <p className="xcheck-summary" role="status">
+    <p className={`xcheck-summary status-dot status-dot--${ok ? 'ok' : 'warn'}`} role="status">
       {ok
         ? `Your name, date of birth and passport number match across ${report.checked.length === 0 ? 'your passport' : `${report.checked.length} ${report.checked.length === 1 ? 'source' : 'sources'}`}.`
         : `${report.findings.length} ${report.findings.length === 1 ? 'thing doesn\'t' : 'things don\'t'} match your passport. Embassies expect every document to match it exactly.`}

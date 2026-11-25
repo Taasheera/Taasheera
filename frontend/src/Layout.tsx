@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { toast, Toaster } from 'sonner'
 import { ArrowIcon, MenuIcon } from './icons'
+import AppearanceSelect from './AppearanceSelect'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import Feature from './Feature'
@@ -104,16 +105,19 @@ export default function Layout() {
       <IdleGuard />
       <ScrollRestoration />
       <a className="skip-link" href="#main" data-activity-id="skip-link">Skip to content</a>
-      <header className="navbar-wrap" onKeyDown={closeOnEscape}>
+      <header className={`navbar-wrap${traveler ? ' navbar-signed-in' : ''}`} onKeyDown={closeOnEscape}>
         <div className="navbar">
           <Link to="/" className="logo" aria-label="Taasheera home" data-activity-id="home-link">
-            <span className="logo-mark" aria-hidden="true">T</span>Taasheera
+            <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
           </Link>
-          <nav className="nav-links" aria-label="Main">
-            <MainLinks signedIn={traveler !== null} />
-          </nav>
+          {traveler ? <SectionNav pathname={location.pathname} routed /> :
+            <nav className="nav-links" aria-label="Main"><MainLinks signedIn={false} /></nav>}
           <div className="nav-right">
             <AccountLinks {...account} />
+            <AppearanceSelect />
+            {traveler && <span className="nav-avatar" aria-hidden="true">
+              {traveler.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
+            </span>}
             <button
               type="button"
               className="menu-button"
@@ -133,7 +137,6 @@ export default function Layout() {
             <AccountLinks {...account} inMenu />
           </nav>
         )}
-        {traveler && <SectionNav pathname={location.pathname} routed />}
       </header>
 
       {/* Pages read the signed-in traveler from here, e.g. the homepage's main button. */}
@@ -147,7 +150,7 @@ export default function Layout() {
         <div className="container">
           <div className="footer-top">
             <Link to="/" className="logo" data-activity-id="home-link">
-              <span className="logo-mark" aria-hidden="true">T</span>Taasheera
+              <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
             </Link>
             <nav className="footer-links" aria-label="Footer">
               <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
@@ -169,7 +172,7 @@ export default function Layout() {
         </div>
       </footer>
 
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster position="top-center" theme="system" closeButton />
     </div>
   )
 }

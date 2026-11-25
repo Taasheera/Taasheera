@@ -51,6 +51,7 @@ export default function ProposalCard({ proposal, onConfirm, onGoTo }: Props) {
 
   if (proposal.action !== 'change_answer' || !proposal.question_id) return null
   return <div className="proposal" aria-label="Proposed change">
+    <p className="eyebrow proposal-eyebrow">Suggested change</p>
     <p className="proposal-text">Change your answer to “{proposal.question}”</p>
     <p className="proposal-diff">
       {proposal.current_display && <><s>{proposal.current_display}</s> → </>}<strong>{proposal.display}</strong>
@@ -58,7 +59,7 @@ export default function ProposalCard({ proposal, onConfirm, onGoTo }: Props) {
     {state === 'saved' ? <p className="proposal-done" role="status">Saved.</p>
       : state === 'dismissed' ? <p className="proposal-done" role="status">Left as it was.</p>
       : <div className="proposal-actions">
-          <button type="button" className="button" onClick={confirm} disabled={state === 'saving'}
+          <button type="button" className="button button-primary" onClick={confirm} disabled={state === 'saving'}
             aria-busy={state === 'saving' || undefined} data-activity-id="assistant-proposal-confirm">
             {state === 'saving' ? 'Saving…' : 'Confirm change'}
           </button>

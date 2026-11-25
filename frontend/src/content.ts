@@ -13,24 +13,11 @@ export const destinations = [
   { id: 'canada', flag: canadaFlag, name: 'Canada', visa: 'Visitor visa', guide: 'canada-visitor' },
 ]
 
-export const trustBadges = [
-  'You control submission',
-  'Passport data stays private',
-  'Not affiliated with any embassy',
-]
-
 export const steps = [
-  { title: 'Pick your destination', body: 'Choose a destination and visa type to start the matching questionnaire.' },
-  { title: 'Upload your passport', body: 'We read your details from the passport. You check and confirm them.' },
-  { title: 'Answer a few questions', body: 'Tell us about your trip. Your answers are saved as you go.' },
-  { title: 'Review and submit', body: 'Check your answers and follow the instructions from your consulate.' },
-]
-
-export const whatWeDo = [
-  'Read passport details so you can check them before saving',
-  'Ask the questions that apply to your trip',
-  'Flag missing answers and inconsistencies before review',
-  'Save your application so you can pick up where you stopped',
+  { title: 'Pick a destination', body: 'Choose a destination and visa type to start the matching questionnaire.' },
+  { title: 'Scan your passport', body: 'We read your details from the passport. You check and confirm them.' },
+  { title: 'Answer and upload', body: 'Tell us about your trip. Your answers are saved as you go.' },
+  { title: 'Review the official form', body: 'Check your answers and follow the instructions from your consulate.' },
 ]
 
 export const requiredDocuments = [

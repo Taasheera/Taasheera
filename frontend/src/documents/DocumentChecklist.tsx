@@ -54,16 +54,32 @@ export default function DocumentChecklist({ applicationId, version, onChange, fo
         <h2 id="docs-title">Supporting documents</h2>
         <p className="docs-lede">What the embassy asks for with this visa, based on your answers. PDF, JPEG, PNG or WebP, up to 10 MB each.</p>
       </div>
-      <p className={`docs-progress${checklist.complete ? ' is-complete' : ''}`} role="status">
-        {checklist.complete ? 'All required documents uploaded' : `${done} of ${required.length} required uploaded`}
-      </p>
     </div>
     {checklist.read_only && <p className="docs-note">This application is archived. Restore it to change its documents.</p>}
-    <ul className="docs-list">
-      {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
-        requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}
-    </ul>
-    <CrossCheckPanel applicationId={applicationId} version={`${version ?? ''}-${attempt}`} />
+    <div className="docs-layout">
+      <div>
+        <div className="docs-list-heading">
+          <h3>Checklist</h3>
+          <span>{done} of {required.length} required</span>
+        </div>
+        <ul className="docs-list">
+          {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
+            requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}
+        </ul>
+      </div>
+      <div className="docs-sidebar">
+        <div className="docs-readiness">
+          <h3 className="eyebrow">Readiness</h3>
+          <p className="docs-readiness-score" aria-hidden="true">{done}/{required.length}</p>
+          {required.length > 0 && <progress className="question-progress" value={done} max={required.length}
+            aria-label="Required documents uploaded" />}
+          <p className="docs-progress" role="status">
+            {checklist.complete ? 'All required documents uploaded' : `${done} of ${required.length} required uploaded`}
+          </p>
+        </div>
+        <CrossCheckPanel applicationId={applicationId} version={`${version ?? ''}-${attempt}`} />
+      </div>
+    </div>
     {checklist.other.length > 0 && <div className="docs-other">
       <h3>No longer needed</h3>
       <p className="docs-note">Your answers changed, so the embassy no longer asks for these. Delete them if they don't belong here.</p>
@@ -96,12 +112,14 @@ function RequirementRow({ applicationId, requirement, readOnly, onChange }:
 
   const titleId = `doc-${requirement.id}`
   return <li className={`docs-item${has ? ' is-done' : ''}`} aria-labelledby={titleId}>
-    <span className="docs-mark" aria-hidden="true">{has ? '✓' : ''}</span>
     <div className="docs-body">
       <h3 id={titleId} tabIndex={-1}>
         {requirement.label}
         {!requirement.required && <span className="docs-tag">Optional</span>}
-        <span className="visually-hidden">{has ? ', uploaded' : ', not uploaded yet'}</span>
+        <span className="visually-hidden">, </span>
+        <span className={`docs-item-status status-dot${has ? ' status-dot--ok' : requirement.required ? ' status-dot--warn' : ''}`}>
+          {has ? 'uploaded' : 'not uploaded yet'}
+        </span>
       </h3>
       {requirement.help && <p className="docs-help">{requirement.help}</p>}
       {has && <ul className="docs-files">
