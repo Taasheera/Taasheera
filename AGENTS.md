@@ -224,5 +224,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `applications/visa_guides.json` (official https domains only, `checked_on` date). Show the general rule
     for checked nationalities and link to the official checker for everyone.
     Re-check the figures before each release. Behind `visa_guide`.
-47. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
+47. **Fast pages on slow connections (CMPS271-137).** nginx gzips pages and built files (`gzip_proxied any`:
+    CloudFront sends Via, and its CachingDisabled policy does not compress); API answers stay uncompressed.
+    `/assets/` keeps a year (`immutable`) and a missing file is a 404, never `index.html`. Signed-in, sign-in
+    and staff pages are `lazy` routes (`later()` in `routes.tsx`), so home, FAQ and visa guides download less.
+    Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
+48. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
     the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.
