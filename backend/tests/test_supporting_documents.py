@@ -260,3 +260,41 @@ def test_text_is_read_from_pdfs_and_images():
 ])
 def test_file_names_are_cleaned_for_display(name, expected):
     assert clean_filename(name, expected.rsplit(".", 1)[1]) == expected
+
+
+def test_print_ready_packet_puts_documents_in_checklist_order_behind_a_cover(api):
+    from pypdf import PdfReader
+    client, app, headers, _ = api
+    application = start(client, headers[0])
+    assert upload(client, headers[0], application["id"], "bank_statements", make_pdf("Statement")).status_code == 201
+    assert upload(client, headers[0], application["id"], "photo", make_png(), name="me.png").status_code == 201
+    url = f"/applications/{application['id']}/documents/packet"
+    assert client.get(url, headers=headers[1]).status_code == 404
+    response = client.get(url, headers=headers[0])
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["content-disposition"].startswith("attachment")
+    pdf = PdfReader(BytesIO(response.content))
+    # Cover, then the photo (first on the checklist) and the one-page statement.
+    assert len(pdf.pages) == 3
+    assert "Statement" in pdf.pages[2].extract_text()
+    with Session(app.state.engine) as session:
+        purposes = {row.purpose for row in session.exec(select(DocumentAccess)).all()}
+    assert "document_packet" in purposes
+
+
+def test_packet_cover_marks_missing_and_unreadable_documents():
+    from pypdf import PdfReader
+    from app.documents.packet import PacketItem, build_packet
+    broken = PdfWriter()
+    broken.add_blank_page(100, 100)
+    broken.encrypt("secret")
+    encrypted = BytesIO()
+    broken.write(encrypted)
+    content = build_packet("Japan short-term stay visa", "ANNA MARIA ERIKSSON", "Trip: 1 April 2027 to 9 April 2027", [
+        PacketItem("Passport photo", True, []),
+        PacketItem("Bank statements", True, [("locked.pdf", "application/pdf", encrypted.getvalue())]),
+        PacketItem("Cover letter", False, []),
+    ])
+    assert len(PdfReader(BytesIO(content)).pages) == 1

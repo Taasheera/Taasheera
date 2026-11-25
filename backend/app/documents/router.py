@@ -23,6 +23,7 @@ from ..models import Application, ApplicationAnswer, SupportingDocument, Travele
 from ..passport.images import MAX_UPLOAD_BYTES
 from .crosscheck import Report as CrossCheckReport
 from .files import InvalidDocumentError, check_document, read_text
+from .packet import PacketItem, build_packet
 from .review import document_cross_check
 from .storage import DocumentStorage
 
@@ -155,6 +156,35 @@ def create_documents_router(
     def list_documents(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
         response.headers["Cache-Control"] = "private, no-store"
         return checklist(session, owned(session, traveler, application_id))
+
+    @router.get("/packet")
+    def packet(application_id: str, traveler: TravelerDep, session: SessionDep):
+        """One printable PDF: a cover checklist, then every uploaded document in the checklist's order."""
+        application = owned(session, traveler, application_id)
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        given = answers(session, application)
+        requirements = flow.required_documents(questionnaire, given)
+        documents = owned_documents(session, application.id)
+        items = []
+        for requirement in requirements:
+            files = []
+            for document in (d for d in documents if d.requirement == requirement.id):
+                extension = "pdf" if document.content_type == "application/pdf" else "jpg"
+                content = storage.load(traveler.id, document.id, extension, purpose="document_packet")
+                if content is not None:
+                    files.append((document.filename, document.content_type, content))
+            items.append(PacketItem(label=requirement.label, required=requirement.required, files=files))
+        passport = given.get("passport") if isinstance(given.get("passport"), dict) else {}
+        name = " ".join(part for part in (passport.get("given_names"), passport.get("surname")) if part)
+        dates = [given.get(key) for key in ("arrival_date", "departure_date") if given.get(key)]
+        trip = " to ".join(date.fromisoformat(value).strftime("%d %B %Y") for value in dates)
+        content = build_packet(questionnaire.title, name, f"Trip: {trip}" if trip else "", items)
+        return Response(content, media_type="application/pdf", headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": 'attachment; filename="application-packet.pdf"',
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        })
 
     @router.get("/crosscheck", response_model=CrossCheckReport)
     def crosscheck(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
