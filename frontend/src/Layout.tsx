@@ -2,9 +2,12 @@ import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { toast, Toaster } from 'sonner'
 import { ArrowIcon, MenuIcon } from './icons'
+import AppearanceSelect from './AppearanceSelect'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
+import Feature from './Feature'
 import IdleGuard from './IdleGuard'
+import PrivacyConsent from './PrivacyConsent'
 import SectionNav from './SectionNav'
 import { restoreSession, signOut, type Traveler } from './auth'
 import { disableGoogleAutoSelect } from './googleIdentity'
@@ -18,6 +21,7 @@ function MainLinks({ signedIn }: { signedIn: boolean }) {
     <>
       <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
       <Link to="/#destinations" data-activity-id="destinations-link">Destinations</Link>
+      <Feature name="visa_guide"><NavLink to="/visas" data-activity-id="visa-guides-link">Visa guides</NavLink></Feature>
       <Link to="/#privacy" data-activity-id="privacy-link">Privacy</Link>
       <NavLink to="/faq" data-activity-id="faq-link">FAQ</NavLink>
     </>
@@ -101,16 +105,19 @@ export default function Layout() {
       <IdleGuard />
       <ScrollRestoration />
       <a className="skip-link" href="#main" data-activity-id="skip-link">Skip to content</a>
-      <header className="navbar-wrap" onKeyDown={closeOnEscape}>
+      <header className={`navbar-wrap${traveler ? ' navbar-signed-in' : ''}`} onKeyDown={closeOnEscape}>
         <div className="navbar">
           <Link to="/" className="logo" aria-label="Taasheera home" data-activity-id="home-link">
-            <span className="logo-mark" aria-hidden="true">T</span>Taasheera
+            <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
           </Link>
-          <nav className="nav-links" aria-label="Main">
-            <MainLinks signedIn={traveler !== null} />
-          </nav>
+          {traveler ? <SectionNav pathname={location.pathname} routed /> :
+            <nav className="nav-links" aria-label="Main"><MainLinks signedIn={false} /></nav>}
           <div className="nav-right">
             <AccountLinks {...account} />
+            <AppearanceSelect />
+            {traveler && <span className="nav-avatar" aria-hidden="true">
+              {traveler.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
+            </span>}
             <button
               type="button"
               className="menu-button"
@@ -130,23 +137,25 @@ export default function Layout() {
             <AccountLinks {...account} inMenu />
           </nav>
         )}
-        {traveler && <SectionNav pathname={location.pathname} routed />}
       </header>
 
       {/* Pages read the signed-in traveler from here, e.g. the homepage's main button. */}
       <main id="main"><Outlet context={{ traveler } satisfies LayoutContext} /></main>
       {/* The passport and application pages have their own assistant with that page's context. */}
       {traveler && !/^\/(passport|apply)(\/|$)/.test(location.pathname) && <GlobalAssistant />}
+      {/* Signed in: accept the privacy policy before uploading documents (CMPS271-115). Keyed so another account checks again. */}
+      {traveler && <Feature name="privacy_consent"><PrivacyConsent key={traveler.id} /></Feature>}
 
       <footer className="site-footer">
         <div className="container">
           <div className="footer-top">
             <Link to="/" className="logo" data-activity-id="home-link">
-              <span className="logo-mark" aria-hidden="true">T</span>Taasheera
+              <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
             </Link>
             <nav className="footer-links" aria-label="Footer">
               <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
               <Link to="/faq" data-activity-id="faq-link">FAQ</Link>
+              <Feature name="visa_guide"><Link to="/visas" data-activity-id="visa-guides-link">Visa guides</Link></Feature>
               {traveler
                 ? <>
                     <Link to="/dashboard" data-activity-id="dashboard-link">Your applications</Link>
@@ -163,7 +172,7 @@ export default function Layout() {
         </div>
       </footer>
 
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster position="top-center" theme="system" closeButton />
     </div>
   )
 }

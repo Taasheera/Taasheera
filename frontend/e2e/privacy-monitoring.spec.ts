@@ -14,6 +14,10 @@ test('traveler creates a draft, sees passport access, restores session and delet
   // Signing in lands on the applications, greeting a first-time traveler by first name.
   await expect(page).toHaveURL('/dashboard')
   await expect(page.getByText('Welcome, E2E', { exact: true })).toBeVisible()
+  // A new account is asked to accept the privacy policy before uploading anything (CMPS271-115).
+  const policy = page.getByRole('dialog', { name: 'Before you upload documents' })
+  await policy.getByRole('button', { name: 'I accept', exact: true }).click()
+  await expect(policy).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Ask the assistant', exact: true })).toBeVisible()
   const cookies = await context.cookies()
   const refreshCookie = cookies.find(cookie => cookie.name === 'taasheera_refresh')

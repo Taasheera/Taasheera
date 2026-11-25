@@ -1,11 +1,13 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
+import { ArrowIcon } from '../icons'
 import { countries } from '../countries'
 import ReviewForm from '../passport/ReviewForm'
 import {
   blankFields, normalizeValue, validateFields, type FieldKey, type PassportFields,
 } from '../passport/fields'
 import type { Address, AnswerInput as Answer, AnswerValue, Question } from './api'
+import { draftAnswer } from '../assistant/api'
 
 type Props = {
   question: Question
@@ -33,6 +35,7 @@ export default function AnswerInput({ question, applicationId, initial, onAnswer
   const [edited, setEdited] = useState<ReadonlySet<FieldKey>>(new Set())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [drafting, setDrafting] = useState(false)
 
   async function send(answer: Answer) {
     setSaving(true)
@@ -51,8 +54,8 @@ export default function AnswerInput({ question, applicationId, initial, onAnswer
   const cancel = onCancel && <button type="button" className="button button-secondary" onClick={onCancel}
     disabled={saving} data-activity-id="application-cancel-change">{cancelLabel}</button>
   const continueButton = (label = 'Continue', disabled = false) =>
-    <button type="submit" className="button button-primary" disabled={saving || disabled}
-      aria-busy={saving || undefined} data-activity-id="application-answer">{saving ? 'Saving…' : label}</button>
+    <button type="submit" className="button button-primary button-with-icon" disabled={saving || disabled}
+      aria-busy={saving || undefined} data-activity-id="application-answer">{saving ? 'Saving…' : label}<span className="action-icon" aria-hidden="true"><ArrowIcon /></span></button>
   const errorLine = error && <p id={errorId} className="answer-error" role="alert">{error}</p>
 
   if (question.type === 'yes_no' || (question.type === 'choice' && (question.options?.length ?? 0) <= MAX_BUTTONS)) {
@@ -150,6 +153,36 @@ export default function AnswerInput({ question, applicationId, initial, onAnswer
       {cancel && <div className="answer-row">{cancel}</div>}
       {errorLine}
     </div>
+  }
+
+  // Long free-text answers get room to write and a draft from the assistant (Help me write this).
+  if (question.type === 'text' && (question.max_length ?? 0) >= 150) {
+    async function draft() {
+      setDrafting(true)
+      setError('')
+      try {
+        setText(await draftAnswer(applicationId, question.id, text))
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'Could not write a draft.')
+      } finally {
+        setDrafting(false)
+      }
+    }
+    return <form className="answer answer-long" onSubmit={submit(text)} noValidate>
+      <label htmlFor={`${id}-input`} className="visually-hidden">{question.prompt}</label>
+      <textarea id={`${id}-input`} value={text} rows={3} onChange={event => setText(event.target.value)}
+        maxLength={question.max_length} aria-describedby={described} aria-invalid={error ? true : undefined} />
+      <div className="answer-row">
+        <button type="button" className="button button-secondary answer-draft" onClick={() => void draft()}
+          disabled={drafting || saving} aria-busy={drafting} data-activity-id="answer-draft">
+          {drafting ? 'Writing…' : text.trim() ? 'Help me write this from my notes' : 'Help me write this'}
+        </button>
+        {continueButton(question.required || text.trim() ? 'Continue' : 'Skip', question.required && !text.trim())}
+        {cancel}
+      </div>
+      <p className="answer-draft-note">The draft uses only your answers and notes. Check it and fill in anything in [brackets].</p>
+      {errorLine}
+    </form>
   }
 
   // Text, phone and date: one field and a button.

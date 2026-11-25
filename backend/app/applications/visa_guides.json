@@ -1,0 +1,321 @@
+{
+  "checked_on": "2026-11-25",
+  "guides": [
+    {
+      "questionnaire_id": "schengen-short-stay",
+      "need": {
+        "rule": "For short visits, travelers with a passport from a visa-required country generally need a Schengen visa. Visa-exempt travelers can usually visit for up to 90 days in a 180-day period. Check the official rules for your passport and circumstances.",
+        "notes": [
+          "The EU's planned online travel permit for visa-free visitors (ETIAS) is not running yet, and no start date has been announced."
+        ],
+        "checker": {"label": "The EU's list of who needs a visa", "url": "https://home-affairs.ec.europa.eu/policies/schengen/visa-policy_en"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Adults and children aged 12 and over", "amount": "€90"},
+          {"label": "Children aged 6 to 11", "amount": "€45"},
+          {"label": "Children under 6", "amount": "Free"}
+        ],
+        "note": "These are standard fees. Reductions or exemptions can apply. A visa centre may also charge a service fee.",
+        "source": {"label": "German Federal Foreign Office: Schengen visa fee", "url": "https://www.auswaertiges-amt.de/en/-/2658682"}
+      },
+      "time": {
+        "text": "Usually decided within 15 calendar days after the consulate accepts your application. It can take up to 45 days if they need to check more.",
+        "source": {"label": "EU Visa Code, article 23 (Czech Ministry of Foreign Affairs)", "url": "https://mzv.gov.cz/london/en/visa_and_consular_information/visa_information/visa_decision/index.html"}
+      },
+      "coverage": {
+        "level": "filled_for_you",
+        "text": "Ta'asheera asks you questions in plain language and checks your answers. When the PDF review feature is available, you can review and print a filled Schengen application form. The form-filling agent has been tested on a practice form. You review and submit the application yourself."
+      },
+      "extra_sources": [
+        {"label": "European Commission: ETIAS", "url": "https://home-affairs.ec.europa.eu/policies/schengen/smart-borders/european-travel-information-authorisation-system_en"}
+      ]
+    },
+    {
+      "questionnaire_id": "uk-standard-visitor",
+      "need": {
+        "rule": "Depending on your passport and circumstances, a short visit can require a Standard Visitor visa, an electronic travel authorisation (ETA), or neither. Use the official checker to see which applies.",
+        "notes": [],
+        "checker": {"label": "GOV.UK: Check if you need a UK visa", "url": "https://www.gov.uk/check-uk-visa"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Standard Visitor visa (up to 6 months)", "amount": "£135"},
+          {"label": "Long-term visa, 2 years (6 months per visit)", "amount": "£506"}
+        ],
+        "note": "Fees are not refunded if the visa is refused.",
+        "source": {"label": "GOV.UK: Apply for a Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"}
+      },
+      "time": {
+        "text": "Usually about 3 weeks after your appointment at the visa application centre.",
+        "source": {"label": "GOV.UK: Visa processing times", "url": "https://www.gov.uk/visa-processing-times"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out the GOV.UK form section by section with your answers ready to copy, and you submit it yourself."
+      },
+      "extra_sources": []
+    },
+    {
+      "questionnaire_id": "us-b2-tourist",
+      "need": {
+        "rule": "Eligible Visa Waiver Program travelers can visit for up to 90 days with an approved ESTA. Other travelers generally need a visitor visa for tourism, with some exceptions. Check the official rules for your passport and circumstances.",
+        "notes": [],
+        "checker": {"label": "US Customs and Border Protection: Visa Waiver Program", "url": "https://www.cbp.gov/travel/international-visitors/visa-waiver-program"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Visa application fee", "amount": "$185"}
+        ],
+        "note": "This is the non-refundable application fee. An issuance fee may also apply based on your nationality. Check the State Department's reciprocity schedule and your embassy's instructions.",
+        "source": {"label": "US Department of State: Fees for visa services", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/fees/fees-visa-services.html"}
+      },
+      "time": {
+        "text": "There is no fixed time: it depends on how long you wait for an interview at your embassy, from a few days to many months.",
+        "source": {"label": "US Department of State: Visa appointment wait times", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/wait-times.html"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out each DS-160 page with your answers ready to copy. You submit it yourself and go to the interview."
+      },
+      "extra_sources": [
+        {"label": "US Department of State: Visa reciprocity and issuance fees", "url": "https://travel.state.gov/content/travel/en/us-visas/Visa-Reciprocity-and-Civil-Documents-by-Country.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "canada-visitor",
+      "need": {
+        "rule": "Most travellers need either a visitor visa or an electronic travel authorization (eTA), not both. Which one depends on your passport.",
+        "notes": [],
+        "checker": {"label": "IRCC: Find out if you need a visa", "url": "https://ircc.canada.ca/visit-visiter/en/visas"},
+        "checked_nationalities": {"LBN": "visa"}
+      },
+      "fees": {
+        "items": [
+          {"label": "Visitor visa, per person", "amount": "CAD 100"},
+          {"label": "Fingerprints and photo (biometrics), per person", "amount": "CAD 85"}
+        ],
+        "note": "Biometrics cost at most CAD 170 for a family applying together.",
+        "source": {"label": "IRCC: Fee list", "url": "https://ircc.canada.ca/english/information/fees/fees.asp"}
+      },
+      "time": {
+        "text": "Processing times vary by country and can change. Use the current IRCC estimate for your country of residence.",
+        "source": {"label": "IRCC: Check processing times", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application/check-processing-times.html"}
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you every question in plain language, checks your answers and lists your documents. Then a step-by-step guide lays out the IRCC application with your answers ready to copy. You submit it yourself and give your biometrics."
+      },
+      "extra_sources": [
+        {"label": "Government of Canada: Biometrics", "url": "https://www.canada.ca/biometrics"}
+      ]
+    },
+    {
+      "questionnaire_id": "china-tourist-l",
+      "need": {
+        "rule": "Most passports need a visa for mainland China. China lets citizens of a published list of countries visit for up to 30 days without one, and some travelers can transit visa-free for up to 240 hours. Check the official lists for your passport.",
+        "notes": [
+          "The visa-free list changes often; it doesn't include Lebanon or Egypt as of this check."
+        ],
+        "checker": {
+          "label": "National Immigration Administration: visa-free countries",
+          "url": "https://en.nia.gov.cn/n147418/n147463/c183390/content.html"
+        },
+        "checked_nationalities": {
+          "LBN": "visa"
+        }
+      },
+      "fees": {
+        "items": [
+          {
+            "label": "Single entry (Lebanese passport)",
+            "amount": "US$23"
+          },
+          {
+            "label": "Multiple entry, 6 months",
+            "amount": "US$45"
+          },
+          {
+            "label": "Visa centre service fee",
+            "amount": "US$44.40"
+          }
+        ],
+        "note": "Visa fees depend on your nationality; these are the Beirut visa centre's fees for Lebanese citizens, paid in cash in US dollars. Express service costs more.",
+        "source": {
+          "label": "Chinese Visa Application Service Center, Beirut: fees",
+          "url": "https://bio.visaforchina.cn/BEY3_EN/qianzhengyewu/jichuzhishi/feiyongbiaozhunjishixian"
+        }
+      },
+      "time": {
+        "text": "Usually 4 working days after the visa centre accepts your application, or 3 with express service.",
+        "source": {
+          "label": "Chinese Visa Application Service Center, Beirut: fees and processing",
+          "url": "https://bio.visaforchina.cn/BEY3_EN/qianzhengyewu/jichuzhishi/feiyongbiaozhunjishixian"
+        }
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you the questions in plain language, checks your answers and lists your documents. A step-by-step guide then lays out the China Online Visa Application (COVA) form with your answers ready to copy. You submit it, print the confirmation and give your fingerprints at the visa centre."
+      },
+      "extra_sources": [
+        {
+          "label": "China Online Visa Application (COVA)",
+          "url": "https://cova.mfa.gov.cn/"
+        }
+      ]
+    },
+    {
+      "questionnaire_id": "japan-short-stay",
+      "need": {
+        "rule": "Citizens of about 70 countries can visit Japan for short stays without a visa. Others apply at a Japanese embassy or consulate, or online through JAPAN eVISA if they live in one of the countries it covers.",
+        "notes": [
+          "JAPAN eVISA is open only to residents of certain countries; residents of Lebanon apply at the Embassy in Beirut by appointment."
+        ],
+        "checker": {
+          "label": "MOFA Japan: countries that don't need a visa",
+          "url": "https://www.mofa.go.jp/j_info/visit/visa/short/novisa.html"
+        },
+        "checked_nationalities": {
+          "LBN": "visa"
+        }
+      },
+      "fees": {
+        "items": [
+          {
+            "label": "Single entry",
+            "amount": "About ¥15,000"
+          },
+          {
+            "label": "Multiple entry",
+            "amount": "About ¥30,000"
+          }
+        ],
+        "note": "Paid in local currency at the embassy, and only if the visa is issued. The amount differs by nationality.",
+        "source": {
+          "label": "MOFA Japan: visa fees",
+          "url": "https://www.mofa.go.jp/j_info/visit/visa/procedure/pagewe_000001_00391.html"
+        }
+      },
+      "time": {
+        "text": "Usually about a week after the embassy accepts your application. It can take longer if they need to check more.",
+        "source": {
+          "label": "MOFA Japan: visas",
+          "url": "https://www.mofa.go.jp/j_info/visit/visa/index.html"
+        }
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you the questions in plain language, checks your answers and lists your documents. A step-by-step guide then lays out the embassy's paper application form, box by box, with your answers ready to copy. You print, sign and hand it in at your appointment."
+      },
+      "extra_sources": [
+        {
+          "label": "Embassy of Japan in Lebanon: visas",
+          "url": "https://www.lb.emb-japan.go.jp/itpr_en/visa.html"
+        },
+        {
+          "label": "MOFA Japan: JAPAN eVISA",
+          "url": "https://www.mofa.go.jp/j_info/visit/visa/visaonline.html"
+        }
+      ]
+    },
+    {
+      "questionnaire_id": "india-tourist",
+      "need": {
+        "rule": "Most visitors need a visa for India. Citizens of about 170 countries can apply for an e-Tourist Visa online; everyone else applies for a regular tourist visa with the online form and then at an Indian embassy.",
+        "notes": [
+          "Lebanese and Egyptian passports aren't on the e-Visa list: fill in the regular online form, then submit it at the Embassy of India."
+        ],
+        "checker": {
+          "label": "Indian Visa Online: e-Visa eligible countries",
+          "url": "https://indianvisaonline.gov.in/evisa/tvoa.html"
+        },
+        "checked_nationalities": {
+          "LBN": "visa"
+        }
+      },
+      "fees": {
+        "items": [
+          {
+            "label": "Regular visa, up to 1 year (Lebanese passport)",
+            "amount": "US$103"
+          },
+          {
+            "label": "e-Tourist Visa, 30 days",
+            "amount": "US$25"
+          },
+          {
+            "label": "e-Tourist Visa, 1 year",
+            "amount": "US$40"
+          }
+        ],
+        "note": "e-Visa fees depend on your nationality and season and carry a bank charge. The regular visa fee is the Embassy of India in Beirut's for Lebanese citizens.",
+        "source": {
+          "label": "Embassy of India, Beirut: visa services",
+          "url": "https://indianembassybeirut.gov.in/visa-service"
+        }
+      },
+      "time": {
+        "text": "A regular visa in Beirut usually takes 2 to 3 working days. Apply for an e-Visa at least 4 days before you arrive.",
+        "source": {
+          "label": "Embassy of India, Beirut: visa services",
+          "url": "https://indianembassybeirut.gov.in/visa-service"
+        }
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you the questions in plain language, checks your answers and lists your documents. A step-by-step guide then lays out the Indian Visa Online form with your answers ready to copy. You submit it and, for a regular visa, take the printout to the embassy."
+      },
+      "extra_sources": [
+        {
+          "label": "Indian Visa Online: e-Visa",
+          "url": "https://indianvisaonline.gov.in/evisa/"
+        }
+      ]
+    },
+    {
+      "questionnaire_id": "turkiye-evisa",
+      "need": {
+        "rule": "Many passports can visit Türkiye for tourism without a visa. Others can get an e-Visa online in minutes, sometimes only if they hold a valid Schengen, US, UK or Irish visa or residence permit.",
+        "notes": [
+          "Lebanese citizens don't need a visa for tourism stays of up to 90 days in 180.",
+          "Your passport should be valid for at least 150 days from arrival for a 90-day stay."
+        ],
+        "checker": {
+          "label": "Ministry of Foreign Affairs of Türkiye: visa information",
+          "url": "https://www.mfa.gov.tr/visa-information-for-foreigners.en.mfa"
+        },
+        "checked_nationalities": {
+          "LBN": "no_visa"
+        }
+      },
+      "fees": {
+        "items": [
+          {
+            "label": "e-Visa",
+            "amount": "Varies by passport"
+          }
+        ],
+        "note": "The e-Visa site shows your fee before you pay by card. It isn't refundable.",
+        "source": {
+          "label": "Republic of Türkiye e-Visa",
+          "url": "https://www.evisa.gov.tr/en/"
+        }
+      },
+      "time": {
+        "text": "Usually issued online within minutes of paying.",
+        "source": {
+          "label": "Ministry of Foreign Affairs of Türkiye: e-Visa",
+          "url": "https://www.mfa.gov.tr/visa-information-for-foreigners.en.mfa"
+        }
+      },
+      "coverage": {
+        "level": "guided",
+        "text": "Ta'asheera asks you the questions in plain language and checks your answers. A step-by-step guide then lays out the e-Visa form with your answers ready to copy. You pay and download the e-Visa yourself."
+      },
+      "extra_sources": []
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { protectedFetch } from '../auth'
+import { reportConsentRequired } from '../consent'
 
 // Mirrors backend/app/documents/router.py (CMPS271-29). The server decides which documents an
 // application needs from its answers and checks every file again; the page only shows what it is given.
@@ -46,6 +47,7 @@ export async function getChecklist(applicationId: string): Promise<Checklist> {
 async function send(path: string, method: 'POST' | 'PUT', form: FormData, fallback: string): Promise<UploadedDocument> {
   // OCR of a scanned page can take a few seconds, so allow longer than an ordinary request.
   const response = await protectedFetch(path, { method, body: form, cache: 'no-store', silent: true, signal: AbortSignal.timeout(60000) })
+  reportConsentRequired(response)
   if (response.status >= 400 && response.status < 500) throw new DocumentError(await detail(response, fallback))
   if (!response.ok) throw new DocumentError(fallback)
   return response.json()
@@ -78,6 +80,18 @@ export async function openDocument(applicationId: string, document: UploadedDocu
   if (document.content_type === 'application/pdf') link.download = document.filename
   else link.target = '_blank'
   link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+// One printable PDF (CMPS271-71): a cover checklist, then every upload in the embassy's order.
+export async function downloadPacket(applicationId: string): Promise<void> {
+  const response = await protectedFetch(`${base(applicationId)}/packet`, { cache: 'no-store', silent: true })
+  if (!response.ok) throw new DocumentError('Could not prepare your packet. Please try again.')
+  const url = URL.createObjectURL(await response.blob())
+  const link = Object.assign(window.document.createElement('a'), { href: url, download: 'application-packet.pdf' })
+  window.document.body.append(link)
+  link.click()
+  link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 

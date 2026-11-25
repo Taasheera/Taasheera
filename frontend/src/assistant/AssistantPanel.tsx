@@ -1,8 +1,11 @@
+import { ArrowIcon } from '../icons'
 import AssistantText from './AssistantText'
 import VoiceDraft from './VoiceDraft'
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { askAssistant, getHistory, type AssistantStep, type ChatTurn } from './api'
-import { OPEN_ASSISTANT_EVENT } from './openAssistant'
+import { askAssistant, getHistory, type AssistantStep, type ChatTurn, type Proposal } from './api'
+import ProposalCard from './ProposalCard'
+import { saveAnswer } from '../application/api'
+import { APPLICATION_CHANGED_EVENT, OPEN_ASSISTANT_EVENT } from './openAssistant'
 import '../ui.css'
 import './assistant.css'
 
@@ -12,8 +15,11 @@ const suggestions: Record<AssistantStep, string[]> = {
   application: ['Why does the embassy ask this?', 'What if I am not sure yet?'],
   general: ['How does Ta\'asheera prepare my application?', 'When does my passport expire?', 'Is my data private?'],
 }
+const applicationSuggestions = ['Is my application ready?', 'What should I fix first?', 'What happens after I download the form?']
 // Outside the passport page the same panel is the general assistant on every signed-in page (US 23).
-const copy = (step: AssistantStep) => step === 'general'
+const copy = (step: AssistantStep) => step === 'application'
+  ? { title: 'Application assistant', intro: 'Ask about this application: what is missing, what a question means, or what happens next.', open: 'Ask the assistant' }
+  : step === 'general'
   ? { title: 'Ta\'asheera assistant', intro: 'Ask about your passport, your applications or how this works.', open: 'Ask the assistant' }
   : { title: 'Passport assistant', intro: 'Ask about your passport or this step.', open: 'Ask about your passport' }
 const MAX_LENGTH = 1000
@@ -24,10 +30,15 @@ type Props = {
   // Controlled by the page, so other parts of it (e.g. the confirmation message) can open the chat.
   open: boolean
   onOpenChange: (open: boolean) => void
+  // On an application's own page the chat is about that application: its answers, checks and history.
+  applicationId?: string
 }
+type Turn = ChatTurn & { proposal?: Proposal | null }
 
-export default function AssistantPanel({ step, open, onOpenChange }: Props) {
-  const [turns, setTurns] = useState<ChatTurn[]>([])
+
+export default function AssistantPanel({ step: pageStep, open, onOpenChange, applicationId }: Props) {
+  const step: AssistantStep = applicationId ? 'application' : pageStep
+  const [turns, setTurns] = useState<Turn[]>([])
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -47,9 +58,9 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
   useEffect(() => {
     if (!open || loaded.current) return
     loaded.current = true
-    getHistory().then(earlier => { if (earlier.length) setTurns(current => current.length ? current : earlier) })
+    getHistory(applicationId).then(earlier => { if (earlier.length) setTurns(current => current.length ? current : earlier) })
       .catch(() => { /* No history is just a fresh chat. */ })
-  }, [open])
+  }, [open, applicationId])
   // Escape closes from anywhere: clicking a suggestion removes it, so focus may have left the panel.
   useEffect(() => {
     if (!open) return
@@ -69,14 +80,14 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
   async function send(text: string) {
     const message = text.trim()
     if (!message || pending) return
-    const history = turns
+    const history = turns.map(({ role, content }) => ({ role, content }))
     setDraft('')
     setError('')
     setPending(true)
     setTurns(current => [...current, { role: 'user', content: message }])
     try {
-      const answer = await askAssistant(message, step, history)
-      setTurns(current => [...current, { role: 'assistant', content: answer.reply }])
+      const answer = await askAssistant(message, step, history, applicationId)
+      setTurns(current => [...current, { role: 'assistant', content: answer.reply, proposal: answer.proposal }])
     } catch (problem) {
       // Undo the unsent question and give it back, so retrying is one keypress.
       setTurns(current => current.slice(0, -1))
@@ -113,7 +124,7 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         {turns.length === 0 && <div className="assistant-empty">
           <p>{copy(step).intro} For example:</p>
           <ul>
-            {suggestions[step].map(question => <li key={question}>
+            {(applicationId ? applicationSuggestions : suggestions[step]).map(question => <li key={question}>
               <button type="button" className="assistant-suggestion" onClick={() => void send(question)}
                 disabled={pending} data-activity-id="assistant-suggestion">{question}</button>
             </li>)}
@@ -122,6 +133,12 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         {turns.map((turn, index) => <div key={index} className={`bubble bubble-${turn.role}`}>
           <span className="visually-hidden">{turn.role === 'user' ? 'You said' : 'Assistant said'}: </span>
           {turn.role === 'assistant' ? <AssistantText text={turn.content} /> : turn.content}
+          {turn.proposal && applicationId && <ProposalCard proposal={turn.proposal}
+            onGoTo={questionId => { window.location.assign(`/apply/${applicationId}#answer-${questionId}`) }}
+            onConfirm={async () => {
+              await saveAnswer(applicationId, turn.proposal!.question_id!, { value: turn.proposal!.value! })
+              window.dispatchEvent(new CustomEvent(APPLICATION_CHANGED_EVENT, { detail: applicationId }))
+            }} />}
         </div>)}
         {pending && <div className="bubble bubble-assistant bubble-pending" role="status">
           <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
@@ -137,8 +154,8 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         <div className="assistant-compose-actions">
           <VoiceDraft disabled={pending} onText={text =>
             setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, MAX_LENGTH))} />
-          <button type="submit" className="button button-primary" disabled={pending || !draft.trim()}
-            data-activity-id="assistant-send">Send</button>
+          <button type="submit" className="button button-primary assistant-icon-button" disabled={pending || !draft.trim()}
+            data-activity-id="assistant-send"><ArrowIcon /><span className="visually-hidden">Send</span></button>
         </div>
       </form>
     </section>}
@@ -147,7 +164,7 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
       aria-expanded={open} aria-controls={open ? panelId : undefined}
       onClick={() => (open ? close() : onOpenChange(true))} data-activity-id="assistant-open">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12v8H9l-3.5 3v-3H4z" /></svg>
-      {open ? 'Close assistant' : copy(step).open}
+      <span className="assistant-launcher-text">{open ? 'Close assistant' : copy(step).open}</span>
     </button>
   </div>
 }

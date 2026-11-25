@@ -3,7 +3,7 @@
   margin-top: 40px;
   padding: 20px 24px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--card);
 }
 
@@ -43,21 +43,20 @@
 
 .agent-error {
   margin: 8px 0 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
 }
 
 .agent-run {
   margin-top: 16px;
   padding: 12px 16px;
-  border-left: 4px solid var(--fg-dim);
+  border-left: 4px solid var(--fg-muted);
   border-radius: 10px;
   background: var(--bg);
 }
 
 .agent-run.is-ready {
   border-left-color: var(--ok);
-  background: var(--ok-bg);
 }
 
 .agent-run.is-queued,
@@ -68,7 +67,6 @@
 .agent-run.is-stopped,
 .agent-run.is-failed {
   border-left-color: var(--warn);
-  background: var(--warn-bg);
 }
 
 .agent-status {
@@ -129,7 +127,7 @@
 }
 
 .agent-table td:last-child {
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   white-space: nowrap;
 }
 
@@ -150,7 +148,7 @@
 
 .agent-shot figcaption {
   margin-top: 4px;
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   font-size: 12px;
 }
 

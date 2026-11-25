@@ -2,9 +2,14 @@ import { useRef, useState } from 'react'
 import { resetPassword } from './auth'
 import { passwordValidation, ResetError } from './passwordReset'
 
-type Props = { token: string | null; onTokenCleared: () => void; onSuccess: () => void }
+type Props = {
+  token: string | null
+  onTokenCleared: (message: string) => void
+  onSuccess: () => void
+  onRequestNewCode?: () => void
+}
 
-function SetNewPassword({ token, onTokenCleared, onSuccess }: Props) {
+function SetNewPassword({ token, onTokenCleared, onSuccess, onRequestNewCode }: Props) {
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [succeeded, setSucceeded] = useState(false)
@@ -20,6 +25,12 @@ function SetNewPassword({ token, onTokenCleared, onSuccess }: Props) {
     setMessage('')
   }
 
+  const requestNewCode = <a href="#forgot-password" data-activity-id="reset-link"
+    onClick={onRequestNewCode && (event => {
+      event.preventDefault()
+      onRequestNewCode()
+    })}>Request a new code</a>
+
   return (
     <section className="sign-in-card" aria-labelledby="new-password-heading">
       <p className="eyebrow">YOUR JOURNEY STARTS HERE</p>
@@ -32,7 +43,7 @@ function SetNewPassword({ token, onTokenCleared, onSuccess }: Props) {
         <p className="auth-status auth-error" role="alert">
           {message || 'This reset session is missing or invalid. Request a new code.'}
         </p>
-        <p className="create-account"><a href="#forgot-password" data-activity-id="reset-link">Request a new code</a></p>
+        <p className="create-account">{requestNewCode}</p>
         <p className="create-account"><a href="#sign-in" data-activity-id="sign-in-link">Back to sign-in</a></p>
       </> : <>
         <p className="intro">Your reset code has been verified. Choose a new password within five minutes.</p>
@@ -54,7 +65,7 @@ function SetNewPassword({ token, onTokenCleared, onSuccess }: Props) {
               onSuccess()
             } catch (error) {
               setMessage(error instanceof ResetError ? error.message : 'Could not change your password. Please try again.')
-              if (error instanceof ResetError && error.invalidLink) onTokenCleared()
+              if (error instanceof ResetError && error.invalidLink) onTokenCleared(error.message)
             } finally {
               form.reset()
               confirmPasswordRef.current?.setCustomValidity('')
@@ -78,7 +89,7 @@ function SetNewPassword({ token, onTokenCleared, onSuccess }: Props) {
           </button>
         </form>
         <p className="auth-status auth-error" role="alert">{message}</p>
-        <p className="create-account"><a href="#forgot-password" data-activity-id="reset-link">Request a new code</a></p>
+        <p className="create-account">{requestNewCode}</p>
         <p className="create-account"><a href="#sign-in" data-activity-id="sign-in-link">Back to sign-in</a></p>
       </>}
     </section>

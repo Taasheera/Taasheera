@@ -1,0 +1,444 @@
+{
+  "id": "japan-short-stay",
+  "version": 1,
+  "destination": "JPN",
+  "visa_type": "short_term_stay",
+  "title": "Japan short-term stay visa",
+  "destination_label": "Japan",
+  "destination_description": "All prefectures, for a visit of up to 90 days",
+  "visa_label": "Short-term stay visa",
+  "visa_description": "Up to 90 days for tourism, visiting relatives or friends, or short business visits.",
+  "summary": {
+    "place": null,
+    "date": "arrival_date"
+  },
+  "source": "Visa Application Form to Enter Japan, Ministry of Foreign Affairs of Japan",
+  "steps": [
+    {
+      "id": "eligibility",
+      "title": "Eligibility",
+      "questions": [
+        {
+          "id": "purpose",
+          "type": "choice",
+          "prompt": "What's the main purpose of your trip to Japan?",
+          "options": [
+            {
+              "value": "tourism",
+              "label": "Tourism"
+            },
+            {
+              "value": "family_friends",
+              "label": "Visiting relatives or friends"
+            },
+            {
+              "value": "business",
+              "label": "Business meetings or a conference"
+            }
+          ]
+        },
+        {
+          "id": "stay_over_90_days",
+          "type": "yes_no",
+          "prompt": "Will you stay in Japan for more than 90 days?",
+          "stop_if": {
+            "in": [
+              true
+            ],
+            "message": "Stays over 90 days need a long-term visa, which Ta'asheera can't prepare yet."
+          }
+        }
+      ]
+    },
+    {
+      "id": "passport",
+      "title": "Passport",
+      "questions": [
+        {
+          "id": "passport",
+          "type": "passport",
+          "prefill": "passport",
+          "prompt": "Let's add your passport. You can upload a photo of its details page and confirm what we read, or type the details yourself."
+        },
+        {
+          "id": "passport_issue_date",
+          "type": "date",
+          "prompt": "When was your passport issued?",
+          "help": "It's printed on the details page, usually next to the expiry date.",
+          "rules": [
+            {
+              "op": "<=",
+              "ref": "today",
+              "message": "The issue date can't be in the future."
+            }
+          ]
+        },
+        {
+          "id": "passport_issue_place",
+          "type": "text",
+          "prompt": "Where was your passport issued?",
+          "max_length": 120,
+          "help": "The city or authority printed on the details page, for example Beirut."
+        }
+      ]
+    },
+    {
+      "id": "personal",
+      "title": "About you",
+      "questions": [
+        {
+          "id": "place_of_birth",
+          "type": "text",
+          "prompt": "Which city or town were you born in?",
+          "max_length": 120
+        },
+        {
+          "id": "country_of_birth",
+          "type": "country",
+          "prompt": "And which country is that in?"
+        },
+        {
+          "id": "marital_status",
+          "type": "choice",
+          "prompt": "What's your marital status?",
+          "options": [
+            {
+              "value": "single",
+              "label": "Single"
+            },
+            {
+              "value": "married",
+              "label": "Married"
+            },
+            {
+              "value": "divorced",
+              "label": "Divorced"
+            },
+            {
+              "value": "separated",
+              "label": "Separated"
+            },
+            {
+              "value": "widowed",
+              "label": "Widowed"
+            }
+          ]
+        },
+        {
+          "id": "home_address",
+          "type": "address",
+          "prompt": "What's your home address?"
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "prompt": "What phone number can the embassy reach you on?",
+          "help": "Include the country code, for example +961 71 123 456."
+        },
+        {
+          "id": "occupation",
+          "type": "choice",
+          "prompt": "What do you currently do?",
+          "options": [
+            {
+              "value": "employed",
+              "label": "I'm employed"
+            },
+            {
+              "value": "self_employed",
+              "label": "I'm self-employed"
+            },
+            {
+              "value": "student",
+              "label": "I'm a student"
+            },
+            {
+              "value": "retired",
+              "label": "I'm retired"
+            },
+            {
+              "value": "homemaker",
+              "label": "I look after my home and family"
+            },
+            {
+              "value": "unemployed",
+              "label": "I'm not working"
+            }
+          ]
+        },
+        {
+          "id": "job_title",
+          "type": "text",
+          "prompt": "What's your job title?",
+          "max_length": 120,
+          "help": "As your employer would write it, for example Accountant or Software engineer.",
+          "show_if": {
+            "question": "occupation",
+            "in": [
+              "employed",
+              "self_employed"
+            ]
+          }
+        },
+        {
+          "id": "employer",
+          "type": "text",
+          "prompt": "What's the name and address of your employer or business?",
+          "max_length": 300,
+          "show_if": {
+            "question": "occupation",
+            "in": [
+              "employed",
+              "self_employed"
+            ]
+          }
+        },
+        {
+          "id": "school",
+          "type": "text",
+          "prompt": "Which school or university do you attend?",
+          "max_length": 200,
+          "show_if": {
+            "question": "occupation",
+            "in": [
+              "student"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "title": "Your trip",
+      "questions": [
+        {
+          "id": "arrival_date",
+          "type": "date",
+          "prompt": "When do you plan to arrive in Japan?",
+          "rules": [
+            {
+              "op": ">=",
+              "ref": "today",
+              "days": 1,
+              "message": "Your arrival date needs to be in the future."
+            }
+          ]
+        },
+        {
+          "id": "departure_date",
+          "type": "date",
+          "prompt": "And when will you leave?",
+          "rules": [
+            {
+              "op": ">=",
+              "ref": "arrival_date",
+              "message": "You can't leave before you arrive."
+            },
+            {
+              "op": "<=",
+              "ref": "arrival_date",
+              "days": 90,
+              "message": "A short-term stay is up to 90 days."
+            },
+            {
+              "op": "<=",
+              "ref": "passport.expiry_date",
+              "message": "Your passport must be valid for your whole stay: a visa can't outlast it."
+            }
+          ]
+        },
+        {
+          "id": "port_of_entry",
+          "type": "text",
+          "prompt": "Which airport or port will you arrive at?",
+          "max_length": 80,
+          "help": "For example Narita, Haneda or Kansai."
+        },
+        {
+          "id": "airline",
+          "type": "text",
+          "prompt": "Which airline or ship are you arriving on?",
+          "max_length": 80
+        },
+        {
+          "id": "accommodation",
+          "type": "choice",
+          "prompt": "Where will you stay in Japan?",
+          "options": [
+            {
+              "value": "hotel",
+              "label": "A hotel"
+            },
+            {
+              "value": "rental",
+              "label": "A rented flat or house"
+            },
+            {
+              "value": "host",
+              "label": "With family or friends"
+            },
+            {
+              "value": "other",
+              "label": "Somewhere else"
+            }
+          ]
+        },
+        {
+          "id": "accommodation_details",
+          "type": "text",
+          "prompt": "What's the name, address and phone number of the place you're staying?",
+          "max_length": 300,
+          "show_if": {
+            "question": "accommodation",
+            "in": [
+              "hotel",
+              "rental",
+              "other"
+            ]
+          }
+        },
+        {
+          "id": "host_details",
+          "type": "text",
+          "prompt": "Who's hosting you? Give their full name, address, phone number and how you know them.",
+          "max_length": 300,
+          "show_if": {
+            "question": "accommodation",
+            "in": [
+              "host"
+            ]
+          }
+        },
+        {
+          "id": "funding",
+          "type": "choice",
+          "prompt": "Who's paying for the trip?",
+          "options": [
+            {
+              "value": "self",
+              "label": "I am"
+            },
+            {
+              "value": "sponsor",
+              "label": "Someone else (a sponsor)"
+            }
+          ]
+        },
+        {
+          "id": "sponsor_details",
+          "type": "text",
+          "prompt": "Who's your sponsor, and how are they related to you?",
+          "max_length": 300,
+          "show_if": {
+            "question": "funding",
+            "in": [
+              "sponsor"
+            ]
+          }
+        },
+        {
+          "id": "guarantor",
+          "type": "yes_no",
+          "prompt": "Is someone in Japan inviting you or acting as your guarantor?"
+        },
+        {
+          "id": "guarantor_details",
+          "type": "text",
+          "prompt": "Give your guarantor's name, address, phone number, relationship to you and their status in Japan.",
+          "max_length": 300,
+          "show_if": {
+            "question": "guarantor",
+            "in": [
+              true
+            ]
+          }
+        },
+        {
+          "id": "previous_japan_visit",
+          "type": "yes_no",
+          "prompt": "Have you been to Japan before?"
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "id": "photo",
+      "label": "Passport photo",
+      "help": "45 x 35 mm, plain background, taken in the last 6 months.",
+      "crosscheck": false
+    },
+    {
+      "id": "flight_booking",
+      "label": "Flight reservation",
+      "help": "A return booking showing your entry and exit dates."
+    },
+    {
+      "id": "itinerary",
+      "label": "Day-by-day itinerary",
+      "help": "Where you'll be each day and where you'll sleep, on the embassy's template if it has one."
+    },
+    {
+      "id": "accommodation_proof",
+      "label": "Accommodation booking",
+      "help": "Hotel or rental bookings covering every night of the trip.",
+      "show_if": {
+        "question": "accommodation",
+        "in": [
+          "hotel",
+          "rental",
+          "other"
+        ]
+      }
+    },
+    {
+      "id": "invitation_letter",
+      "label": "Invitation and letter of guarantee",
+      "help": "Originals from your guarantor in Japan, sent to you.",
+      "show_if": {
+        "question": "guarantor",
+        "in": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "bank_statements",
+      "label": "Bank statements",
+      "help": "Your last 3 to 6 months of statements, showing you can pay for the trip."
+    },
+    {
+      "id": "employment_letter",
+      "label": "Letter from your employer",
+      "help": "On company letterhead: your role, salary, how long you've worked there and your approved leave.",
+      "show_if": {
+        "question": "occupation",
+        "in": [
+          "employed"
+        ]
+      }
+    },
+    {
+      "id": "business_registration",
+      "label": "Business registration",
+      "help": "Your business registration and recent tax returns.",
+      "show_if": {
+        "question": "occupation",
+        "in": [
+          "self_employed"
+        ]
+      }
+    },
+    {
+      "id": "enrolment_letter",
+      "label": "Proof of enrolment",
+      "help": "A letter from your school or university confirming you're enrolled.",
+      "show_if": {
+        "question": "occupation",
+        "in": [
+          "student"
+        ]
+      }
+    }
+  ]
+}

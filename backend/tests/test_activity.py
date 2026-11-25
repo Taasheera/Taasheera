@@ -11,6 +11,12 @@ from app.models import ActivityEvent
 from app.passport.extraction import Extraction, ExtractionStatus
 
 
+@pytest.fixture(autouse=True)
+def consent_not_required(monkeypatch):
+    # These tests are about other upload rules; accepting the privacy policy is tested in test_privacy_consent.py.
+    monkeypatch.setenv("FEATURE_PRIVACY_CONSENT", "false")
+
+
 PASSWORD = "private-password-123"
 
 

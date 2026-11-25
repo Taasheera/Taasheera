@@ -3,6 +3,7 @@
 import io
 import json
 import zipfile
+from datetime import date
 
 from sqlmodel import Session, SQLModel, select
 
@@ -11,7 +12,7 @@ from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
 from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
-                        RefreshToken, Traveler, TravelerProfile)
+                        NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
 from test_applications_api import ANSWERS, SPECIMEN, answer_all, api, start  # noqa: F401  (pytest fixture)
@@ -38,6 +39,9 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
                                        content_type="application/pdf", size_bytes=len(PDF)))
         save_turn(session, traveler_id, application_id, "What counts as arrival?", "The day you enter.")
         session.add(TravelerProfile(traveler_id=traveler_id, surname="ERIKSSON", given_names="ANNA MARIA"))
+        session.add(PrivacyConsent(traveler_id=traveler_id, policy_version="2026-11-25"))
+        session.add(NotificationPreference(traveler_id=traveler_id, reminders=False))
+        session.add(PassportExpiry(traveler_id=traveler_id, expiry_date=date(2031, 4, 15)))
         session.add(GoogleIdentity(subject=f"google-subject-{traveler_id}", traveler_id=traveler_id))
         session.add(RefreshToken(token_hash=f"{traveler_id}" * 64, session_id=f"application-session-{traveler_id}"))
         session.add(PasswordResetChallenge(traveler_id=traveler_id, nonce="n" * 64, code_digest="c" * 64, expires_at=2**31))
@@ -96,6 +100,9 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     assert {row["question_id"] for row in data["applicationanswer"]} >= {"purpose", "arrival_date"}
     assert [row["content"] for row in data["assistantmessage"]] == ["What counts as arrival?", "The day you enter."]
     assert data["travelerprofile"][0]["surname"] == "ERIKSSON"
+    assert data["privacyconsent"][0]["policy_version"] == "2026-11-25" and data["privacyconsent"][0]["accepted_at"]
+    assert data["notificationpreference"][0]["reminders"] is False
+    assert data["passportexpiry"][0]["expiry_date"] == "2031-04-15"
     assert data["notification"][0]["kind"] == "status_changed"
     # Who opened my passport: staff are not named, and my staff work on someone else is not mine to download.
     assert {row["accessed_by"] for row in data["documentaccess"]} >= {"Authorized staff"}

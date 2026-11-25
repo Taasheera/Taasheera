@@ -535,3 +535,26 @@ def test_the_assistant_on_other_pages_uses_the_general_step(tmp_path):
     client, _ = make_client(tmp_path, model)
     assert ask_question(client, message="How does this work?", step="general").status_code == 200
     assert "browsing Ta'asheera" in model.calls[0][0] and "<application>" not in model.calls[0][0]
+
+
+def test_help_me_write_drafts_one_free_text_answer_without_saving_it(tmp_path):
+    model = FakeModel("I will stay at  [hotel name] in London\nfor ten days of sightseeing.")
+    contexts = {(1, "a" * 32, "accommodation_details"): ("<application>Visa: UK</application>", "Where will you stay?", 300)}
+    client, _ = make_client(tmp_path, model, load_draft_context=lambda *key: contexts.get(key))
+    draft = client.post("/assistant/draft", headers={"X-Traveler": "1"},
+                        json={"application_id": "a" * 32, "question_id": "accommodation_details", "notes": "hotel in London"})
+    assert draft.status_code == 200
+    assert draft.json() == {"draft": "I will stay at [hotel name] in London for ten days of sightseeing."}
+    system, messages = model.calls[0]
+    assert "Where will you stay?" in system and "never invent" in system and "300 characters" in system
+    assert messages == [{"role": "user", "content": "My notes: hotel in London"}]
+    other = client.post("/assistant/draft", headers={"X-Traveler": "2"},
+                        json={"application_id": "a" * 32, "question_id": "accommodation_details"})
+    assert other.status_code == 404 and len(model.calls) == 1
+
+
+def test_help_me_write_is_off_without_a_model(tmp_path):
+    client, _ = make_client(tmp_path, None, load_draft_context=lambda *_: ("", "Q", 300))
+    response = client.post("/assistant/draft", headers={"X-Traveler": "1"},
+                           json={"application_id": "a" * 32, "question_id": "purpose_details"})
+    assert response.status_code == 503

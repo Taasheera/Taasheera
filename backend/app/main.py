@@ -16,6 +16,7 @@ from sqlmodel import Session, SQLModel, select
 
 from .database import build_engine
 from .applications.form_review import create_form_review_router
+from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
 from .activity import activity_directory_from_environment, create_activity_router, record_activity
 from .admin_api import create_admin_router, install_admin_no_store
@@ -29,13 +30,19 @@ from .config import AuthSettings, RuntimeSettings
 from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
 from .observability import install_private_no_store, install_request_logging
-from .mailer import MailSettings, ResetSender, SesResetSender, SmtpResetSender
+from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
+from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
+                                record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
 from .security import audit, throttle
 from .password_reset import create_password_reset_router
-from .models import RegisterRequest, Traveler, TravelerPublic
+from .models import Application, RegisterRequest, Traveler, TravelerPublic
+from .applications import flow
 from .passport.router import create_passport_router
 from .passport.storage import PassportImageStorage
 from .profile import create_profile_router
+from .consent import create_consent_requirement, create_consent_router
+from .notification_preferences import create_notification_preferences_router
+from .applications.visa_guides import create_visa_guides_router
 from .document_audit import create_document_audit_router, record_document_access
 from .monitoring import configure_monitoring
 from .privacy import create_privacy_router, retry_erasures
@@ -48,7 +55,8 @@ from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
 
 
-def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None) -> FastAPI:
+def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
+               notification_sender: NotificationSender | None = None) -> FastAPI:
     engine = build_engine(database_url)
 
     @asynccontextmanager
@@ -68,13 +76,35 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         else:
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
+        notification_jobs = start_notification_jobs(app)
         monitoring = configure_monitoring()
         try:
             yield
         finally:
+            if notification_jobs is not None:
+                notification_jobs.stop()
             if monitoring is not None:
                 monitoring.close()
             engine.dispose()
+
+    def start_notification_jobs(app: FastAPI) -> NotificationJobThread | None:
+        """Email copies of notifications (CMPS271-98), sent by a timer in this process."""
+        if not app.state.feature_flags.is_on("email_notifications"):
+            return None
+        interval = job_interval()
+        sender = notification_sender or app.state.reset_sender
+        if not hasattr(sender, "send_notification"):
+            # Development without a mail server logs the attempt; production sends none.
+            sender = (LogNotificationSender(notification_logger)
+                      if app.state.runtime_settings.environment == "development" else None)
+        if not interval or sender is None:
+            return None
+        # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
+        site_url = app.state.auth_settings.allowed_origins[0]
+        show_notification_logs()
+        jobs = NotificationJobThread(lambda: run_notification_jobs(engine, sender, site_url), interval)
+        jobs.start()
+        return jobs
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine
@@ -121,6 +151,11 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))
     app.include_router(create_profile_router(get_session, current_traveler))
+    app.include_router(create_consent_router(get_session, current_traveler))
+    app.include_router(create_notification_preferences_router(get_session, current_traveler))
+    app.include_router(create_visa_guides_router())
+    # No identity document is accepted before the privacy policy is (CMPS271-115).
+    privacy_consent = Depends(create_consent_requirement(get_session, current_traveler))
     app.include_router(create_notifications_router(get_session, current_traveler))
 
     def current_traveler_id(traveler: Annotated[Traveler, Depends(current_traveler)]) -> int:
@@ -134,10 +169,18 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     uploads_setting = os.environ.get("PASSPORT_UPLOADS_ENABLED", "true").lower()
     if uploads_setting not in {"true", "false"}:
         raise RuntimeError("PASSPORT_UPLOADS_ENABLED must be true or false.")
+
+    def remember_passport_expiry(traveler_id: int, fields) -> None:
+        # Only the expiry date, for reminders (CMPS271-36); kept while email notifications are on.
+        if app.state.feature_flags.is_on("email_notifications"):
+            record_passport_expiry(engine, traveler_id, fields.expiry_date)
+
     app.include_router(create_passport_router(
         passport_storage, current_traveler_id, record_event=record_passport_activity,
         uploads_enabled=uploads_setting == "true",
         check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
+        upload_dependencies=[privacy_consent],
+        on_confirmed=remember_passport_expiry,
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
@@ -168,6 +211,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_agent_router(get_session, current_traveler, agent_files))
     app.include_router(create_form_review_router(get_session, current_traveler,
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
+    app.include_router(create_portal_guide_router(get_session, current_traveler))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
@@ -175,7 +219,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
 
     app.include_router(create_documents_router(get_session, current_traveler, document_storage,
                                                record_event=record_document_activity,
-                                               load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check")))
+                                               load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
+                                               upload_dependencies=[privacy_consent]))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:
@@ -198,6 +243,20 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                                        latest_passport=passport_storage.latest_review(traveler_id),
                                        document_issues=document_issues)
 
+    def draft_context(traveler_id: int, application_id: str, question_id: str):
+        # Only a reachable free-text question long enough to need help, in an application that can change.
+        context = load_application_context(traveler_id, application_id)
+        if context is None:
+            return None
+        with Session(engine) as session:
+            application = session.get(Application, application_id)
+            if application is None or application.archived_at is not None:
+                return None
+            question = flow.load_questionnaire(application.questionnaire_id).question(question_id)
+        if question is None or question.type != "text" or (question.max_length or 0) < 150:
+            return None
+        return context, question.prompt, question.max_length
+
     def stored_history(traveler_id: int, application_id: str | None) -> list[dict]:
         with Session(engine) as session:
             return load_history(session, traveler_id, application_id)
@@ -216,7 +275,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         get_session, current_traveler_id, passport_storage.latest_review, assistant_ask,
         record_event=record_assistant_activity, load_application=load_application_context,
         ask_tools=assistant_ask_tools, propose=propose_action, tools_prompt=TOOLS_PROMPT,
-        load_history=stored_history, save_turn=store_turn,
+        load_history=stored_history, save_turn=store_turn, load_draft_context=draft_context,
     ))
     app.include_router(create_chat_history_router(get_session, current_traveler_id))
 

@@ -1,0 +1,74 @@
+{
+  "title": "DS-160: Online Nonimmigrant Visa Application",
+  "portal": {"label": "Open the DS-160 on ceac.state.gov", "url": "https://ceac.state.gov/genniv/"},
+  "date_format": "%d-%b-%Y",
+  "before": [
+    "Choose the embassy or consulate where you'll be interviewed, then write down your Application ID and security answer: you need them to return to a saved form.",
+    "The DS-160 times out after 20 minutes without activity. Press Save on each page.",
+    "You'll upload a digital photo (600x600 to 1200x1200 pixels, white background, taken in the last 6 months)."
+  ],
+  "sections": [
+    {"title": "Personal Information 1", "fields": [
+      {"label": "Surnames", "sources": ["passport.surname"]},
+      {"label": "Given names", "sources": ["passport.given_names"]},
+      {"label": "Sex", "sources": ["passport.sex"]},
+      {"label": "Marital status", "sources": ["marital_status"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "City of birth", "sources": ["place_of_birth"]},
+      {"label": "Country/region of birth", "sources": ["country_of_birth"], "formatter": "country"}
+    ], "yourself": ["Full name in your native alphabet", "Other names used and telecode"]},
+    {"title": "Personal Information 2", "fields": [
+      {"label": "Country/region of origin (nationality)", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "National identification number", "sources": ["passport.personal_number"], "note": "Only if your passport shows one. Otherwise tick Does Not Apply."}
+    ], "yourself": ["Other nationalities and permanent residence elsewhere", "U.S. Social Security and taxpayer numbers (usually Does Not Apply)"]},
+    {"title": "Travel Information", "fields": [
+      {"label": "Purpose of trip", "sources": ["purpose"], "note": "Tourism and visiting family or friends are B (Temp. Business or Pleasure Visitor), then B1/B2."},
+      {"label": "Intended date of arrival", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "Intended date of departure", "sources": ["departure_date"], "formatter": "date"},
+      {"label": "Address where you will stay in the U.S.", "sources": ["us_address"]},
+      {"label": "Person/entity paying for your trip", "sources": ["funding"]},
+      {"label": "Payer's details", "sources": ["payer_details"]}
+    ]},
+    {"title": "Travel Companions", "fields": [
+      {"label": "Are other persons traveling with you?", "sources": ["travel_companions"]}
+    ], "yourself": ["Companions' names and relationship, if any"]},
+    {"title": "Previous U.S. Travel", "fields": [
+      {"label": "Have you ever been in the U.S.?", "sources": ["previous_us_visit"]},
+      {"label": "Have you ever been issued a U.S. visa?", "sources": ["previous_us_visa"]},
+      {"label": "Have you ever been refused a U.S. visa?", "sources": ["refused_us_visa"]}
+    ], "yourself": ["Dates and length of earlier visits, and earlier visa numbers"]},
+    {"title": "Address and Phone", "fields": [
+      {"label": "Home address", "sources": ["home_address"], "formatter": "address"},
+      {"label": "Primary phone number", "sources": ["phone"]},
+      {"label": "Email address", "sources": ["account_email"]}
+    ], "yourself": ["Social media identifiers for the last five years (required)", "Phone numbers and emails used in the last five years"]},
+    {"title": "Passport", "fields": [
+      {"label": "Passport/travel document type", "sources": ["passport"], "formatter": "fixed", "fixed": "regular"},
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Country/authority that issued passport", "sources": ["passport.issuing_country"], "formatter": "country"},
+      {"label": "Issuance date", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Expiration date", "sources": ["passport.expiry_date"], "formatter": "date"},
+      {"label": "Have you ever lost a passport?", "sources": ["lost_passport"]}
+    ], "yourself": ["City where the passport was issued", "Passport book number (usually Does Not Apply)"]},
+    {"title": "U.S. Point of Contact", "fields": [
+      {"label": "Contact person or organization in the U.S.", "sources": ["us_contact"], "note": "A hotel is acceptable if you don't know anyone."}
+    ]},
+    {"title": "Family", "yourself": ["Father's and mother's names and dates of birth", "Spouse's name, date and place of birth, if married", "Immediate relatives in the U.S."]},
+    {"title": "Work / Education / Training", "fields": [
+      {"label": "Primary occupation", "sources": ["occupation"], "formatter": "occupation"},
+      {"label": "Job title", "sources": ["job_title"]},
+      {"label": "Present employer or school name and address", "sources": ["employer", "school"]}
+    ], "yourself": ["Monthly salary in local currency and a short description of your duties", "Previous employers and education (secondary school and above)"]},
+    {"title": "Security and Background", "yourself": ["Five pages of yes/no questions on health, criminal history, security and immigration. Answer each one truthfully yourself."]}
+  ],
+  "after": [
+    "Upload your photo, review every page and sign electronically with your passport number. Print the confirmation page with its barcode.",
+    "Pay the $185 machine-readable visa (MRV) fee and book your interview through your country's U.S. visa appointment service.",
+    "Bring the DS-160 confirmation, appointment letter, fee receipt, passport and the documents on your checklist to the interview.",
+    "Record your interview result on your dashboard."
+  ],
+  "sources": [
+    {"label": "U.S. Department of State: Visitor visa", "url": "https://travel.state.gov/content/travel/en/us-visas/tourism-visit/visitor.html"},
+    {"label": "U.S. Department of State: DS-160 FAQs", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/forms/ds-160-online-nonimmigrant-visa-application.html"}
+  ]
+}

@@ -640,3 +640,23 @@ test('the conversation from an earlier visit reloads', async () => {
   assert.match(log, /You askedDoes the arrival day count\?AssistantYes, it counts\./)
   assert.ok(log.indexOf('Yes, it counts.') < log.indexOf('Will you stay more than 90 days?'))
 })
+
+test('help me write this drafts a long answer that the traveler edits and saves', async () => {
+  const STAY = question('accommodation_details', 'text', "What's the name and address of the place you're staying?",
+    { step_id: 'trip', max_length: 300 })
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(state([], STAY)),
+    'POST /assistant/draft': () => json({ draft: 'Hotel Example, 1 Example Road, [postcode] London' }),
+    [`PUT /applications/${APP}/answers/accommodation_details`]: () => json(state([[STAY, 'saved']], null)),
+  })
+  await render(`/apply/${APP}`)
+  const field = $('.answer-long textarea')
+  assert.ok(field, 'a long answer gets a text area')
+  await type(field, 'hotel near the British Museum')
+  await click(button('Help me write this from my notes'))
+  await settle()
+  assert.deepEqual(bodyOf('POST /assistant/draft'),
+    { application_id: APP, question_id: 'accommodation_details', notes: 'hotel near the British Museum' })
+  assert.equal($('.answer-long textarea').value, 'Hotel Example, 1 Example Road, [postcode] London')
+  assert.equal(calls.filter(call => call.key.startsWith('PUT')).length, 0, 'a draft is never saved by itself')
+})

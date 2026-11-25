@@ -64,7 +64,7 @@ def test_the_choices_leave_out_the_original_country(api):
     choice, *others = response.json()
     assert len(choice["places"]) == 29  # no country chosen yet: all of them
     # Other destinations can be chosen too; they have no country question of their own.
-    assert {other["destination"] for other in others} == {"CAN", "GBR", "USA"}
+    assert {other["destination"] for other in others} == {"CAN", "GBR", "USA", "CHN", "JPN", "IND", "TUR"}
     assert all(other["place_prompt"] is None and other["places"] == [] for other in others)
 
     put(client, headers[0], original, "main_destination", "FRA")

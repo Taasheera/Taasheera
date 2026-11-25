@@ -3,6 +3,7 @@ import {
   fieldSpecs, fieldTrust, trustCopy,
   type Extraction, type FieldKey, type PassportFields,
 } from './fields'
+import { expiryWarning } from './expiry'
 
 const statusCopy: Record<Extraction['status'], { title: string; body: string; tone: string }> = {
   verified: {
@@ -40,17 +41,26 @@ export default function ReviewForm({ fields, extraction, edited, errors, saving,
   return <form className="review" onSubmit={submit} noValidate aria-labelledby="review-heading">
     <div className="review-head">
       <h2 id="review-heading">Check your details</h2>
-      {saved && <span className="trust trust-ok">Confirmed</span>}
+      {saved && <span className="trust status-dot status-dot--ok">Confirmed</span>}
     </div>
 
     {status && !saved && <div className={`notice notice-${status.tone}`} role="status">
-      <p className="notice-title">{status.title}</p>
+      <p className={`notice-title status-dot status-dot--${status.tone}`}>{status.title}</p>
       <p>{status.body}</p>
     </div>}
+
+    {(() => {
+      const warning = expiryWarning(fields.expiry_date)
+      return warning && <div className={`notice notice-${warning.tone}`} role="alert">
+        <p className={`notice-title status-dot status-dot--${warning.tone}`}>{warning.tone === 'danger' ? 'Passport expired' : 'Passport expires soon'}</p>
+        <p>{warning.text}</p>
+      </div>
+    })()}
 
     <div className="review-grid">
       {fieldSpecs.map(spec => {
         const trust = saved ? null : fieldTrust(spec.key, extraction, edited)
+        const tone = trust && { verified: 'ok', corrected: 'ok', confirm: 'warn', failed: 'danger', edited: null }[trust]
         const error = errors[spec.key]
         const id = `passport-${spec.key}`
         const describedBy = [trust && `${id}-trust`, spec.help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
@@ -59,9 +69,6 @@ export default function ReviewForm({ fields, extraction, edited, errors, saving,
         return <div key={spec.key} className={`field${spec.wide ? ' field-wide' : ''}${trust ? ` field-${trust}` : ''}${error ? ' field-invalid' : ''}`}>
           <div className="field-label-row">
             <label htmlFor={id}>{spec.label}</label>
-            {trust && <span id={`${id}-trust`} className={`trust trust-${trust}`} title={trustCopy[trust].detail}>
-              {trustCopy[trust].label}<span className="visually-hidden">: {trustCopy[trust].detail}</span>
-            </span>}
           </div>
           {spec.kind === 'sex'
             ? <select id={id} value={value} onChange={event => onChange(spec.key, event.target.value)} aria-describedby={describedBy}>
@@ -72,7 +79,7 @@ export default function ReviewForm({ fields, extraction, edited, errors, saving,
             : <input
                 id={id}
                 type={spec.kind === 'date' ? 'date' : 'text'}
-                className={spec.kind === 'code' ? 'is-code' : undefined}
+                className="is-code" dir="ltr"
                 value={value}
                 maxLength={spec.maxLength}
                 autoComplete="off"
@@ -81,6 +88,9 @@ export default function ReviewForm({ fields, extraction, edited, errors, saving,
                 aria-describedby={describedBy}
                 onChange={event => onChange(spec.key, event.target.value)}
               />}
+          {trust && <span id={`${id}-trust`} className={`trust trust-${trust} status-dot${tone ? ` status-dot--${tone}` : ''}`} title={trustCopy[trust].detail}>
+            {trustCopy[trust].label}<span className="visually-hidden">: {trustCopy[trust].detail}</span>
+          </span>}
           {spec.help && <p id={`${id}-help`} className="field-help">{spec.help}</p>}
           {error && <p id={`${id}-error`} className="field-error">{error}</p>}
         </div>

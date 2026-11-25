@@ -5,11 +5,15 @@ import { isRecorded, listApplications, type ApplicationSummary } from '../applic
 import { ArrowIcon } from '../icons'
 import ApplicationActions from './ApplicationActions'
 import { applicationLabel, applicationName, DISCLAIMER, formatDateTime, tripWhen, useTraveler } from './helpers'
-import { Flag, SignedOut, StatusChip } from './shared'
+import { SignedOut, StatusChip } from './shared'
 import '../ui.css'
 import './dashboard.css'
 
 type View = 'active' | 'archived'
+
+const destinationCodes: Record<string, string> = {
+  SCHENGEN: 'EU', UK: 'GB', US: 'US', CANADA: 'CA', GBR: 'GB', USA: 'US', CAN: 'CA', CHN: 'CN', JPN: 'JP', IND: 'IN', TUR: 'TR',
+}
 
 // Every application the traveler has started, with where it stands (US 19). Archived ones sit
 // behind their own tab until restored or deleted (US 79).
@@ -66,19 +70,41 @@ export default function Dashboard() {
 
   const firstName = traveler.name.trim().split(/\s+/)[0]
   const firstVisit = view === 'active' && Array.isArray(applications) && applications.length === 0
-  return <section className="dash-page container" aria-labelledby="dash-title">
+  const nextApplication = view === 'active' && Array.isArray(applications)
+    ? applications.find(application => application.status === 'ANSWERS_COMPLETE')
+      ?? applications.find(application => !isRecorded(application.status))
+    : undefined
+  const today = new Date()
+  const dayLabel = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(today)
+  return <section className="dash-page container dash-overview-page" aria-labelledby="dash-title">
     <div className="dash-head">
       <div>
-        {firstName && <p className="dash-welcome">{firstVisit ? 'Welcome' : 'Welcome back'}, {firstName}</p>}
-        <h1 id="dash-title" ref={heading} tabIndex={-1}>Your applications</h1>
-        <p className="dash-lede">Where each visa application stands, and where to pick up.</p>
+        <p className="eyebrow dash-date"><time dateTime={today.toISOString()}>{dayLabel}</time></p>
+        <h1 id="dash-title" ref={heading} tabIndex={-1}>
+          {firstName ? <span className="dash-welcome">{firstVisit ? 'Welcome' : 'Welcome back'}, {firstName}</span> : 'Your applications'}
+        </h1>
       </div>
       <div className="dash-head-actions">
         {staff && <a href="/backoffice" className="button button-secondary">Staff dashboard</a>}
-        {!firstVisit && <Link to="/apply" className="button button-primary" data-activity-id="application-new">New application</Link>}
+        {!firstVisit && <Link to="/apply" className="button button-primary button-with-icon" data-activity-id="application-new">New application <span className="action-icon" aria-hidden="true">+</span></Link>}
       </div>
     </div>
 
+    {nextApplication && <div className="dash-overview">
+      <Link className="dash-overview-next" to={`/apply/${nextApplication.id}`} data-activity-id="application-resume">
+        <div className="dash-overview-top"><span className="eyebrow">Next up</span><span aria-hidden="true">↗</span></div>
+        <div><strong>{nextApplication.status === 'ANSWERS_COMPLETE' ? 'Review your answers' : 'Continue your application'}</strong>
+          <span>{nextApplication.visa_label} · {applicationName(nextApplication)}</span></div>
+      </Link>
+      <Link className="dash-overview-passport" to="/passport" data-activity-id="passport-link">
+        <span className="eyebrow">Passport</span>
+        <div><strong>Passport &amp; documents</strong><span>Upload a passport photo or check your details.</span></div>
+      </Link>
+    </div>}
+
+    <div className="dash-list-heading"><h2>Your applications</h2>
+      {Array.isArray(applications) && <span>{applications.length} {view}</span>}
+    </div>
     <div className="dash-tabs" role="group" aria-label="Show">
       {(['active', 'archived'] as const).map(option =>
         <button key={option} type="button" className="dash-tab" aria-pressed={view === option}
@@ -109,7 +135,9 @@ export default function Dashboard() {
     </div>}
     {Array.isArray(applications) && applications.length > 0 && <ul className="dash-list">
       {applications.map(application => <li key={application.id} className="dash-card">
-        <Flag destination={application.destination} />
+        <span className="dash-destination-code" aria-hidden="true">
+          {destinationCodes[application.destination] ?? application.destination.slice(0, 2)}
+        </span>
         <div className="dash-card-body">
           <h2 className="dash-card-title">
             <Link to={`/dashboard/${application.id}`} data-activity-id="application-details">{applicationName(application)}</Link>
@@ -119,10 +147,15 @@ export default function Dashboard() {
             {' · '}{tripWhen(application)}
             {application.group_size > 1 && <> · Group of {application.group_size}</>}
           </p>
-          <p className="dash-meta">
-            <StatusChip application={application} />
+        </div>
+        <div className="dash-row-status">
+          {view === 'active' && application.total > 0 && <div className="dash-progress">
+            <progress className="question-progress" value={application.answered} max={application.total} aria-label="Questions answered" />
+            <span aria-hidden="true">{Math.round(100 * application.answered / application.total)}%</span>
+          </div>}
+          <div><StatusChip application={application} />
             <span className="dash-updated">Last updated <time dateTime={application.updated_at}>{formatDateTime(application.updated_at)}</time></span>
-          </p>
+          </div>
         </div>
         <div className="dash-card-side">
           {view === 'active' && isRecorded(application.status) && <Link to={`/dashboard/${application.id}`}

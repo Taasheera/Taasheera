@@ -1,10 +1,5 @@
-/* Hallmark · macrostructure: Workbench · tone: utilitarian, calm · anchor hue: site brand green (160)
- * theme: existing site system (DM Sans + Space Grotesk, tokens in src/index.css) · enrichment: hand-built SVG glyph
- * audience: travelers, often on a phone · use: turn a passport photo into confirmed details
- */
-
 .passport-page {
-  padding-top: 56px;
+  padding-top: 40px;
   padding-bottom: 128px; /* room for the assistant launcher */
 }
 
@@ -15,10 +10,10 @@
 .passport-intro h1 {
   margin: 0 0 12px;
   font-family: var(--font-display);
-  font-size: clamp(30px, 5vw, 46px);
+  font-size: clamp(34px, 5vw, 38px);
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1;
+  letter-spacing: -0.05em;
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -42,7 +37,7 @@
   margin: 32px 0 28px;
   padding: 0;
   list-style: none;
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   font-size: 15px;
   font-weight: 600;
 }
@@ -71,7 +66,7 @@
 .stepper .is-current .stepper-mark {
   border-color: var(--brand);
   background: var(--brand);
-  color: var(--card);
+  color: var(--on-brand);
 }
 
 .stepper .is-done {
@@ -88,12 +83,12 @@
 .workbench {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 32px;
-  max-width: 760px;
+  gap: 24px;
+  max-width: none;
 }
 
 .workbench.has-upload {
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 47fr) minmax(0, 53fr);
   align-items: start;
   max-width: none;
 }
@@ -106,7 +101,7 @@
 @media (min-width: 901px) {
   .workbench.has-upload .workbench-photo {
     position: sticky;
-    top: 96px;
+    inset-block-start: 96px;
   }
 }
 
@@ -123,8 +118,8 @@
   justify-items: center;
   gap: 12px;
   padding: 44px 24px 36px;
-  border: 2px dashed var(--field-border);
-  border-radius: 20px;
+  border: 1.5px dashed var(--field-border);
+  border-radius: var(--radius-lg);
   background: var(--card);
   text-align: center;
   transition: border-color var(--dur-quick) var(--ease-out), background-color var(--dur-quick) var(--ease-out);
@@ -196,6 +191,10 @@
 
 .photo-frame {
   margin: 0;
+  padding: clamp(12px, 2vw, 20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
 }
 
 .photo-frame img,
@@ -203,8 +202,8 @@
   display: block;
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg-raised);
+  border-radius: var(--radius-md);
+  background: var(--paper-bg);
 }
 
 .photo-placeholder {
@@ -212,8 +211,8 @@
 }
 
 .photo-frame figcaption {
-  margin-top: 8px;
-  color: var(--fg-muted);
+  margin-top: 14px;
+  color: var(--fg);
   font-size: 14px;
 }
 
@@ -224,7 +223,7 @@
   gap: 14px;
   padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: var(--card);
   color: var(--fg-muted);
   font-weight: 600;
@@ -256,7 +255,7 @@
 .review {
   padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: var(--card);
 }
 
@@ -291,9 +290,9 @@
   font-weight: 700;
 }
 
-.notice-ok { background: var(--ok-bg); color: var(--ok); }
-.notice-warn { background: var(--warn-bg); color: var(--warn); }
-.notice-danger { background: var(--danger-bg); color: var(--danger); }
+.notice-ok { color: var(--fg); }
+.notice-warn { color: var(--warn-text); }
+.notice-danger { color: var(--danger-text); }
 
 .review-grid {
   display: grid;
@@ -332,19 +331,21 @@
   height: 48px;
   padding: 10px 12px;
   border: 1px solid var(--field-border);
-  border-radius: 10px;
-  background: var(--card);
+  border-radius: var(--radius-sm);
+  background: var(--field-bg);
   color: var(--fg);
 }
 
 .field input:hover,
 .field select:hover {
-  border-color: var(--fg-dim);
+  border-color: var(--fg-muted);
 }
 
 .field input:focus,
 .field select:focus {
   border-color: var(--brand);
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .field input.is-code {
@@ -357,18 +358,17 @@
 .field-invalid input,
 .field-invalid select {
   border-color: var(--danger);
-  background: var(--danger-bg);
 }
 
 .field-help {
   margin: 0;
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   font-size: 13px;
 }
 
 .field-error {
   margin: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -379,19 +379,17 @@
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  padding: 2px 9px;
-  border-radius: 999px;
+  padding: 0;
   font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
+  font-weight: 600;
 }
 
 .trust-ok,
 .trust-verified,
-.trust-corrected { background: var(--ok-bg); color: var(--ok); }
-.trust-confirm { background: var(--warn-bg); color: var(--warn); }
-.trust-failed { background: var(--danger-bg); color: var(--danger); }
-.trust-edited { background: var(--bg-raised); color: var(--fg-muted); }
+.trust-corrected { color: var(--fg); }
+.trust-confirm { color: var(--warn-text); }
+.trust-failed { color: var(--danger-text); }
+.trust-edited { color: var(--fg-muted); }
 
 .review-actions {
   display: flex;
@@ -421,17 +419,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px 16px;
-  background: var(--ok-bg);
   color: var(--ok);
 }
 
 .passport-saved p { margin: 0; }
-.passport-message { background: var(--danger-bg); color: var(--danger); }
+.passport-message { color: var(--danger-text); }
 
 .passport-disclaimer {
   max-width: 680px;
   margin-top: 48px;
-  color: var(--fg-dim);
+  color: var(--fg-muted);
   font-size: 14px;
 }
 
@@ -446,4 +443,44 @@
 @media (prefers-reduced-motion: reduce) {
   .dropzone { transition: none; }
   .loading-bar::after { animation: none; width: 100%; opacity: 0.5; }
+}
+
+.workbench-review .review { overflow: clip; padding: 0; }
+.workbench-review .review-head {
+  min-block-size: 58px;
+  margin: 0;
+  padding: 14px clamp(14px, 2vw, 24px);
+  border-block-end: 1px solid var(--border);
+}
+.workbench-review .review-head h2 { font: 600 16px var(--font-sans); }
+.workbench-review .notice { margin: 0; padding: 12px clamp(14px, 2vw, 24px); border-block-end: 1px solid var(--border); }
+.workbench-review .notice p + p { color: var(--fg-muted); }
+.workbench-review .review-grid { display: block; }
+.workbench-review .field {
+  grid-template-columns: minmax(105px, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 5px 12px;
+  padding: 12px clamp(14px, 2vw, 24px);
+  border-block-end: 1px solid var(--border);
+}
+.workbench-review .field label { color: var(--fg-muted); }
+.workbench-review .field input:last-child,
+.workbench-review .field select:last-child { grid-column: 2 / -1; }
+.workbench-review .field-help,
+.workbench-review .field-error { grid-column: 2 / -1; }
+.workbench-review .review-actions {
+  margin: 0;
+  padding: clamp(14px, 2vw, 24px);
+  background: var(--bg-raised);
+}
+.review :is(input[type='date'], select) { font-family: var(--font-mono); }
+.field-confirm :is(input, select) { border-color: var(--warn-text); }
+
+@media (max-width: 560px) {
+  .workbench-review .field { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workbench-review .field :is(input, select) { grid-column: 1 / -1; grid-row: 2; }
+  .workbench-review .field :is(input, select):last-child { grid-column: 1 / -1; }
+  .workbench-review .field :is(.field-error, .field-help) { grid-column: 1 / -1; }
+  .workbench-review .trust { justify-self: end; }
+  .stepper { gap: 8px 12px; }
 }

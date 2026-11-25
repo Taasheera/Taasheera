@@ -97,7 +97,7 @@ function AdminUserPage({ userId }: { userId: string }) {
     {back}
     <div className="admin-user-heading">
       <h1>{user.name}</h1>
-      <span className={`admin-status admin-status-${user.status}`}>{statusLabels[user.status]}</span>
+      <span className={`admin-status status-dot status-dot--${user.status === 'active' ? 'ok' : 'danger'}`}>{statusLabels[user.status]}</span>
       <span className="admin-role">{roleLabels[user.role]}</span>
     </div>
 

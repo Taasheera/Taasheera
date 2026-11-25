@@ -52,7 +52,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | OCR | Tesseract/pytesseract plus our MRZ locator and checksum repair | Vision-model fallback proposed |
 | Assistant | Backend-only official `google-genai` SDK, `gemini-3.5-flash-lite`, function calling | Provider behind adapters; no keys in browser |
 | Frontend | React 19, TypeScript, Vite, React Router data router, sonner | TanStack Query proposed |
-| Styling | Plain CSS/custom properties in `src/index.css`, DM Sans + Space Grotesk | No Tailwind; auth styles are scoped |
+| Styling | Plain CSS and shared Ink tokens in `frontend/public/tokens.css` · Schibsted Grotesk, Inter, IBM Plex Mono and IBM Plex Sans Arabic | No Tailwind; auth styles are scoped |
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
@@ -87,7 +87,7 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
 `/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
@@ -101,7 +101,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 - Report application events through `backend/app/notifications.py` (US 28), in the same session as the change
   and before its commit: `notify_status_change(session, application, previous)` after setting a status, and
   `notify_agent_run(session, application, stopped_reason=None)` for the agent. Messages are fixed sentences
-  (no passport or answer values); application deletion and account erasure delete them. Email copies wait on CMPS271-233.
+  (no passport or answer values); application deletion and account erasure delete them. Email alerts link to the signed-in app.
 - Never log prompts, document fields, credentials or sensitive error input. Main strips values from 422s.
 - Keep owner checks on every data/file route. Use established helpers/libraries over duplicate code.
 - A new table that refers to a traveler, application or session goes in `PERSONAL_DATA` (`backend/app/personal_data.py`)
@@ -112,7 +112,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
   add the name to `FLAGS` and to `FeatureName` in `frontend/src/features.ts`, guard its router with
   `dependencies=[Depends(require_feature("name"))]` (404 while off) and its UI with `<Feature name="name">`
   (pass `fallback={<NotFound />}` on a page route). Flags are on in development and off in production
-  unless `FEATURE_<NAME>=true|false` is set; delete the flag once the feature is released.
+  unless `FEATURE_<NAME>=true|false` is set. Add a tested flag to `RELEASED` to turn it on in production too
+  (env `false` stays a kill switch); delete it once it no longer needs one.
 
 ## Decisions log
 
@@ -130,7 +131,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
    timeout and one retry. Update `PRODUCT_FACTS` when capabilities change.
 10. **Google linking.** Verified `sub` is identity; password accounts explicitly link with password confirmation.
 11. **OTP recovery.** Ten-minute/five-attempt codes issue five-minute single-use reset grants; reset revokes
-    sessions and cannot enable Google-only passwords. SES sandbox/owner setup: `docs/AUTH_OTP_AWS.md`.
+    sessions and cannot enable Google-only passwords. Restarting recovery keeps the email and discards the browser’s reset grant.
+    SES sandbox/owner setup: `docs/AUTH_OTP_AWS.md`.
 12. **Password change (US 43).** Current password required; current session stays and all others are revoked.
 13. **Traveler profile.** Separate owned row; `PUT` replaces fields, validates dates/codes/names and E.164 phone.
 14. **Account page.** Profile, sign-in methods, password and sessions; country options use UN M49/ICAO codes.
@@ -181,7 +183,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     Files sit in the owner's passport folder (erased with it); PDFs are kept as uploaded but only downloaded,
     images re-encoded. A pure cross-check compares name/birth date/passport number with document text; missing
     required uploads block and mismatches warn in the completeness check. Behind `supporting_documents`.
-35. **Destinations.** Schengen, UK Standard Visitor, US B-2 and Canada visitor questionnaires; data files only.
+35. **Destinations.** Schengen, UK, US B-2, Canada, Japan, China (L), India and Türkiye e-Visa questionnaires; data files only.
 36. **Form-filling agent (CMPS271-236/67/70).** API queues `agentrun` rows; `agent_worker.py` claims them, fills
     a site configured in `agent/site_configs/` and streams typed fields and screenshots by polling. Retries
     transient operations in the same browser and surfaces selector changes in admin monitoring. The local
@@ -194,6 +196,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     off in production, overridden by strict `FEATURE_<NAME>=true|false`; other values stop startup. Public
     `no-store` `GET /features` feeds the frontend's single shared request. Off means 404 on the backend and
     nothing rendered on the frontend, including while loading or when flags can't be read (fail closed).
+    `RELEASED` (Sprint 5: scan quality, PDF, documents, privacy consent, visa guides) defaults on in production.
 39. **Embassy decision (US 55).** Traveler-recorded SUBMITTED then APPROVED/REFUSED, each a notify call; the
     agent never submits. Recorded answers are frozen (not re-checked against today); one step back undoes.
 40. **Duplicate (US 78).** `applications/records.py` copies only same-id, same-type answers into the chosen
@@ -207,3 +210,32 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 43. **Scan quality and assistant.** Passport quality checks run before OCR behind `passport_scan_quality`.
     Application chat offers question explanations and supported browsers dictate into an editable draft.
     Policy citations resolve server-side to official guidance for the four supported visa types.
+44. **Privacy consent (CMPS271-115).** `PrivacyConsent` keeps each accepted policy version and time. Passport and
+    document uploads (POST/PUT) answer 403 with `X-Privacy-Consent: required` until the traveler accepts
+    `PRIVACY_POLICY_VERSION` (`app/consent.py`, the date in `public/privacy.html`; bump both to ask everyone again).
+    Signed-in pages show the prompt; demo seeds accept. Behind `privacy_consent`.
+45. **Notification emails (CMPS271-98).** `notify()` saves the notification with `email_status` "pending";
+    a thread in the API process (`notification_jobs.py`, every `NOTIFICATION_JOB_SECONDS`, default 900, 0 = off)
+    sends a generic sign-in alert through the reset email sender. Older than a day: skipped. At 3 failures,
+    it stops retrying. Development without SMTP logs only the attempt. One API process only. Behind `email_notifications`.
+    `NotificationPreference` (CMPS271-99, Account page) turns emails off per group of kinds; the bell shows all.
+    The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.
+    Confirming a passport saves only its expiry date (`PassportExpiry`, CMPS271-36); the timer reminds at 180, 30
+    and 0 days, once each per date. Reminder texts never contain dates or passport fields.
+46. **Visa guides (CMPS271-19/20/21/22/24/25).** Public `GET /visa-guides` and pages `/visas`, `/visas/:id`.
+    Checklist and limits come from the questionnaires; fees, times, rules and sources from
+    `applications/visa_guides.json` (official https domains only, `checked_on` date). Show the general rule
+    for checked nationalities and link to the official checker for everyone.
+    Re-check the figures before each release. Behind `visa_guide`.
+47. **Fast pages on slow connections (CMPS271-137).** nginx gzips pages and built files (`gzip_proxied any`:
+    CloudFront sends Via, and its CachingDisabled policy does not compress); API answers stay uncompressed.
+    `/assets/` keeps a year (`immutable`) and a missing file is a 404, never `index.html`. Signed-in, sign-in
+    and staff pages are `lazy` routes (`later()` in `routes.tsx`), so home, FAQ and visa guides download less.
+    Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
+48. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
+    the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.
+49. **Official form guides.** Destinations whose application is an online portal or paper form get
+    `applications/portals/<questionnaire>.json`: the portal's pages in order, fields mapped to answers in that
+    portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
+    PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).
+    `POST /assistant/draft` (Help me write this) drafts one long free-text answer; the traveler edits and saves it.

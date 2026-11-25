@@ -57,3 +57,19 @@ export async function getHistory(applicationId?: string): Promise<ChatTurn[]> {
   if (!response.ok) return []
   return await response.json() as ChatTurn[]
 }
+
+// Help me write this: a draft for one free-text answer. Nothing is saved until the traveler saves the answer.
+export async function draftAnswer(applicationId: string, questionId: string, notes: string): Promise<string> {
+  const response = await protectedFetch('/assistant/draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ application_id: applicationId, question_id: questionId, notes: notes.slice(0, 500) }),
+    signal: AbortSignal.timeout(45000),
+    silent: true,
+  })
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null) as { detail?: unknown } | null
+    throw new Error(typeof problem?.detail === 'string' ? problem.detail : 'Could not write a draft. Please try again.')
+  }
+  return (await response.json() as { draft: string }).draft
+}

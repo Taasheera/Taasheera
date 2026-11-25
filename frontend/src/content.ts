@@ -1,5 +1,9 @@
 import canadaFlag from 'flag-icons/flags/4x3/ca.svg'
+import chinaFlag from 'flag-icons/flags/4x3/cn.svg'
 import euFlag from 'flag-icons/flags/4x3/eu.svg'
+import indiaFlag from 'flag-icons/flags/4x3/in.svg'
+import japanFlag from 'flag-icons/flags/4x3/jp.svg'
+import turkiyeFlag from 'flag-icons/flags/4x3/tr.svg'
 import ukFlag from 'flag-icons/flags/4x3/gb.svg'
 import usFlag from 'flag-icons/flags/4x3/us.svg'
 
@@ -7,30 +11,21 @@ import usFlag from 'flag-icons/flags/4x3/us.svg'
 // Flags are bundled SVGs because Windows has no flag emoji.
 
 export const destinations = [
-  { id: 'schengen', flag: euFlag, name: 'Schengen area', visa: 'Short-stay tourist visa' },
-  { id: 'uk', flag: ukFlag, name: 'United Kingdom', visa: 'Standard Visitor visa' },
-  { id: 'us', flag: usFlag, name: 'United States', visa: 'B-2 tourist visa' },
-  { id: 'canada', flag: canadaFlag, name: 'Canada', visa: 'Visitor visa' },
-]
-
-export const trustBadges = [
-  'You control submission',
-  'Passport data stays private',
-  'Not affiliated with any embassy',
+  { id: 'schengen', flag: euFlag, name: 'Schengen area', visa: 'Short-stay tourist visa', guide: 'schengen-short-stay' },
+  { id: 'uk', flag: ukFlag, name: 'United Kingdom', visa: 'Standard Visitor visa', guide: 'uk-standard-visitor' },
+  { id: 'us', flag: usFlag, name: 'United States', visa: 'B-2 tourist visa', guide: 'us-b2-tourist' },
+  { id: 'canada', flag: canadaFlag, name: 'Canada', visa: 'Visitor visa', guide: 'canada-visitor' },
+  { id: 'japan', flag: japanFlag, name: 'Japan', visa: 'Short-term stay visa', guide: 'japan-short-stay' },
+  { id: 'china', flag: chinaFlag, name: 'China', visa: 'Tourist visa (L)', guide: 'china-tourist-l' },
+  { id: 'india', flag: indiaFlag, name: 'India', visa: 'Tourist and e-Tourist visa', guide: 'india-tourist' },
+  { id: 'turkiye', flag: turkiyeFlag, name: 'Türkiye', visa: 'e-Visa', guide: 'turkiye-evisa' },
 ]
 
 export const steps = [
-  { title: 'Pick your destination', body: 'Choose a destination and visa type to start the matching questionnaire.' },
-  { title: 'Upload your passport', body: 'We read your details from the passport. You check and confirm them.' },
-  { title: 'Answer a few questions', body: 'Tell us about your trip. Your answers are saved as you go.' },
-  { title: 'Review and submit', body: 'Check your answers and follow the instructions from your consulate.' },
-]
-
-export const whatWeDo = [
-  'Read passport details so you can check them before saving',
-  'Ask the questions that apply to your trip',
-  'Flag missing answers and inconsistencies before review',
-  'Save your application so you can pick up where you stopped',
+  { title: 'Pick a destination', body: 'Choose a destination and visa type to start the matching questionnaire.' },
+  { title: 'Scan your passport', body: 'We read your details from the passport. You check and confirm them.' },
+  { title: 'Answer and upload', body: 'Tell us about your trip. Your answers are saved as you go.' },
+  { title: 'Review the official form', body: 'Check your answers and follow the instructions from your consulate.' },
 ]
 
 export const requiredDocuments = [
@@ -59,7 +54,7 @@ export const faqs = [
   },
   {
     question: 'Which destinations can I apply for?',
-    answer: 'Guided questionnaires are available for Schengen short stays, the UK Standard Visitor visa, the US B-2 visa and the Canadian visitor visa.',
+    answer: 'Guided questionnaires are available for Schengen short stays, the UK Standard Visitor visa, the US B-2 visa, the Canadian visitor visa, the Japanese short-term stay visa, the Chinese tourist (L) visa, India\'s tourist and e-Tourist visas and the Türkiye e-Visa. Schengen gets a filled official PDF; the others get a step-by-step guide to the official form.',
   },
   {
     question: 'How do I use my application at the embassy?',

@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from app.applications.router import application_context
 from app.models import DocumentAccess
 from test_applications_api import ANSWERS, PROFILE, answer_all, api, start  # noqa: F401 (api is a fixture)
-from test_supporting_documents import make_pdf, make_png, no_ocr, upload  # noqa: F401 (no_ocr is a fixture)
+from test_supporting_documents import consent_not_required, make_pdf, make_png, no_ocr, upload  # noqa: F401 (fixtures)
 
 FILLER = " Booking reference EXAMPLE123, issued by Example Travel for the dates you gave."
 

@@ -1,4 +1,4 @@
-{"title": "Harmonised Schengen short-stay visa form", "source": "https://home-affairs.ec.europa.eu/document/download/5fe79baa-2d46-4b65-84ec-ea2e9b5ab1d6_en?filename=Visa+Application+Form.pdf", "sha256": "78d5499912f0ba28c53485d84efb1e38f6db546f299d69b953e87f91ed13b0d9", "manual": ["Check which form your consulate accepts. Complete any remaining applicable fields, attach your photo and sign the declaration yourself.", "Review travel document type, first entry, host contact details and means of support. Complete family, residence permit or transit fields where applicable.", "If the family-member exemption printed on page 1 applies, leave fields 21, 22, 30, 31 and 32 blank."], "fields": [
+{"title": "Harmonised Schengen short-stay visa form", "source": "https://home-affairs.ec.europa.eu/document/download/5fe79baa-2d46-4b65-84ec-ea2e9b5ab1d6_en?filename=Visa+Application+Form.pdf", "sha256": "78d5499912f0ba28c53485d84efb1e38f6db546f299d69b953e87f91ed13b0d9", "manual": ["Check which form your consulate accepts. Complete any remaining applicable fields, attach your photo and sign the declaration yourself.", "Review member state of first entry, host contact details and means of support. Complete family, residence permit or transit fields where applicable.", "If the family-member exemption printed on page 1 applies, leave fields 21, 22, 30, 31 and 32 blank."], "fields": [
   {"page": 1, "key": "surname", "label": "1. Surname", "sources": ["passport.surname"], "box": [201, 356, 432, 371], "formatter": "answer"},
   {"page": 1, "key": "surname_at_birth", "label": "2. Surname at birth", "sources": ["surname_at_birth"], "box": [276, 374, 432, 390], "formatter": "answer"},
   {"page": 1, "key": "given_names", "label": "3. First names", "sources": ["passport.given_names"], "box": [224, 392, 432, 414], "formatter": "answer"},
@@ -8,6 +8,7 @@
   {"page": 1, "key": "nationality", "label": "7. Current nationality", "sources": ["passport.nationality"], "box": [402, 420, 432, 434], "formatter": "answer"},
   {"page": 1, "key": "sex", "label": "8. Sex", "sources": ["passport.sex"], "marks": {"M": [68, 527], "F": [68, 538], "X": [68, 549]}},
   {"page": 1, "key": "civil_status", "label": "9. Civil status", "sources": ["marital_status"], "marks": {"single": [165, 527], "married": [197, 527], "registered_partnership": [239, 527], "separated": [338, 527], "divorced": [388, 527], "widowed": [165, 538], "other": [209, 550]}},
+  {"page": 2, "key": "document_type", "label": "12. Type of travel document", "sources": ["passport"], "marks": {"ordinary": [68, 112]}, "fixed": "ordinary"},
   {"page": 2, "key": "passport_number", "label": "13. Travel document number", "sources": ["passport.document_number"], "box": [69, 187, 157, 205], "formatter": "answer"},
   {"page": 2, "key": "issue_date", "label": "14. Date of issue", "sources": ["passport_issue_date"], "box": [163, 183, 249, 205], "formatter": "date"},
   {"page": 2, "key": "expiry_date", "label": "15. Valid until", "sources": ["passport.expiry_date"], "box": [254, 183, 341, 205], "formatter": "date"},
@@ -15,7 +16,7 @@
   {"page": 2, "key": "address", "label": "19. Home address", "sources": ["home_address"], "box": [69, 415, 340, 427], "formatter": "address"},
   {"page": 2, "key": "email", "label": "19. Email address", "sources": ["account_email"], "box": [69, 427, 340, 436], "formatter": "answer"},
   {"page": 2, "key": "phone", "label": "19. Telephone", "sources": ["phone"], "box": [349, 415, 431, 435], "formatter": "answer"},
-  {"page": 2, "key": "occupation", "label": "21. Occupation", "sources": ["occupation"], "box": [69, 509, 432, 526], "formatter": "answer"},
+  {"page": 2, "key": "occupation", "label": "21. Occupation", "sources": ["job_title", "occupation"], "box": [69, 509, 432, 526], "formatter": "occupation"},
   {"page": 2, "key": "employer", "label": "22. Employer or school", "sources": ["employer", "school"], "box": [69, 554, 432, 571], "formatter": "answer"},
   {"page": 2, "key": "purpose", "label": "23. Purpose of travel", "sources": ["purpose"], "marks": {"tourism": [68, 594], "business": [111, 594], "family_friends": [157, 594], "culture": [264, 594], "sports": [306, 594], "official": [343, 594], "medical": [400, 594], "study": [135, 605], "other": [241, 605]}},
   {"page": 2, "key": "destination", "label": "25. Main destination", "sources": ["main_destination"], "box": [69, 704, 251, 722], "formatter": "answer"},

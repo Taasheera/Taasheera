@@ -90,8 +90,10 @@ Other Google testers must be added in Google Auth Platform -> Audience.
 Only OAuth administration/testing and SES sending use `sharafm032@gmail.com`.
 AWS/GitHub ownership remains `mhs86@mail.aub.edu`; AWS account `632630731308`.
 SES sender `sharafm032@gmail.com` is user-confirmed verified in `us-east-1`,
-with SES in the sandbox. Only verified recipients (including the sender itself)
-can receive real emails until AWS grants production access. Acceptance by SES is
+and the last recorded access check showed SES was in the sandbox. The sandbox
+limits delivery to verified recipients and the SES mailbox simulator until AWS
+grants production access. Check the current status in the same region before
+testing delivery to an ordinary inbox. Acceptance by SES is
 not proof of inbox delivery. There are no embedded SMTP credentials or AWS keys.
 
 Production environment settings: `RESET_MAIL_PROVIDER=ses`,
@@ -121,6 +123,22 @@ only `dev`; install/update it from authenticated CloudShell, set repository vari
 `dev`. IAM prerequisites are not assumed to have been applied.
 
 ## Review after deployment
+
+A generic HTTP 202 acknowledges the request. Use the response's `X-Request-ID`
+to correlate `reset-request` and `reset-delivery` in the private API logs.
+A failed delivery does not identify the provider's reason. A request that was
+throttled or that does not match a password-enabled account sends no mail.
+
+From authenticated CloudShell, check the SES account's current access:
+
+```bash
+aws sesv2 get-account --region us-east-1 \
+  --query '{SendingEnabled:SendingEnabled,ProductionAccessEnabled:ProductionAccessEnabled}'
+```
+
+Use a verified test recipient while the account is in the sandbox. Ordinary inboxes
+require [SES production access](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html).
+The status applies to the sending region.
 
 Check HTTPS readiness and `/auth/config` for the new public client. Register a
 password account using the verified Gmail, request a code, enter it, set a new

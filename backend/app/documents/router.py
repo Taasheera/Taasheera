@@ -23,6 +23,7 @@ from ..models import Application, ApplicationAnswer, SupportingDocument, Travele
 from ..passport.images import MAX_UPLOAD_BYTES
 from .crosscheck import Report as CrossCheckReport
 from .files import InvalidDocumentError, check_document, read_text
+from .packet import PacketItem, build_packet
 from .review import document_cross_check
 from .storage import DocumentStorage
 
@@ -88,6 +89,7 @@ def create_documents_router(
     record_event: Callable[[int, str, str], None] | None = None,
     reader: Callable = read_text,
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
+    upload_dependencies: list | None = None,
 ) -> APIRouter:
     from ..applications.router import saved_profile
     from ..auth import check_origin
@@ -96,6 +98,8 @@ def create_documents_router(
                        dependencies=[Depends(require_feature("supporting_documents"))])
     SessionDep = Annotated[Session, Depends(get_session)]
     TravelerDep = Annotated[Traveler, Depends(current_traveler)]
+    # Every route that accepts a new file also runs these, such as privacy policy acceptance (CMPS271-115).
+    upload_checks = [Depends(check_origin), *(upload_dependencies or [])]
 
     def owned(session: Session, traveler: Traveler, application_id: str) -> Application:
         application = session.get(Application, application_id)
@@ -153,6 +157,35 @@ def create_documents_router(
         response.headers["Cache-Control"] = "private, no-store"
         return checklist(session, owned(session, traveler, application_id))
 
+    @router.get("/packet")
+    def packet(application_id: str, traveler: TravelerDep, session: SessionDep):
+        """One printable PDF: a cover checklist, then every uploaded document in the checklist's order."""
+        application = owned(session, traveler, application_id)
+        questionnaire = flow.load_questionnaire(application.questionnaire_id)
+        given = answers(session, application)
+        requirements = flow.required_documents(questionnaire, given)
+        documents = owned_documents(session, application.id)
+        items = []
+        for requirement in requirements:
+            files = []
+            for document in (d for d in documents if d.requirement == requirement.id):
+                extension = "pdf" if document.content_type == "application/pdf" else "jpg"
+                content = storage.load(traveler.id, document.id, extension, purpose="document_packet")
+                if content is not None:
+                    files.append((document.filename, document.content_type, content))
+            items.append(PacketItem(label=requirement.label, required=requirement.required, files=files))
+        passport = given.get("passport") if isinstance(given.get("passport"), dict) else {}
+        name = " ".join(part for part in (passport.get("given_names"), passport.get("surname")) if part)
+        dates = [given.get(key) for key in ("arrival_date", "departure_date") if given.get(key)]
+        trip = " to ".join(date.fromisoformat(value).strftime("%d %B %Y") for value in dates)
+        content = build_packet(questionnaire.title, name, f"Trip: {trip}" if trip else "", items)
+        return Response(content, media_type="application/pdf", headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": 'attachment; filename="application-packet.pdf"',
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        })
+
     @router.get("/crosscheck", response_model=CrossCheckReport)
     def crosscheck(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
         """Where the name, date of birth or passport number disagrees with the passport (CMPS271-50)."""
@@ -164,7 +197,7 @@ def create_documents_router(
                                     latest_passport=load_latest_passport(traveler.id),
                                     profile=saved_profile(session, traveler.id))
 
-    @router.post("", response_model=DocumentPublic, status_code=201, dependencies=[Depends(check_origin)])
+    @router.post("", response_model=DocumentPublic, status_code=201, dependencies=upload_checks)
     def upload(application_id: str, requirement: Annotated[str, Form(max_length=40)], file: UploadFile,
                traveler: TravelerDep, session: SessionDep, response: Response):
         application = writable(session, traveler, application_id)
@@ -194,7 +227,7 @@ def create_documents_router(
         response.headers["Cache-Control"] = "private, no-store"
         return public(document)
 
-    @router.put("/{document_id}", response_model=DocumentPublic, dependencies=[Depends(check_origin)])
+    @router.put("/{document_id}", response_model=DocumentPublic, dependencies=upload_checks)
     def replace(application_id: str, document_id: str, file: UploadFile,
                 traveler: TravelerDep, session: SessionDep, response: Response):
         """A new file for the same requirement. It gets a new id, so a cached old file is never shown as the new one."""

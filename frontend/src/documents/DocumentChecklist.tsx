@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
-  checkDocumentFile, deleteDocument, DOCUMENT_TYPES, formatSize, getChecklist, openDocument, replaceDocument,
+  checkDocumentFile, deleteDocument, DOCUMENT_TYPES, downloadPacket, formatSize, getChecklist, openDocument, replaceDocument,
   uploadDocument, type Checklist, type Requirement, type UploadedDocument,
 } from './api'
 import CrossCheckPanel from './CrossCheckPanel'
+import { toast } from 'sonner'
 import './documents.css'
 
 // The supporting documents an application needs (CMPS271-29): a checklist the answers decide,
@@ -54,16 +55,34 @@ export default function DocumentChecklist({ applicationId, version, onChange, fo
         <h2 id="docs-title">Supporting documents</h2>
         <p className="docs-lede">What the embassy asks for with this visa, based on your answers. PDF, JPEG, PNG or WebP, up to 10 MB each.</p>
       </div>
-      <p className={`docs-progress${checklist.complete ? ' is-complete' : ''}`} role="status">
-        {checklist.complete ? 'All required documents uploaded' : `${done} of ${required.length} required uploaded`}
-      </p>
     </div>
     {checklist.read_only && <p className="docs-note">This application is archived. Restore it to change its documents.</p>}
-    <ul className="docs-list">
-      {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
-        requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}
-    </ul>
-    <CrossCheckPanel applicationId={applicationId} version={`${version ?? ''}-${attempt}`} />
+    <div className="docs-layout">
+      <div>
+        <div className="docs-list-heading">
+          <h3>Checklist</h3>
+          <span>{done} of {required.length} required</span>
+        </div>
+        <ul className="docs-list">
+          {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
+            requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}
+        </ul>
+      </div>
+      <div className="docs-sidebar">
+        <div className="docs-readiness">
+          <h3 className="eyebrow">Readiness</h3>
+          <p className="docs-readiness-score" aria-hidden="true">{done}/{required.length}</p>
+          {required.length > 0 && <progress className="question-progress" value={done} max={required.length}
+            aria-label="Required documents uploaded" />}
+          <p className="docs-progress" role="status">
+            {checklist.complete ? 'All required documents uploaded' : `${done} of ${required.length} required uploaded`}
+          </p>
+          {checklist.requirements.some(requirement => requirement.documents.length > 0) &&
+            <PacketButton applicationId={applicationId} complete={checklist.complete} />}
+        </div>
+        <CrossCheckPanel applicationId={applicationId} version={`${version ?? ''}-${attempt}`} />
+      </div>
+    </div>
     {checklist.other.length > 0 && <div className="docs-other">
       <h3>No longer needed</h3>
       <p className="docs-note">Your answers changed, so the embassy no longer asks for these. Delete them if they don't belong here.</p>
@@ -96,12 +115,14 @@ function RequirementRow({ applicationId, requirement, readOnly, onChange }:
 
   const titleId = `doc-${requirement.id}`
   return <li className={`docs-item${has ? ' is-done' : ''}`} aria-labelledby={titleId}>
-    <span className="docs-mark" aria-hidden="true">{has ? '✓' : ''}</span>
     <div className="docs-body">
       <h3 id={titleId} tabIndex={-1}>
         {requirement.label}
         {!requirement.required && <span className="docs-tag">Optional</span>}
-        <span className="visually-hidden">{has ? ', uploaded' : ', not uploaded yet'}</span>
+        <span className="visually-hidden">, </span>
+        <span className={`docs-item-status status-dot${has ? ' status-dot--ok' : requirement.required ? ' status-dot--warn' : ''}`}>
+          {has ? 'uploaded' : 'not uploaded yet'}
+        </span>
       </h3>
       {requirement.help && <p className="docs-help">{requirement.help}</p>}
       {has && <ul className="docs-files">
@@ -189,4 +210,25 @@ function FilePicker({ label, busy, onFile, onProblem, activityId, primary = fals
     </button>
     <input ref={input} type="file" accept={DOCUMENT_TYPES.join(',')} hidden onChange={onChange} />
   </>
+}
+
+function PacketButton({ applicationId, complete }: { applicationId: string; complete: boolean }) {
+  const [busy, setBusy] = useState(false)
+  async function download() {
+    setBusy(true)
+    try {
+      await downloadPacket(applicationId)
+      toast.success('Downloaded your packet. It holds your documents, so keep it somewhere private.')
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : 'Could not prepare your packet.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return <div className="docs-packet">
+    <button type="button" className="button button-secondary dash-small" disabled={busy} aria-busy={busy}
+      onClick={() => void download()} data-activity-id="documents-packet">{busy ? 'Preparing…' : 'Download print-ready packet'}</button>
+    <p className="docs-note">{complete ? 'A cover checklist, then every document in the order to hand them in.'
+      : 'Missing documents are marked on the cover, so you can still print what you have.'}</p>
+  </div>
 }

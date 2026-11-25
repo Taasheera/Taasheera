@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, get_args
 from pydantic import BaseModel, ConfigDict, EmailStr, SecretStr, StringConstraints, field_validator
 from pydantic import Field as SchemaField
 from sqlmodel import Field, SQLModel
-from sqlalchemy import JSON, CheckConstraint, Column, Text
+from sqlalchemy import JSON, CheckConstraint, Column, Text, UniqueConstraint
 
 
 # Stored as plain strings guarded by named CHECK constraints (portable; no database enum types).
@@ -60,6 +60,19 @@ class TravelerProfile(SQLModel, table=True):
     address_region: str | None = Field(default=None, sa_type=Text, repr=False)
     address_postal_code: str | None = Field(default=None, sa_type=Text, repr=False)
     address_country: str | None = Field(default=None, max_length=3, repr=False)
+
+
+class PrivacyConsent(SQLModel, table=True):
+    """One privacy policy version a traveler accepted, and when (CMPS271-115).
+
+    A new policy version needs a new acceptance, so earlier rows stay as the record of what was agreed.
+    """
+
+    __table_args__ = (UniqueConstraint("traveler_id", "policy_version", name="uq_privacyconsent_traveler_version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    policy_version: str = Field(max_length=20)
+    accepted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Application(SQLModel, table=True):
@@ -295,6 +308,36 @@ class Notification(SQLModel, table=True):
     link: str | None = Field(default=None, max_length=200)  # A page on this site, such as /dashboard/<id>
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     read_at: datetime | None = None
+    # The email copy (CMPS271-98): "pending" until the notification job sends it, then "sent", "skipped"
+    # (emails turned off, or too old to send) or "failed" after EMAIL_ATTEMPTS tries.
+    email_status: str = Field(default="pending", max_length=10, index=True)
+    email_attempts: int = Field(default=0)
+
+
+class NotificationPreference(SQLModel, table=True):
+    """Which notification emails a traveler wants (CMPS271-99). No row means every email is on.
+
+    In-app notifications are always shown; these switches only stop the email copies.
+    """
+
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    application_updates: bool = True  # status changes and the form-filling agent
+    reminders: bool = True  # an application left unfinished (CMPS271-101)
+    passport_expiry: bool = True  # a passport that expires soon (CMPS271-36)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PassportExpiry(SQLModel, table=True):
+    """The expiry date of the traveler's latest confirmed passport, for reminders (CMPS271-36).
+
+    Only the date: the passport itself stays in passport storage. `reminded_days` is the closest
+    reminder already sent (180, 30 or 0 days before), so each one is sent once per passport.
+    """
+
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    expiry_date: date = Field(repr=False)
+    reminded_days: int | None = None
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SupportingDocument(SQLModel, table=True):
