@@ -100,9 +100,13 @@ def create_passport_router(
     record_event=None,
     uploads_enabled: bool = True,
     check_quality=lambda: False,
+    upload_dependencies: list | None = None,
+    on_confirmed=None,
 ) -> APIRouter:
     router = APIRouter(prefix="/passports", tags=["passports"])
     TravelerId = Annotated[int, Depends(current_traveler_id)]
+    # Checks run before a new passport photo is accepted, such as privacy policy acceptance (CMPS271-115).
+    upload_checks = upload_dependencies or []
 
     def load_owned(traveler_id: int, upload_id: str, purpose="image_view") -> bytes:
         image = storage.load(traveler_id, upload_id, purpose=purpose)
@@ -111,7 +115,7 @@ def create_passport_router(
             raise HTTPException(status_code=404, detail="Passport upload not found.")
         return image
 
-    @router.post("", response_model=PassportUploadPublic, status_code=201)
+    @router.post("", response_model=PassportUploadPublic, status_code=201, dependencies=upload_checks)
     def upload_passport(file: UploadFile, traveler_id: TravelerId):
         if not uploads_enabled:
             raise HTTPException(status_code=503, detail="Passport uploads are not available on this deployment.")
@@ -153,6 +157,9 @@ def create_passport_router(
     def save_review(upload_id: str, fields: ConfirmedPassportFields, response: Response, traveler_id: TravelerId):
         load_owned(traveler_id, upload_id, "review_update")
         storage.save_review(traveler_id, upload_id, fields.model_dump(mode="json"))
+        if on_confirmed:
+            # Such as remembering the expiry date for reminders (CMPS271-36).
+            on_confirmed(traveler_id, fields)
         if record_event:
             record_event(traveler_id, "passport_review", "success")
         response.headers["Cache-Control"] = "private, no-store"

@@ -7,10 +7,10 @@ import usFlag from 'flag-icons/flags/4x3/us.svg'
 // Flags are bundled SVGs because Windows has no flag emoji.
 
 export const destinations = [
-  { id: 'schengen', flag: euFlag, name: 'Schengen area', visa: 'Short-stay tourist visa' },
-  { id: 'uk', flag: ukFlag, name: 'United Kingdom', visa: 'Standard Visitor visa' },
-  { id: 'us', flag: usFlag, name: 'United States', visa: 'B-2 tourist visa' },
-  { id: 'canada', flag: canadaFlag, name: 'Canada', visa: 'Visitor visa' },
+  { id: 'schengen', flag: euFlag, name: 'Schengen area', visa: 'Short-stay tourist visa', guide: 'schengen-short-stay' },
+  { id: 'uk', flag: ukFlag, name: 'United Kingdom', visa: 'Standard Visitor visa', guide: 'uk-standard-visitor' },
+  { id: 'us', flag: usFlag, name: 'United States', visa: 'B-2 tourist visa', guide: 'us-b2-tourist' },
+  { id: 'canada', flag: canadaFlag, name: 'Canada', visa: 'Visitor visa', guide: 'canada-visitor' },
 ]
 
 export const steps = [

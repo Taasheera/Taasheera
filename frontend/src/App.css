@@ -376,3 +376,26 @@
 .google-button-host iframe {
   max-inline-size: 100%;
 }
+
+/* Email notification switches on the account page (CMPS271-99). */
+.email-settings { margin: 0; padding: 0; border: 0; }
+.email-setting {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.sign-in-page .email-setting input[type="checkbox"] {
+  flex: none;
+  width: 20px;
+  min-height: 0;
+  height: 20px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.email-setting strong { display: block; font-size: 15px; }
+.email-setting-hint { display: block; color: var(--fg-muted); font-size: 14px; }
+.email-settings:disabled .email-setting { cursor: wait; opacity: 0.7; }

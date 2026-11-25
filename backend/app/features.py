@@ -19,6 +19,9 @@ FLAGS = {
     "embassy_pdf": "Review and download the official embassy PDF (CMPS271-64/65/66/124)",
     "agent_form_filling": "The agent fills an embassy online form (CMPS271-67)",
     "supporting_documents": "Supporting document upload (CMPS271-29)",
+    "privacy_consent": "Accept the privacy policy before uploading documents (CMPS271-115)",
+    "email_notifications": "Email copies of notifications and reminders (CMPS271-98)",
+    "visa_guide": "Public guide for each supported visa: who needs it, documents, fees, times (CMPS271-19/20/21/24)",
 }
 
 

@@ -35,6 +35,12 @@ from app.privacy import retry_erasures
 from app.schema import migration_config
 from scripts.monitor_uptime import alert_team, check_uptime
 
+
+@pytest.fixture
+def consent_not_required(monkeypatch):
+    # These tests are about other upload rules; accepting the privacy policy is tested in test_privacy_consent.py.
+    monkeypatch.setenv("FEATURE_PRIVACY_CONSENT", "false")
+
 PASSWORD = 'Synthetic-password-123'
 HASH = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
 
@@ -143,6 +149,7 @@ def test_dashboard_errors_are_newest_first_bounded_and_do_not_return_identifiers
         assert api.client.get(f'/admin/monitoring?{query}', headers=api.headers('admin')).status_code == 422
 
 
+@pytest.mark.usefixtures("consent_not_required")
 def test_every_passport_content_read_is_audited_and_owner_cannot_forge_history(api, monkeypatch):
     upload_id = upload(api)
     monkeypatch.setattr('app.passport.router.extract_passport', lambda image, reader: Extraction(status=ExtractionStatus.UNREADABLE))
@@ -166,6 +173,7 @@ def test_every_passport_content_read_is_audited_and_owner_cannot_forge_history(a
     assert api.client.get('/activity/documents?page_size=1&page=2', headers=headers).json()['items'][0]['purpose'] == 'review_read'
 
 
+@pytest.mark.usefixtures("consent_not_required")
 def test_audit_failure_blocks_passport_content(api, monkeypatch):
     upload_id = upload(api)
     def failed(*args):
@@ -179,6 +187,7 @@ def test_audit_failure_blocks_passport_content(api, monkeypatch):
         assert errors[0]['source'] == '/passports/{upload_id}/image'
 
 
+@pytest.mark.usefixtures("consent_not_required")
 def test_delete_account_removes_all_related_rows_files_and_invalidates_both_tokens(api):
     upload_id = upload(api)
     assert api.client.get(f'/passports/{upload_id}/image', headers=api.headers('one')).status_code == 200
@@ -229,6 +238,7 @@ def test_deletion_refuses_cookie_from_a_different_signed_in_account(api):
     assert api.client.get('/auth/me', headers=api.headers('two')).status_code == 200
 
 
+@pytest.mark.usefixtures("consent_not_required")
 def test_failed_filesystem_cleanup_is_durable_blocks_reactivation_and_can_be_retried(api, monkeypatch):
     upload(api)
     from app.privacy import remove_owner_folder
@@ -276,7 +286,9 @@ def test_google_only_deletion_verifies_connected_subject(api, monkeypatch):
 def test_all_private_endpoints_reject_anonymous_requests_before_body_validation(api):
     public = {'/auth/register', '/auth/login', '/auth/config', '/auth/google', '/auth/google/link-login', '/auth/refresh', '/auth/logout',
               '/auth/forgot-password', '/auth/verify-reset-code', '/auth/reset-password',
-              '/health/live', '/health/ready', '/features'}
+              '/health/live', '/health/ready', '/features',
+              # Visa guides are meant for everyone, before signing in (Sprint 5).
+              '/visa-guides', '/visa-guides/{guide_id}'}
     for route in iter_route_contexts(api.app.routes):
         if route.path in public or not hasattr(route, 'dependant'):
             continue
@@ -311,6 +323,7 @@ def test_owner_lock_serializes_independent_workers(tmp_path):
     assert second_entered.is_set()
 
 
+@pytest.mark.usefixtures("consent_not_required")
 def test_account_erasure_waits_for_inflight_upload_and_leaves_no_late_files(api, monkeypatch):
     entered, release = Event(), Event()
     save = api.app.state.passport_storage.save

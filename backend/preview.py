@@ -58,7 +58,8 @@ def seed_demo():
     from sqlmodel import Session, select
     from uuid import uuid4
     from app.database import build_engine
-    from app.models import ActivityEvent, Traveler, Application
+    from app.consent import PRIVACY_POLICY_VERSION
+    from app.models import ActivityEvent, PrivacyConsent, Traveler, Application
     engine = build_engine()
     with Session(engine) as session:
         for label, role in (("admin", "admin"), ("traveler", "traveler"), ("delete-me", "traveler")):
@@ -68,6 +69,8 @@ def seed_demo():
             traveler = Traveler(name=f"Demo {label.title()}", email=email, role=role,
                 password_hash=bcrypt.hashpw(b"Local-preview-only-123!", bcrypt.gensalt()).decode())
             session.add(traveler); session.flush()
+            # Demo accounts have read the policy; newly registered accounts are asked (CMPS271-115).
+            session.add(PrivacyConsent(traveler_id=traveler.id, policy_version=PRIVACY_POLICY_VERSION))
             if role == "traveler":
                 for status in ("DRAFT", "INELIGIBLE", "ANSWERS_COMPLETE"):
                     session.add(Application(id=uuid4().hex, traveler_id=traveler.id, questionnaire_id="schengen-short-stay",

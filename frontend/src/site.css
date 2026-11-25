@@ -470,3 +470,10 @@
   .privacy { padding-block-start: 18px; }
   .section-dark .container { max-inline-size: calc(100% - 32px); }
 }
+
+/* Link from each destination card to its visa guide (Sprint 5, behind visa_guide). */
+.destination .destination-guide {
+  color: var(--brand);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}

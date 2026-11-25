@@ -5,7 +5,9 @@ import { ArrowIcon, MenuIcon } from './icons'
 import AppearanceSelect from './AppearanceSelect'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
+import Feature from './Feature'
 import IdleGuard from './IdleGuard'
+import PrivacyConsent from './PrivacyConsent'
 import SectionNav from './SectionNav'
 import { restoreSession, signOut, type Traveler } from './auth'
 import { disableGoogleAutoSelect } from './googleIdentity'
@@ -19,6 +21,7 @@ function MainLinks({ signedIn }: { signedIn: boolean }) {
     <>
       <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
       <Link to="/#destinations" data-activity-id="destinations-link">Destinations</Link>
+      <Feature name="visa_guide"><NavLink to="/visas" data-activity-id="visa-guides-link">Visa guides</NavLink></Feature>
       <Link to="/#privacy" data-activity-id="privacy-link">Privacy</Link>
       <NavLink to="/faq" data-activity-id="faq-link">FAQ</NavLink>
     </>
@@ -140,6 +143,8 @@ export default function Layout() {
       <main id="main"><Outlet context={{ traveler } satisfies LayoutContext} /></main>
       {/* The passport and application pages have their own assistant with that page's context. */}
       {traveler && !/^\/(passport|apply)(\/|$)/.test(location.pathname) && <GlobalAssistant />}
+      {/* Signed in: accept the privacy policy before uploading documents (CMPS271-115). Keyed so another account checks again. */}
+      {traveler && <Feature name="privacy_consent"><PrivacyConsent key={traveler.id} /></Feature>}
 
       <footer className="site-footer">
         <div className="container">
@@ -150,6 +155,7 @@ export default function Layout() {
             <nav className="footer-links" aria-label="Footer">
               <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
               <Link to="/faq" data-activity-id="faq-link">FAQ</Link>
+              <Feature name="visa_guide"><Link to="/visas" data-activity-id="visa-guides-link">Visa guides</Link></Feature>
               {traveler
                 ? <>
                     <Link to="/dashboard" data-activity-id="dashboard-link">Your applications</Link>

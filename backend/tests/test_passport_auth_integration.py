@@ -1,9 +1,16 @@
+import pytest
 from io import BytesIO
 
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
 from app.main import create_app
+
+
+@pytest.fixture(autouse=True)
+def consent_not_required(monkeypatch):
+    # These tests are about other upload rules; accepting the privacy policy is tested in test_privacy_consent.py.
+    monkeypatch.setenv("FEATURE_PRIVACY_CONSENT", "false")
 
 
 def test_main_app_passport_routes_require_the_authenticated_owner(tmp_path, monkeypatch):
