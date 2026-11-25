@@ -31,7 +31,7 @@ from .schema import require_current_schema
 from .observability import install_private_no_store, install_request_logging
 from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
 from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
-                                run_notification_jobs, show_logs as show_notification_logs)
+                                record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
 from .security import audit, throttle
 from .password_reset import create_password_reset_router
 from .models import RegisterRequest, Traveler, TravelerPublic
@@ -165,11 +165,18 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     uploads_setting = os.environ.get("PASSPORT_UPLOADS_ENABLED", "true").lower()
     if uploads_setting not in {"true", "false"}:
         raise RuntimeError("PASSPORT_UPLOADS_ENABLED must be true or false.")
+
+    def remember_passport_expiry(traveler_id: int, fields) -> None:
+        # Only the expiry date, for reminders (CMPS271-36); kept while email notifications are on.
+        if app.state.feature_flags.is_on("email_notifications"):
+            record_passport_expiry(engine, traveler_id, fields.expiry_date)
+
     app.include_router(create_passport_router(
         passport_storage, current_traveler_id, record_event=record_passport_activity,
         uploads_enabled=uploads_setting == "true",
         check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
         upload_dependencies=[privacy_consent],
+        on_confirmed=remember_passport_expiry,
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).

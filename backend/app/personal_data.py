@@ -26,8 +26,8 @@ from sqlmodel import Session, SQLModel, select
 from .activity import record_activity
 from .agent.storage import AgentFiles
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
-                     DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PasswordResetChallenge,
-                     PasswordResetToken, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
+                     DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
+                     PasswordResetChallenge, PasswordResetToken, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
 from .documents.storage import DocumentStorage
 from .security import throttle
 
@@ -49,6 +49,7 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(TravelerProfile, "traveler", True),
     Holding(PrivacyConsent, "traveler", True),
     Holding(NotificationPreference, "traveler", True),
+    Holding(PassportExpiry, "traveler", True),
     Holding(GoogleIdentity, "traveler", True),
     Holding(AuthSession, "traveler", True, omit=("id", "refresh_hash")),
     Holding(Application, "traveler", True),
@@ -121,7 +122,8 @@ data.json        Everything we hold about you, one section per kind of record:
                  form-filling agent typed, assistant conversations, notifications
                  and your email settings, account activity, who opened your
                  passport files, and
-                 which privacy policy versions you accepted, and when.
+                 which privacy policy versions you accepted, and when, and your
+                 passport's expiry date if you saved one, for reminders.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
 agent/           Each screenshot the form-filling agent took (.png), by application.

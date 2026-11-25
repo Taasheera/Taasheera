@@ -101,6 +101,7 @@ def create_passport_router(
     uploads_enabled: bool = True,
     check_quality=lambda: False,
     upload_dependencies: list | None = None,
+    on_confirmed=None,
 ) -> APIRouter:
     router = APIRouter(prefix="/passports", tags=["passports"])
     TravelerId = Annotated[int, Depends(current_traveler_id)]
@@ -156,6 +157,9 @@ def create_passport_router(
     def save_review(upload_id: str, fields: ConfirmedPassportFields, response: Response, traveler_id: TravelerId):
         load_owned(traveler_id, upload_id, "review_update")
         storage.save_review(traveler_id, upload_id, fields.model_dump(mode="json"))
+        if on_confirmed:
+            # Such as remembering the expiry date for reminders (CMPS271-36).
+            on_confirmed(traveler_id, fields)
         if record_event:
             record_event(traveler_id, "passport_review", "success")
         response.headers["Cache-Control"] = "private, no-store"

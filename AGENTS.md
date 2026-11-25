@@ -217,3 +217,5 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     skipped; 3 failures: failed. Development without SMTP logs them. One API process only. Behind `email_notifications`.
     `NotificationPreference` (CMPS271-99, Account page) turns emails off per group of kinds; the bell shows all.
     The same timer reminds owners of drafts untouched for 7 days (CMPS271-101), once per stall.
+    Confirming a passport saves only its expiry date (`PassportExpiry`, CMPS271-36); the timer reminds at 180, 30
+    and 0 days, once each per date. Reminder texts never contain dates or passport fields.

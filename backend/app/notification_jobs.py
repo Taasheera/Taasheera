@@ -5,6 +5,8 @@ thread of the API process, while the `email_notifications` flag is on. Each run:
 
 - reminds the owner of each draft application left untouched for STALL_AFTER (CMPS271-101), once
   per stall: working on it again and leaving it another week earns a new reminder;
+- reminds travelers whose confirmed passport expires within six months, within a month, or has
+  expired (CMPS271-36), once each per passport;
 - emails every notification still marked "pending" (CMPS271-98), unless the traveler turned that kind
   of email off (CMPS271-99). A notification is saved wherever its event happens, including the agent
   worker's container, so its email copy waits here.
@@ -17,12 +19,12 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
 from .mailer import NotificationSender
-from .models import Application, Notification, Traveler
+from .models import Application, Notification, PassportExpiry, Traveler
 from .notification_preferences import wants_email
 from .notifications import application_name, notify
 
@@ -39,6 +41,7 @@ SUBJECTS = {
     "agent_finished": "Your embassy form is filled in",
     "agent_stopped": "The agent stopped filling your embassy form",
     "application_stalled": "Your visa application is waiting for you",
+    "passport_expiring": "A reminder about your passport",
 }
 DEFAULT_SUBJECT = "News from Taasheera"
 
@@ -132,10 +135,68 @@ def remind_stalled_applications(engine, *, now: datetime | None = None) -> int:
     return added
 
 
+# Days before expiry for each reminder, closest last. 0 means it has expired. No dates in the text.
+EXPIRY_REMINDERS = {
+    180: ("Your passport expires in less than six months. Many embassies want at least six months of "
+          "validity left, so check this before you apply."),
+    30: "Your passport expires in less than a month. Renew it before you apply for a visa.",
+    0: "Your passport has expired. Renew it before you apply for a visa, then upload the new one.",
+}
+
+
+def record_passport_expiry(engine, traveler_id: int, expiry_date: date | None) -> None:
+    """Remember the confirmed passport's expiry date. A new date starts its reminders again."""
+    with Session(engine) as session:
+        row = session.get(PassportExpiry, traveler_id)
+        if expiry_date is None:
+            if row is not None:
+                session.delete(row)
+        elif row is None:
+            session.add(PassportExpiry(traveler_id=traveler_id, expiry_date=expiry_date))
+        elif row.expiry_date != expiry_date:
+            row.expiry_date, row.reminded_days = expiry_date, None
+            row.recorded_at = datetime.now(timezone.utc)
+            session.add(row)
+        session.commit()
+
+
+def _expiry_level(days_left: int) -> int | None:
+    if days_left < 0:
+        return 0
+    if days_left <= 30:
+        return 30
+    if days_left <= 180:
+        return 180
+    return None
+
+
+def remind_expiring_passports(engine, *, now: datetime | None = None) -> int:
+    """Add the passport reminders that are due. Returns how many were added."""
+    now = now or datetime.now(timezone.utc)
+    today = now.date()
+    added = 0
+    with Session(engine) as session:
+        for row in session.exec(select(PassportExpiry)).all():
+            level = _expiry_level((row.expiry_date - today).days)
+            if level is None or (row.reminded_days is not None and row.reminded_days <= level):
+                continue
+            owner = session.get(Traveler, row.traveler_id)
+            if owner is None or owner.status != "active":
+                continue
+            reminder = notify(session, row.traveler_id, "passport_expiring", EXPIRY_REMINDERS[level], link="/passport")
+            reminder.created_at = now
+            row.reminded_days = level
+            session.add(row)
+            session.commit()
+            added += 1
+    return added
+
+
 def run_notification_jobs(engine, sender: NotificationSender | None, site_url: str, *,
                           now: datetime | None = None) -> EmailResult:
     """One run of every notification job: first add the reminders that are due, then email."""
     remind_stalled_applications(engine, now=now)
+    remind_expiring_passports(engine, now=now)
     return send_pending_emails(engine, sender, site_url, now=now)
 
 
