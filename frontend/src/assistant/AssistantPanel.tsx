@@ -1,3 +1,4 @@
+import { ArrowIcon } from '../icons'
 import AssistantText from './AssistantText'
 import VoiceDraft from './VoiceDraft'
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
@@ -137,8 +138,8 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
         <div className="assistant-compose-actions">
           <VoiceDraft disabled={pending} onText={text =>
             setDraft(previous => [previous.trim(), text].filter(Boolean).join(' ').slice(0, MAX_LENGTH))} />
-          <button type="submit" className="button button-primary" disabled={pending || !draft.trim()}
-            data-activity-id="assistant-send">Send</button>
+          <button type="submit" className="button button-primary assistant-icon-button" disabled={pending || !draft.trim()}
+            data-activity-id="assistant-send"><ArrowIcon /><span className="visually-hidden">Send</span></button>
         </div>
       </form>
     </section>}
@@ -147,7 +148,7 @@ export default function AssistantPanel({ step, open, onOpenChange }: Props) {
       aria-expanded={open} aria-controls={open ? panelId : undefined}
       onClick={() => (open ? close() : onOpenChange(true))} data-activity-id="assistant-open">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12v8H9l-3.5 3v-3H4z" /></svg>
-      {open ? 'Close assistant' : copy(step).open}
+      <span className="assistant-launcher-text">{open ? 'Close assistant' : copy(step).open}</span>
     </button>
   </div>
 }

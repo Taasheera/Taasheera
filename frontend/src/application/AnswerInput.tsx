@@ -1,5 +1,6 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
+import { ArrowIcon } from '../icons'
 import { countries } from '../countries'
 import ReviewForm from '../passport/ReviewForm'
 import {
@@ -51,8 +52,8 @@ export default function AnswerInput({ question, applicationId, initial, onAnswer
   const cancel = onCancel && <button type="button" className="button button-secondary" onClick={onCancel}
     disabled={saving} data-activity-id="application-cancel-change">{cancelLabel}</button>
   const continueButton = (label = 'Continue', disabled = false) =>
-    <button type="submit" className="button button-primary" disabled={saving || disabled}
-      aria-busy={saving || undefined} data-activity-id="application-answer">{saving ? 'Saving…' : label}</button>
+    <button type="submit" className="button button-primary button-with-icon" disabled={saving || disabled}
+      aria-busy={saving || undefined} data-activity-id="application-answer">{saving ? 'Saving…' : label}<span className="action-icon" aria-hidden="true"><ArrowIcon /></span></button>
   const errorLine = error && <p id={errorId} className="answer-error" role="alert">{error}</p>
 
   if (question.type === 'yes_no' || (question.type === 'choice' && (question.options?.length ?? 0) <= MAX_BUTTONS)) {
