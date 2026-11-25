@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { APPLICATION_CHANGED_EVENT } from '../assistant/openAssistant'
+import PortalGuide from '../submission/PortalGuide'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { getApplication, getTimeline, isRecorded, type ApplicationState, type Timeline, type TimelineEvent } from '../application/api'
 import { formatAnswer, formatShortDate, sourceLabel, travellers } from '../application/format'
@@ -31,6 +32,8 @@ function Detail({ applicationId }: { applicationId: string }) {
   // null while loading, 'missing' for an id that isn't the traveler's, an Error when loading failed.
   const [loaded, setLoaded] = useState<Loaded | 'missing' | Error | null>(null)
   const [attempt, setAttempt] = useState(0)
+  // An upload changes what the PDF review checks, so it reviews again (it is keyed on this).
+  const [documentChanges, setDocumentChanges] = useState(0)
 
   const name = loaded && typeof loaded === 'object' && !(loaded instanceof Error) ? applicationName(loaded.application) : null
   useEffect(() => { document.title = `${name ?? 'Your application'} | Taasheera` }, [name])
@@ -114,12 +117,16 @@ function Detail({ applicationId }: { applicationId: string }) {
     </div>
 
     <Feature name="supporting_documents">
-      <DocumentChecklist applicationId={application.id} version={application.updated_at} />
+      <DocumentChecklist applicationId={application.id} version={application.updated_at}
+        onChange={() => setDocumentChanges(count => count + 1)} />
     </Feature>
 
     {!archived && !isRecorded(application.status) && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
-      <FormReview key={application.updated_at} applicationId={application.id} focused={hash === '#embassy-pdf'} />
+      <FormReview key={`${application.updated_at}-${documentChanges}`} applicationId={application.id} focused={hash === '#embassy-pdf'} />
     </Feature>}
+
+    {!archived && !isRecorded(application.status) && application.destination !== 'SCHENGEN' &&
+      <PortalGuide key={application.updated_at} applicationId={application.id} focused={hash === '#official-form'} />}
 
     <Feature name="agent_form_filling">
       <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
