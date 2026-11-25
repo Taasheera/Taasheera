@@ -285,12 +285,12 @@
 .dash-delete {
   border: 1px solid var(--danger);
   background: transparent;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .dash-delete:hover:not(:disabled) {
   background: var(--card);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .dash-danger {

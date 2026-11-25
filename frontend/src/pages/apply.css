@@ -137,7 +137,7 @@
 }
 
 .apps-status-ineligible {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .apps-status-answers_complete {
@@ -296,7 +296,7 @@
 }
 
 .bubble-stop {
-  color: var(--danger);
+  color: var(--danger-text);
   font-weight: 600;
 }
 
@@ -418,7 +418,7 @@
 
 .answer-error {
   margin: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -525,11 +525,11 @@ a.button {
 .completeness-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .completeness-head h2 { font-size: 1.05rem; margin: 0; }
 .completeness-ok { color: var(--ok); }
-.completeness-bad { color: var(--danger); }
+.completeness-bad { color: var(--danger-text); }
 .completeness-issues { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .4rem; }
 .completeness-issue { line-height: 1.4; }
 .completeness-tag { display: inline-block; font-size: .75rem; font-weight: 600; padding: .1rem .45rem; border-radius: 999px; margin-inline-end: .35rem; }
-.is-blocking .completeness-tag { color: var(--danger); }
+.is-blocking .completeness-tag { color: var(--danger-text); }
 .is-warning .completeness-tag { color: var(--warn-text); }
 
 /* Supporting documents under the finished questions, before the check (CMPS271-29). */
@@ -645,7 +645,7 @@ a.button {
 .guided-answers > .bubble { align-self: stretch; }
 .guided-answers > .bubble-assistant,
 .guided-answers .chat-turn-inner > .bubble-assistant { color: var(--fg-muted); }
-.guided-answers .bubble-stop { color: var(--danger); }
+.guided-answers .bubble-stop { color: var(--danger-text); }
 .guided-answers .bubble-notice { color: var(--warn-text); }
 .guided-answers .bubble-done { color: var(--ok); }
 .guided-answers .chat-turn-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: baseline; gap: 0; }

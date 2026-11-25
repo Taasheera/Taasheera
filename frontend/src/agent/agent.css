@@ -43,7 +43,7 @@
 
 .agent-error {
   margin: 8px 0 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
 }
 

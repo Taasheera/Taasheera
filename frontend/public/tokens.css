@@ -30,6 +30,7 @@
   --warn: light-dark(#c08a1e, #e2b04a);
   --warn-text: light-dark(#7a5410, #e2b04a);
   --danger: light-dark(#c8432f, #ff8b79);
+  --danger-text: light-dark(#b93b2a, #ff8b79);
   --danger-fill: light-dark(#a33325, #ff8b79);
   --paper-bg: #eeede7;
   --shadow-float: 0 24px 48px -24px rgb(0 0 0 / .38);

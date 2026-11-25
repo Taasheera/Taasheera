@@ -292,7 +292,7 @@
 
 .notice-ok { color: var(--fg); }
 .notice-warn { color: var(--warn-text); }
-.notice-danger { color: var(--danger); }
+.notice-danger { color: var(--danger-text); }
 
 .review-grid {
   display: grid;
@@ -368,7 +368,7 @@
 
 .field-error {
   margin: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -388,7 +388,7 @@
 .trust-verified,
 .trust-corrected { color: var(--fg); }
 .trust-confirm { color: var(--warn-text); }
-.trust-failed { color: var(--danger); }
+.trust-failed { color: var(--danger-text); }
 .trust-edited { color: var(--fg-muted); }
 
 .review-actions {
@@ -423,7 +423,7 @@
 }
 
 .passport-saved p { margin: 0; }
-.passport-message { color: var(--danger); }
+.passport-message { color: var(--danger-text); }
 
 .passport-disclaimer {
   max-width: 680px;

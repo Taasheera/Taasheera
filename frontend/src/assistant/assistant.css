@@ -223,7 +223,7 @@
   margin: 0;
   padding: 8px 12px;
   border-radius: 10px;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -269,5 +269,5 @@
 .assistant-icon-button { padding: 0; inline-size: 44px; min-block-size: 44px; flex: none; }
 .assistant-icon-button[aria-pressed='true'] { border-color: var(--fg-muted); color: var(--fg-muted); }
 .voice-draft { display: grid; gap: 5px; }
-.voice-draft span[role='status'] { color: var(--danger); font-size: 12px; }
+.voice-draft span[role='status'] { color: var(--danger-text); font-size: 12px; }
 :dir(rtl) .assistant-icon-button[type='submit'] .icon { transform: scaleX(-1); }

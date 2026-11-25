@@ -164,7 +164,7 @@
 }
 
 .admin-status { font-size: 13px; font-weight: 600; }
-.admin-status.status-dot--danger { color: var(--danger); }
+.admin-status.status-dot--danger { color: var(--danger-text); }
 
 .admin-role {
   background: var(--bg-raised);
@@ -249,5 +249,5 @@
 }
 
 .admin-error {
-  color: var(--danger);
+  color: var(--danger-text);
 }

@@ -150,5 +150,5 @@ a.notification-message:hover {
 }
 
 .notification-error {
-  color: var(--danger);
+  color: var(--danger-text);
 }
