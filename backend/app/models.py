@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, get_args
 from pydantic import BaseModel, ConfigDict, EmailStr, SecretStr, StringConstraints, field_validator
 from pydantic import Field as SchemaField
 from sqlmodel import Field, SQLModel
-from sqlalchemy import JSON, CheckConstraint, Column, Text
+from sqlalchemy import JSON, CheckConstraint, Column, Text, UniqueConstraint
 
 
 # Stored as plain strings guarded by named CHECK constraints (portable; no database enum types).
@@ -60,6 +60,19 @@ class TravelerProfile(SQLModel, table=True):
     address_region: str | None = Field(default=None, sa_type=Text, repr=False)
     address_postal_code: str | None = Field(default=None, sa_type=Text, repr=False)
     address_country: str | None = Field(default=None, max_length=3, repr=False)
+
+
+class PrivacyConsent(SQLModel, table=True):
+    """One privacy policy version a traveler accepted, and when (CMPS271-115).
+
+    A new policy version needs a new acceptance, so earlier rows stay as the record of what was agreed.
+    """
+
+    __table_args__ = (UniqueConstraint("traveler_id", "policy_version", name="uq_privacyconsent_traveler_version"),)
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    policy_version: str = Field(max_length=20)
+    accepted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Application(SQLModel, table=True):

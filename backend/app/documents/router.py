@@ -88,6 +88,7 @@ def create_documents_router(
     record_event: Callable[[int, str, str], None] | None = None,
     reader: Callable = read_text,
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
+    upload_dependencies: list | None = None,
 ) -> APIRouter:
     from ..applications.router import saved_profile
     from ..auth import check_origin
@@ -96,6 +97,8 @@ def create_documents_router(
                        dependencies=[Depends(require_feature("supporting_documents"))])
     SessionDep = Annotated[Session, Depends(get_session)]
     TravelerDep = Annotated[Traveler, Depends(current_traveler)]
+    # Every route that accepts a new file also runs these, such as privacy policy acceptance (CMPS271-115).
+    upload_checks = [Depends(check_origin), *(upload_dependencies or [])]
 
     def owned(session: Session, traveler: Traveler, application_id: str) -> Application:
         application = session.get(Application, application_id)
@@ -164,7 +167,7 @@ def create_documents_router(
                                     latest_passport=load_latest_passport(traveler.id),
                                     profile=saved_profile(session, traveler.id))
 
-    @router.post("", response_model=DocumentPublic, status_code=201, dependencies=[Depends(check_origin)])
+    @router.post("", response_model=DocumentPublic, status_code=201, dependencies=upload_checks)
     def upload(application_id: str, requirement: Annotated[str, Form(max_length=40)], file: UploadFile,
                traveler: TravelerDep, session: SessionDep, response: Response):
         application = writable(session, traveler, application_id)
@@ -194,7 +197,7 @@ def create_documents_router(
         response.headers["Cache-Control"] = "private, no-store"
         return public(document)
 
-    @router.put("/{document_id}", response_model=DocumentPublic, dependencies=[Depends(check_origin)])
+    @router.put("/{document_id}", response_model=DocumentPublic, dependencies=upload_checks)
     def replace(application_id: str, document_id: str, file: UploadFile,
                 traveler: TravelerDep, session: SessionDep, response: Response):
         """A new file for the same requirement. It gets a new id, so a cached old file is never shown as the new one."""

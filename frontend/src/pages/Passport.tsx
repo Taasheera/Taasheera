@@ -10,6 +10,7 @@ import {
   type Extraction, type FieldKey, type PassportFields,
 } from '../passport/fields'
 import { signInPath } from '../paths'
+import { reportConsentRequired } from '../consent'
 import '../ui.css'
 import './passport.css'
 
@@ -88,6 +89,7 @@ function PassportPage({ uploadId }: { uploadId?: string }) {
       const body = new FormData()
       body.append('file', file)
       const response = await protectedFetch('/passports', { method: 'POST', body })
+      reportConsentRequired(response)
       if (!response.ok) throw new Error(await problemText(response, 'Could not upload the photo. Please try again.'))
       const { id } = await response.json() as { id: string }
       navigate(`/passport/${id}${returnTo ? `?return=${encodeURIComponent(returnTo)}` : ''}`)

@@ -207,3 +207,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 43. **Scan quality and assistant.** Passport quality checks run before OCR behind `passport_scan_quality`.
     Application chat offers question explanations and supported browsers dictate into an editable draft.
     Policy citations resolve server-side to official guidance for the four supported visa types.
+44. **Privacy consent (CMPS271-115).** `PrivacyConsent` keeps each accepted policy version and time. Passport and
+    document uploads (POST/PUT) answer 403 with `X-Privacy-Consent: required` until the traveler accepts
+    `PRIVACY_POLICY_VERSION` (`app/consent.py`, the date in `public/privacy.html`; bump both to ask everyone again).
+    Signed-in pages show the prompt; demo seeds accept. Behind `privacy_consent`.

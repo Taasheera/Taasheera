@@ -4,7 +4,9 @@ import { toast, Toaster } from 'sonner'
 import { ArrowIcon, MenuIcon } from './icons'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
+import Feature from './Feature'
 import IdleGuard from './IdleGuard'
+import PrivacyConsent from './PrivacyConsent'
 import SectionNav from './SectionNav'
 import { restoreSession, signOut, type Traveler } from './auth'
 import { disableGoogleAutoSelect } from './googleIdentity'
@@ -137,6 +139,8 @@ export default function Layout() {
       <main id="main"><Outlet context={{ traveler } satisfies LayoutContext} /></main>
       {/* The passport and application pages have their own assistant with that page's context. */}
       {traveler && !/^\/(passport|apply)(\/|$)/.test(location.pathname) && <GlobalAssistant />}
+      {/* Signed in: accept the privacy policy before uploading documents (CMPS271-115). Keyed so another account checks again. */}
+      {traveler && <Feature name="privacy_consent"><PrivacyConsent key={traveler.id} /></Feature>}
 
       <footer className="site-footer">
         <div className="container">
