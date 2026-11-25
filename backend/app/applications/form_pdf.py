@@ -11,6 +11,7 @@ from pypdf import PdfReader, PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObject, RectangleObject, TextStringObject
 
 from . import flow
+from .form_wording import FIXED_ON_FORMS, OCCUPATION_ON_FORMS
 
 DIRECTORY = Path(__file__).with_name("forms")
 
@@ -23,7 +24,9 @@ class FieldMap(BaseModel):
     sources: list[str]
     box: tuple[float, float, float, float] | None = None
     marks: dict[str, tuple[float, float]] | None = None
-    formatter: Literal["answer", "date", "address"] = "answer"
+    formatter: Literal["answer", "date", "address", "occupation"] = "answer"
+    # A box ticked whenever its source is answered, e.g. "Ordinary passport" once a passport is confirmed.
+    fixed: str | None = None
 
 
 class FormMap(BaseModel):
@@ -77,7 +80,14 @@ def build_values(form: FormMap, questionnaire: flow.Questionnaire, answers: flow
                 raw = raw.get(subfield) if isinstance(raw, dict) else None
             if raw is None or raw == "":
                 continue
-            answer = flow.display_value(question, raw) if question and not subfield else str(raw)
+            if field.fixed is not None:
+                raw = field.fixed
+            if field.fixed is not None:
+                answer = FIXED_ON_FORMS.get(field.fixed, field.fixed)
+            else:
+                answer = flow.display_value(question, raw) if question and not subfield else str(raw)
+            if field.formatter == "occupation":
+                answer = OCCUPATION_ON_FORMS.get(str(raw), answer)
             if field.formatter == "address":
                 answer = ", ".join(str(raw[part]) for part in ("line1", "line2", "city", "region", "postal_code", "country")
                                    if raw.get(part))
