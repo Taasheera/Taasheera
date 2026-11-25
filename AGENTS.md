@@ -224,3 +224,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `applications/visa_guides.json` (official https domains only, `checked_on` date). A definite
     "need a visa" answer only for nationalities checked against the official list; others get the checker.
     Re-check the figures before each release. Behind `visa_guide`.
+47. **Fast pages on slow connections (CMPS271-137).** nginx gzips pages and built files (`gzip_proxied any`:
+    CloudFront sends Via, and its CachingDisabled policy does not compress); API answers stay uncompressed.
+    `/assets/` keeps a year (`immutable`) and a missing file is a 404, never `index.html`. Signed-in, sign-in
+    and staff pages are `lazy` routes (`later()` in `routes.tsx`), so home, FAQ and visa guides download less.
+    Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
