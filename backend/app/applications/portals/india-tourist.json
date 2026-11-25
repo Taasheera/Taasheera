@@ -1,0 +1,63 @@
+{
+  "title": "Indian Visa Online application form",
+  "portal": {"label": "Open Indian Visa Online", "url": "https://indianvisaonline.gov.in/"},
+  "date_format": "%d/%m/%Y",
+  "before": [
+    "Choose the e-Tourist Visa if your passport is on the e-Visa list. Otherwise choose the regular visa application (Lebanese and Egyptian passports).",
+    "The first page has a CAPTCHA and gives you a temporary application ID: write it down to come back later.",
+    "Dates are day/month/year. The dates below are already in that order."
+  ],
+  "sections": [
+    {"title": "Registration", "fields": [
+      {"label": "Nationality", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "Passport type", "sources": ["passport"], "formatter": "fixed", "fixed": "ordinary"},
+      {"label": "Port of arrival", "sources": ["port_of_arrival"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "Email ID", "sources": ["account_email"]},
+      {"label": "Expected date of arrival", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "Visa type", "sources": ["purpose"], "note": "Choose Tourist visa (or e-Tourist Visa)."}
+    ]},
+    {"title": "Applicant details", "fields": [
+      {"label": "Surname (exactly as in passport)", "sources": ["passport.surname"]},
+      {"label": "Given name (exactly as in passport)", "sources": ["passport.given_names"]},
+      {"label": "Gender", "sources": ["passport.sex"]},
+      {"label": "Town/city of birth", "sources": ["place_of_birth"]},
+      {"label": "Country of birth", "sources": ["country_of_birth"], "formatter": "country"},
+      {"label": "Citizenship/national ID number", "sources": ["passport.personal_number"], "note": "Write NA if your passport shows none."},
+      {"label": "Educational qualification", "sources": ["education"]},
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Place of issue", "sources": ["passport_issue_place"]},
+      {"label": "Date of issue", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Date of expiry", "sources": ["passport.expiry_date"], "formatter": "date"}
+    ], "yourself": ["Religion and visible identification marks", "Whether you changed your name or hold another passport"]},
+    {"title": "Address and family", "fields": [
+      {"label": "Present address", "sources": ["home_address"], "formatter": "address"},
+      {"label": "Phone / mobile number", "sources": ["phone"]},
+      {"label": "Father's name", "sources": ["father_name"]},
+      {"label": "Mother's name", "sources": ["mother_name"]},
+      {"label": "Marital status", "sources": ["marital_status"]},
+      {"label": "Present occupation", "sources": ["job_title", "occupation"], "formatter": "occupation"},
+      {"label": "Employer name and address", "sources": ["employer", "school"]}
+    ], "yourself": ["Your parents' nationality and place of birth", "Spouse's details, if married", "Whether your parents or grandparents were Pakistani nationals"]},
+    {"title": "Visa details", "fields": [
+      {"label": "Places to be visited", "sources": ["places_to_visit"]},
+      {"label": "Expected port of exit", "sources": ["port_of_arrival"], "note": "Change it if you'll leave from a different airport."},
+      {"label": "Have you ever visited India before?", "sources": ["previous_india_visit"]},
+      {"label": "Has an Indian visa ever been refused?", "sources": ["previous_refusal"]},
+      {"label": "Countries visited in the last 10 years", "sources": ["countries_visited"]},
+      {"label": "Reference in India", "sources": ["reference_in_india"]},
+      {"label": "Reference in your home country", "sources": ["reference_at_home"]}
+    ], "yourself": ["SAARC countries visited in the last 3 years", "Details of earlier Indian visas"]},
+    {"title": "Additional questions", "yourself": ["The yes/no security and criminal-record questions, then the declaration. Answer each one yourself."]},
+    {"title": "Uploads", "yourself": ["Your square photo (JPEG) and the passport details page (PDF); for an e-Visa, keep each under the size the page shows"]}
+  ],
+  "after": [
+    "e-Tourist Visa: pay online, wait for the email, and check it says GRANTED before you fly. Print it and give your fingerprints on arrival.",
+    "Regular visa: print the completed form, sign it, and take it with your passport, photo and documents to the Embassy of India.",
+    "Record the decision on your dashboard."
+  ],
+  "sources": [
+    {"label": "Indian Visa Online: e-Visa", "url": "https://indianvisaonline.gov.in/evisa/"},
+    {"label": "Embassy of India, Beirut: visa services", "url": "https://indianembassybeirut.gov.in/visa-service"}
+  ]
+}

@@ -7,7 +7,8 @@ from app.applications import flow
 from app.applications.portal_guide import build_guide, load_guide
 from test_applications_api import SPECIMEN, api, put  # noqa: F401
 
-GUIDED = ["uk-standard-visitor", "us-b2-tourist", "canada-visitor"]
+GUIDED = ["uk-standard-visitor", "us-b2-tourist", "canada-visitor", "china-tourist-l", "japan-short-stay", "india-tourist",
+          "turkiye-evisa"]
 
 
 @pytest.mark.parametrize("questionnaire_id", GUIDED)
@@ -57,3 +58,22 @@ def test_owner_reads_the_guide_and_others_get_404(api):
     assert client.get(f"/applications/{application_id}/portal-guide", headers=other).status_code == 404
     schengen = client.post("/applications", headers=owner, json={"destination": "SCHENGEN", "visa_type": "short_stay"}).json()["id"]
     assert client.get(f"/applications/{schengen}/portal-guide", headers=owner).status_code == 404
+
+
+def test_every_destination_except_schengen_has_a_guide_and_a_visa_guide_entry():
+    from app.applications.visa_guides import load_guides
+    ids = {q.id for q in flow.available_questionnaires()}
+    assert ids - {"schengen-short-stay"} == set(GUIDED)
+    guides = {guide.id: guide for guide in load_guides()}
+    assert guides["turkiye-evisa"].need.checked_nationalities == {"LBN": "no_visa"}
+    assert guides["china-tourist-l"].need.checked_nationalities == {"LBN": "visa"}
+
+
+def test_new_destinations_start_and_reach_their_questions(api):
+    client, _, headers, _ = api
+    starts = {("CHN", "tourist_l"): "purpose", ("JPN", "short_term_stay"): "purpose",
+              ("IND", "tourist"): "purpose", ("TUR", "e_visa"): "purpose"}
+    for (destination, visa_type), first in starts.items():
+        response = client.post("/applications", headers=headers[0], json={"destination": destination, "visa_type": visa_type})
+        assert response.status_code == 201, response.json()
+        assert response.json()["current"]["id"] == first

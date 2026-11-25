@@ -17,5 +17,5 @@ def occupation_on_form(answers: dict) -> str | None:
     return OCCUPATION_ON_FORMS.get(occupation) if occupation else None
 
 # Boxes ticked by a field's "fixed" value, as the review table names them.
-FIXED_ON_FORMS = {"ordinary": "Ordinary passport", "regular": "Regular"}
+FIXED_ON_FORMS = {"ordinary": "Ordinary passport", "regular": "Regular", "tourist_l": "L (tourism)"}
 SEX_ON_FORMS = {"F": "Female", "M": "Male", "X": "Unspecified (X)"}

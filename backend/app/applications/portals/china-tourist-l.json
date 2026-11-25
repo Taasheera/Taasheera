@@ -1,0 +1,66 @@
+{
+  "title": "COVA: China Online Visa Application",
+  "portal": {"label": "Open COVA", "url": "https://cova.mfa.gov.cn/"},
+  "date_format": "%Y-%m-%d",
+  "before": [
+    "Create a COVA account with your email and choose the mission where you'll apply (for example the Chinese Visa Application Service Center in Beirut).",
+    "COVA dates are year-month-day. The dates below are already in that order.",
+    "Have a digital copy of your visa photo ready: COVA asks you to upload and crop it first."
+  ],
+  "sections": [
+    {"title": "Personal information", "fields": [
+      {"label": "Surname", "sources": ["passport.surname"]},
+      {"label": "Given names", "sources": ["passport.given_names"]},
+      {"label": "Sex", "sources": ["passport.sex"]},
+      {"label": "Date of birth", "sources": ["passport.birth_date"], "formatter": "date"},
+      {"label": "Place of birth (city)", "sources": ["place_of_birth"]},
+      {"label": "Country of birth", "sources": ["country_of_birth"], "formatter": "country"},
+      {"label": "Current nationality", "sources": ["passport.nationality"], "formatter": "country"},
+      {"label": "Passport type", "sources": ["passport"], "formatter": "fixed", "fixed": "ordinary"},
+      {"label": "Passport number", "sources": ["passport.document_number"]},
+      {"label": "Place of issue", "sources": ["passport_issue_place"]},
+      {"label": "Date of issue", "sources": ["passport_issue_date"], "formatter": "date"},
+      {"label": "Expiration date", "sources": ["passport.expiry_date"], "formatter": "date"}
+    ], "yourself": ["Chinese name and other names, if any", "Former nationalities", "National ID number"]},
+    {"title": "Type of visa", "fields": [
+      {"label": "Visa type", "sources": ["purpose"], "formatter": "fixed", "fixed": "tourist_l", "note": "Choose L (tourism)."},
+      {"label": "Number of entries", "sources": ["entries"]}
+    ], "yourself": ["Standard or express service", "Validity and longest stay you're asking for"]},
+    {"title": "Work", "fields": [
+      {"label": "Current occupation", "sources": ["job_title", "occupation"], "formatter": "occupation"},
+      {"label": "Employer or school, and its address", "sources": ["employer", "school"]}
+    ], "yourself": ["Employer's phone number, your supervisor's name and your work history for the last 5 years"]},
+    {"title": "Education", "yourself": ["Your highest level of education and the school's name"]},
+    {"title": "Family", "fields": [
+      {"label": "Home address", "sources": ["home_address"], "formatter": "address"},
+      {"label": "Phone number", "sources": ["phone"]},
+      {"label": "Email address", "sources": ["account_email"]},
+      {"label": "Marital status", "sources": ["marital_status"]}
+    ], "yourself": ["Your spouse's, parents' and children's names, nationalities and dates of birth"]},
+    {"title": "Travel", "fields": [
+      {"label": "Date of arrival", "sources": ["arrival_date"], "formatter": "date"},
+      {"label": "City of arrival", "sources": ["entry_city"]},
+      {"label": "Date of departure", "sources": ["departure_date"], "formatter": "date"},
+      {"label": "Itinerary in China", "sources": ["itinerary_cities"]},
+      {"label": "Address in China (hotel)", "sources": ["accommodation_details", "host_details"]},
+      {"label": "Emergency contact", "sources": ["emergency_contact"]},
+      {"label": "Who will pay for the trip", "sources": ["funding"]},
+      {"label": "Sponsor", "sources": ["sponsor_details"]}
+    ], "yourself": ["Inviting travel agency or person: name, address and phone, as on your invitation"]},
+    {"title": "Previous travel", "fields": [
+      {"label": "Have you been to China before?", "sources": ["previous_china_visit"]},
+      {"label": "Ever refused a Chinese visa or entry?", "sources": ["previous_refusal"]}
+    ], "yourself": ["Earlier Chinese visas (number and date)", "Countries you visited in the last 12 months"]},
+    {"title": "Other information", "yourself": ["Yes/no questions on health, criminal records and earlier visa overstays. Answer each one yourself."]},
+    {"title": "Declaration", "yourself": ["Confirm the form is yours and true, then submit. Print the confirmation form and sign it."]}
+  ],
+  "after": [
+    "Book a visit to the Chinese visa centre and bring the printed, signed COVA confirmation, your passport, photo and the documents on your checklist.",
+    "Give your fingerprints there and pay the visa and service fees (cash in US dollars in Beirut).",
+    "Collect your passport on the date on your pick-up form and record the decision on your dashboard."
+  ],
+  "sources": [
+    {"label": "Chinese Visa Application Service Center, Beirut: L visa", "url": "https://bio.visaforchina.cn/BEY3_EN/qianzhengyewu/jichuzhishi/banliliucheng/420378516949962755.html"},
+    {"label": "China Online Visa Application (COVA)", "url": "https://cova.mfa.gov.cn/"}
+  ]
+}
