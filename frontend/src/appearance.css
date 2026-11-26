@@ -1,24 +1,24 @@
-.appearance-select {
-  position: relative;
+/* The light/dark button in the header (ThemeToggle). Quiet until hovered, like the bell beside it. */
+.theme-toggle {
   display: inline-grid;
   flex: none;
   place-items: center;
-  inline-size: 44px;
-  block-size: 44px;
-  border: 1px solid var(--field-border);
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
+  background: transparent;
   color: var(--fg);
+  cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-out);
 }
 
-.appearance-select:hover { background: var(--surface-2); }
-.appearance-select:has(:focus-visible) { outline: 3px solid var(--brand); outline-offset: 3px; }
+.theme-toggle:hover { background: var(--surface-2); }
+.theme-toggle:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.theme-toggle svg { transition: transform 300ms var(--ease-out); }
+.theme-toggle:active svg { transform: rotate(-30deg) scale(.92); }
 
-.appearance-select select {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  font-size: 16px;
-  opacity: 0;
-  cursor: pointer;
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle, .theme-toggle svg { transition: none; }
 }

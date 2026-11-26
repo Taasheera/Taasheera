@@ -48,8 +48,9 @@ test('sign-in refuses a wrong password, then signs in, survives a reload and log
   await signIn(page, email, 'Critical Sign In')
   await page.reload()
   await expect(page.getByText(/^Welcome( back)?, Critical$/)).toBeVisible()
-  await page.getByRole('button', { name: 'Log out', exact: true }).first().click()
-  // Logging out from the site header goes to the home page, signed out.
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
+  // Logging out from the site header's account menu goes to the home page, signed out.
   await expect(page).toHaveURL('/')
   await expect(page.getByRole('link', { name: 'Log in', exact: true }).first()).toBeVisible()
   expect((await context.cookies()).some(cookie => cookie.name === 'taasheera_refresh')).toBe(false)

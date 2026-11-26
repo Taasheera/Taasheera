@@ -71,11 +71,11 @@
 .form-review-summary .eyebrow { margin: 0; color: var(--fg-muted); }
 .form-review-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
 .form-review-counts > div { display: flex; flex-direction: column-reverse; align-items: center; gap: 5px; padding: 12px 4px; border-radius: var(--radius-sm); background: var(--surface-2); }
-.form-review-counts dt { color: var(--panel-muted); font-size: 13px; }
+.form-review-counts dt { color: var(--fg-muted); font-size: 13px; }
 .form-review-counts dd { margin: 0; font: 700 clamp(30px, 4vw, 44px)/1 var(--font-display); letter-spacing: -0.05em; }
 .form-review-counts div:nth-child(2) dd { color: var(--warn-text); }
 .form-review-confirm { display: grid; gap: 12px; margin-block-start: 16px; padding-block-start: 16px; border-block-start: 1px solid var(--border); }
-.form-review-confirm p { color: var(--panel-muted); font-size: 14px; }
+.form-review-confirm p { color: var(--fg-muted); font-size: 14px; }
 .form-review-confirm ul { display: grid; gap: 6px; margin: 0; padding: 0; }
 .form-review-confirm label { display: flex; min-block-size: 44px; align-items: baseline; gap: 8px; font-size: 14px; cursor: pointer; }
 .form-review-confirm input { flex: none; inline-size: 18px; block-size: 18px; margin: 3px 0 0; accent-color: var(--brand); }

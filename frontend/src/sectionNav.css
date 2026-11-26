@@ -2,8 +2,8 @@
 .section-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 2px;
   min-inline-size: 0;
   font-family: var(--font-sans);
 }
@@ -49,14 +49,17 @@
   font-weight: 600;
 }
 
+/* The list sits centred in the bar; the assistant and bell are quiet icons at its end. */
+.section-nav-list { margin-inline: auto; }
+
 .section-nav-assistant {
-  margin-inline-start: 12px;
-  border-color: var(--field-border);
-  color: var(--fg);
-  font-weight: 600;
+  inline-size: 44px;
+  padding: 0;
+  margin-inline-start: auto;
 }
 
-.section-nav-ask::after { content: 'Ask'; }
+.section-nav-assistant + .notification-bell,
+.section-nav-list + .notification-bell { margin-inline-start: 0; }
 .section-nav-toggle { display: none; }
 
 @media (max-width: 980px) {

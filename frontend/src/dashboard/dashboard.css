@@ -78,6 +78,11 @@
   line-height: 1.6;
 }
 
+/* On the inverted panel the main button inverts too, or it would vanish into the panel. */
+.dash-start .button-primary,
+.dash-start .button-primary:hover:not(:disabled) { background: var(--panel-fg); color: var(--panel-bg); }
+.dash-start .button-primary .mini-circle { background: var(--panel-bg); color: var(--panel-fg); }
+
 .dash-start-cta {
   display: inline-flex;
   align-items: center;
@@ -116,6 +121,8 @@
 }
 
 .dash-small {
+  min-block-size: 40px;
+  white-space: nowrap;
   padding: 8px 16px;
   font-size: 14px;
 }
@@ -172,11 +179,14 @@
   list-style: none;
 }
 
+/* One row: code, name, progress and status, then the actions on a single line. */
 .dash-card {
-  display: flex;
-  gap: 16px 24px;
+  display: grid;
+  /* Fixed side columns keep progress, status and actions aligned from row to row. */
+  grid-template-columns: 48px minmax(0, 1fr) 300px 400px;
+  gap: 12px 24px;
   align-items: center;
-  padding-block: 20px;
+  padding-block: 18px;
   border-block-end: 1px solid var(--border);
 }
 
@@ -264,9 +274,9 @@
 
 .dash-card-side {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .dash-actions-wrap {
@@ -275,6 +285,19 @@
   align-items: flex-end;
   gap: 8px;
 }
+
+/* Beside the one main action, Duplicate, Archive and Delete are quiet text buttons. */
+.dash-card .dash-actions { flex-wrap: nowrap; gap: 0; }
+.dash-card .dash-actions > .button-secondary,
+.dash-card .dash-actions > .dash-delete {
+  border-color: transparent;
+  background: transparent;
+  color: var(--fg-muted);
+  padding-inline: 10px;
+}
+.dash-card .dash-actions > .button-secondary:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); }
+.dash-card .dash-actions > .dash-delete:hover:not(:disabled) { background: var(--surface-2); color: var(--danger-text); }
+.dash-card .dash-confirm .dash-actions { gap: 8px; }
 
 .dash-actions {
   display: flex;
@@ -550,17 +573,25 @@
 .dash-tabs { margin-block: 14px 4px; }
 .dash-tab { min-block-size: 44px; }
 .dash-destination-code { display: grid; flex: none; place-items: center; inline-size: 48px; block-size: 48px; border: 1px solid var(--field-border); border-radius: var(--radius-sm); font: 500 14px var(--font-mono); }
-.dash-row-status { display: flex; align-items: center; gap: 14px; }
-.dash-progress { display: flex; align-items: center; gap: 8px; inline-size: clamp(70px, 11vw, 160px); font: 500 13px var(--font-mono); }
+.dash-row-status { display: flex; align-items: center; gap: 18px; }
+.dash-progress { display: flex; flex: none; align-items: center; gap: 8px; inline-size: 110px; font: 500 13px var(--font-mono); }
+.dash-progress progress { flex: 1; min-inline-size: 0; }
+.dash-row-status .dash-updated { white-space: nowrap; }
 .dash-updated time, .dash-next + .dash-meta time { font-family: var(--font-mono); }
 .dash-card-title a { display: inline-flex; align-items: center; min-block-size: 44px; }
 .dash-detail-head .dash-flag { border-radius: var(--radius-sm); }
 
+@media (max-width: 1240px) {
+  .dash-card { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .dash-row-status { grid-column: 2 / -1; grid-row: 2; }
+}
 @media (max-width: 760px) {
-  .dash-row-status { flex: 1 1 100%; }
+  .dash-card { grid-template-columns: 48px minmax(0, 1fr); }
+  .dash-row-status, .dash-card-side { grid-column: 1 / -1; grid-row: auto; }
+  .dash-card-side { justify-content: flex-start; flex-wrap: wrap; }
+  .dash-card .dash-actions { flex-wrap: wrap; }
 }
 @media (max-width: 560px) {
   .dash-overview { grid-template-columns: 1fr; }
   .dash-overview-next, .dash-overview-passport { min-block-size: 140px; }
-  .dash-card { flex-wrap: wrap; gap: 12px; padding-inline: 0; }
 }
