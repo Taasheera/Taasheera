@@ -4,7 +4,7 @@ import GoogleAccountLink from './GoogleAccountLink'
 import GoogleSignIn from './GoogleSignIn'
 import { disableGoogleAutoSelect } from './googleIdentity'
 import './App.css'
-import AppearanceSelect from './AppearanceSelect'
+import ThemeToggle from './ThemeToggle'
 import CreateAccount from './CreateAccount'
 import ForgotPassword from './ForgotPassword'
 import SetNewPassword from './SetNewPassword'
@@ -87,7 +87,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
           <img className="brand-mark" src="/mark-ink.svg" alt="" />
           taasheera
         </a>
-        <AppearanceSelect />
+        <ThemeToggle />
       </header>}
       {!embedded && traveler && !isRecoveryPage && !checking && !redirecting && <SectionNav pathname={window.location.pathname} />}
 

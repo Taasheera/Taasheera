@@ -54,4 +54,28 @@
 .public-policies p { margin: 0; }
 .public-policies nav, .legal-page nav { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; }
 .public-policies nav a, .legal-page nav a { display: inline-flex; align-items: center; min-block-size: 44px; }
+
+/* Under the app, this static strip is the footer's last row: same ground, same width, one line. */
+.public-policies {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .25rem 1.5rem;
+  /* Lines up with .container in site.css (--container is 1192px). */
+  padding: .5rem max(24px, calc((100% - var(--container, 1192px)) / 2)) 1.25rem;
+  border-block-start: 0;
+  background: var(--bg-raised, Canvas);
+  font-size: 13px;
+}
+.public-policies::before {
+  content: '';
+  flex: 1 0 100%;
+  block-size: 1px;
+  margin-block-end: .5rem;
+  background: var(--legal-rule);
+}
+.public-policies nav a { color: var(--fg-muted, GrayText); text-decoration: none; }
+.public-policies nav a:hover { color: var(--fg, CanvasText); }
+@media (max-width: 600px) { .public-policies { padding-inline: 16px; } }
 @media (max-width: 900px) { .legal-page main { margin-inline: 1rem; } }

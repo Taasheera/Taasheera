@@ -18,13 +18,14 @@
   --brand-muted: var(--surface-2);
   --on-brand: var(--bg);
 
-  --panel-bg: light-dark(#0b0b0c, #29292b);
-  --panel-hover: light-dark(#29292b, #353537);
-  --panel-fg: #f0f0ed;
-  --panel-muted: #b5b5ba;
-  --panel-line: #57575c;
-  --panel-warn: #e2b04a;
-  --panel-danger: #ff8b79;
+  /* Emphasis panels invert the page: black on white pages, paper on charcoal ones. */
+  --panel-bg: light-dark(#0b0b0c, #f0f0ed);
+  --panel-hover: light-dark(#29292b, #dcdcd8);
+  --panel-fg: light-dark(#f0f0ed, #0b0b0c);
+  --panel-muted: light-dark(#b5b5ba, #55555a);
+  --panel-line: light-dark(#57575c, #c9c9c5);
+  --panel-warn: light-dark(#e2b04a, #8a5e0a);
+  --panel-danger: light-dark(#ff8b79, #b93b2a);
 
   --ok: light-dark(#2f7d55, #70c69a);
   --warn: light-dark(#c08a1e, #e2b04a);

@@ -1,8 +1,9 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { toast, Toaster } from 'sonner'
-import { ArrowIcon, MenuIcon } from './icons'
-import AppearanceSelect from './AppearanceSelect'
+import { MenuIcon } from './icons'
+import AccountMenu from './AccountMenu'
+import ThemeToggle from './ThemeToggle'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import Feature from './Feature'
@@ -14,9 +15,8 @@ import { disableGoogleAutoSelect } from './googleIdentity'
 import { createAccountPath, signInPath } from './paths'
 import './site.css'
 
-// Signed in, the section panel below the bar is the navigation; FAQ moves next to Log out.
-function MainLinks({ signedIn }: { signedIn: boolean }) {
-  if (signedIn) return null
+// Signed out, the bar links to the homepage sections. Signed in, SectionNav replaces them.
+function MainLinks() {
   return (
     <>
       <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
@@ -30,27 +30,12 @@ function MainLinks({ signedIn }: { signedIn: boolean }) {
 
 export type LayoutContext = { traveler: Traveler | null }
 
-type AccountProps = { traveler: Traveler | null; loggingOut: boolean; onLogOut: () => void; inMenu?: boolean
-  // The applications list has its own New application button, so the header doesn't repeat it there.
-  hideCta?: boolean }
-
-// Signed out: Log in / Get started. Signed in: Log out / New application (Account is in the section panel).
-function AccountLinks({ traveler, loggingOut, onLogOut, inMenu = false, hideCta = false }: AccountProps) {
-  const cta = traveler
-    ? <Link to="/apply" className="header-cta" data-activity-id="start-application-link">
-        <span className="mini-circle"><ArrowIcon /></span>New application
-      </Link>
-    : <Link to={createAccountPath} reloadDocument className="header-cta" data-activity-id="get-started-link">
-        <span className="mini-circle"><ArrowIcon /></span>Get started
-      </Link>
-  const account = traveler
-    ? <>
-        <NavLink to="/faq" className={inMenu ? undefined : 'login-link'} data-activity-id="faq-link">FAQ</NavLink>
-        <button type="button" className={`logout-button${inMenu ? '' : ' login-link'}`} data-activity-id="logout-button"
-          disabled={loggingOut} onClick={onLogOut}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
-      </>
-    : <Link to={signInPath} className={inMenu ? undefined : 'login-link'} data-activity-id="login-link">Log in</Link>
-  return <>{account}{hideCta ? null : cta}</>
+// Signed out: Log in and Get started. Signed in, the avatar's AccountMenu holds Log out instead.
+function GuestLinks({ inMenu = false }: { inMenu?: boolean }) {
+  return <>
+    <Link to={signInPath} className={inMenu ? undefined : 'login-link'} data-activity-id="login-link">Log in</Link>
+    <Link to={createAccountPath} reloadDocument className="header-cta" data-activity-id="get-started-link">Get started</Link>
+  </>
 }
 
 export default function Layout() {
@@ -97,7 +82,6 @@ export default function Layout() {
       setLoggingOut(false)
     }
   }
-  const account = { traveler, loggingOut, onLogOut: logOut, hideCta: traveler !== null && /^\/dashboard\/?$/.test(location.pathname) }
 
   return (
     <div className="site">
@@ -111,30 +95,29 @@ export default function Layout() {
             <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
           </Link>
           {traveler ? <SectionNav pathname={location.pathname} routed /> :
-            <nav className="nav-links" aria-label="Main"><MainLinks signedIn={false} /></nav>}
+            <nav className="nav-links" aria-label="Main"><MainLinks /></nav>}
           <div className="nav-right">
-            <AccountLinks {...account} />
-            <AppearanceSelect />
-            {traveler && <span className="nav-avatar" aria-hidden="true">
-              {traveler.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
-            </span>}
-            <button
-              type="button"
-              className="menu-button"
-              data-activity-id="menu-toggle"
-              aria-expanded={menuOpen}
-              aria-controls="mobile-menu"
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              onClick={() => setMenuOpen(open => !open)}
-            >
-              <MenuIcon open={menuOpen} />
-            </button>
+            {!traveler && <GuestLinks />}
+            <ThemeToggle />
+            {traveler
+              ? <AccountMenu traveler={traveler} loggingOut={loggingOut} onLogOut={logOut} />
+              : <button
+                  type="button"
+                  className="menu-button"
+                  data-activity-id="menu-toggle"
+                  aria-expanded={menuOpen}
+                  aria-controls="mobile-menu"
+                  aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                  onClick={() => setMenuOpen(open => !open)}
+                >
+                  <MenuIcon open={menuOpen} />
+                </button>}
           </div>
         </div>
-        {menuOpen && (
+        {menuOpen && !traveler && (
           <nav id="mobile-menu" className="mobile-menu" aria-label="Menu" onClick={closeOnLink}>
-            <MainLinks signedIn={traveler !== null} />
-            <AccountLinks {...account} inMenu />
+            <MainLinks />
+            <GuestLinks inMenu />
           </nav>
         )}
       </header>

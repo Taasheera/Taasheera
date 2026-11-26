@@ -136,13 +136,20 @@
   font-size: 13px;
 }
 
-.apps-status-ineligible {
-  color: var(--danger-text);
+/* Status is a dot and plain text, as everywhere else in Ink; only the dot carries colour. */
+.apps-status::before {
+  content: '';
+  display: inline-block;
+  margin-inline-end: 6px;
+  vertical-align: 1px;
+  inline-size: 6px;
+  block-size: 6px;
+  border: 1.5px solid var(--fg-dim);
+  border-radius: 50%;
+  box-sizing: border-box;
 }
-
-.apps-status-answers_complete {
-  color: var(--ok);
-}
+.apps-status-ineligible::before { border: 0; background: var(--danger); }
+.apps-status-answers_complete::before { border: 0; background: var(--ok); }
 
 .apps-empty {
   margin: 8px 12px;
@@ -638,6 +645,23 @@ a.button {
 .answer-choices:not(.answer-cards) > .choice { display: inline-flex; align-items: center; gap: 10px; }
 .answer-choices:not(.answer-cards) > .choice::before { content: ''; flex: 0 0 14px; block-size: 14px; border: 1px solid currentColor; border-radius: 50%; }
 .answer-choices:not(.answer-cards) > .choice.is-selected::before { border-width: 4px; }
+
+/* Destinations and visa types: an even grid of cards, not a ragged row of pills. */
+.answer-choices.answer-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  max-inline-size: 840px;
+}
+.choice.choice-card {
+  align-items: center;
+  min-block-size: 76px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  color: var(--fg);
+}
+.choice.choice-card .apps-flag { flex: none; inline-size: 32px; block-size: 24px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px var(--border); }
+.choice.choice-card strong { font-weight: 600; }
 
 .guided-answers { display: grid; margin-block-start: 22px; }
 .guided-answers > :is(.bubble, .chat-turn) { border-block-end: 1px solid var(--border); }
