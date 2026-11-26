@@ -432,6 +432,43 @@ test('a saved passport is offered the same way', async () => {
   assert.equal($('#passport-surname').value, 'ERIKSSON')
 })
 
+// --- Fill from your documents ---------------------------------------------------
+
+test('uploading a booking turns a date question into one to confirm', async () => {
+  const hinted = { ...ARRIVAL, upload_hint: { requirement: 'flight_booking', label: 'Flight reservation' } }
+  const offered = { ...ARRIVAL, suggestion: { value: '2027-03-12', source: 'document', document: 'Flight reservation (trip.pdf)' } }
+  let uploaded = false
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(state([], uploaded ? offered : hinted)),
+    [`POST /applications/${APP}/documents`]: () => { uploaded = true; return json({ id: 'c'.repeat(32) }, 201) },
+  })
+  await render(`/apply/${APP}`)
+  assert.match($('.booking-upload').textContent, /Skip the typing\. Upload your flight reservation/)
+  const input = $('.booking-upload input[type="file"]')
+  Object.defineProperty(input, 'files', { value: [new dom.window.File(['%PDF'], 'trip.pdf', { type: 'application/pdf' })], configurable: true })
+  await act(async () => input.dispatchEvent(new dom.window.Event('change', { bubbles: true })))
+  await settle()
+  assert.equal($('.booking-upload'), null)
+  assert.equal($('.suggestion-label').textContent, 'From your flight reservation (trip.pdf)')
+  await click(button('Change it'))
+  assert.match(text(), /not the booking you uploaded/)
+})
+
+test('a booking that gives no answer leaves the question to type', async () => {
+  const hinted = { ...ARRIVAL, upload_hint: { requirement: 'flight_booking', label: 'Flight reservation' } }
+  handlers = signedIn({
+    [`GET /applications/${APP}`]: () => json(state([], hinted)),
+    [`POST /applications/${APP}/documents`]: () => json({ id: 'c'.repeat(32) }, 201),
+  })
+  await render(`/apply/${APP}`)
+  const input = $('.booking-upload input[type="file"]')
+  Object.defineProperty(input, 'files', { value: [new dom.window.File(['%PDF'], 'trip.pdf', { type: 'application/pdf' })], configurable: true })
+  await act(async () => input.dispatchEvent(new dom.window.Event('change', { bubbles: true })))
+  await settle()
+  assert.match($('.booking-upload').textContent, /couldn't read this answer from it/)
+  assert.ok($('#current-question input[type="date"]'), 'the date can still be typed')
+})
+
 // --- Assistant mid-flow -----------------------------------------------------
 
 test('a question to the assistant keeps the traveler on the same step', async () => {

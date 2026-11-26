@@ -66,6 +66,7 @@ export function formatShortDate(iso: string): string {
 export function sourceLabel(source: AnswerSource): string | null {
   if (source === 'passport_upload' || source === 'passport') return 'From your confirmed passport'
   if (source === 'profile') return 'From your profile'
+  if (source === 'document') return 'From your uploaded booking'
   return null
 }
 

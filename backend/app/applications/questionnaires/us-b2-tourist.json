@@ -153,6 +153,7 @@
         {
           "id": "arrival_date",
           "type": "date",
+          "prefill": "document.arrival",
           "prompt": "When do you plan to arrive in the United States?",
           "help": "Interview wait times can be long, so an estimate is fine.",
           "rules": [
@@ -162,6 +163,7 @@
         {
           "id": "departure_date",
           "type": "date",
+          "prefill": "document.departure",
           "prompt": "And when do you plan to leave?",
           "rules": [
             {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},

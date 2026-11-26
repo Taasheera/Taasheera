@@ -695,3 +695,30 @@ a.button {
 .answer-long textarea:focus { border-color: var(--brand); }
 .answer-long textarea[aria-invalid='true'] { border-color: var(--danger); }
 .answer-draft-note { margin: 0; font-size: 13px; color: var(--fg-muted); }
+
+/* Fill from your documents: upload a booking instead of typing its dates. */
+.booking-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.booking-upload p {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.booking-upload p strong {
+  color: var(--fg);
+}
+
+.booking-upload .answer-error {
+  flex-basis: 100%;
+}
