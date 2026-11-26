@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { RouteObject } from 'react-router'
 import { readNavigation } from './navigation'
 import Layout from './Layout'
+import { arabicPage } from './i18n/language'
 import Faq from './pages/Faq'
 import Feature from './Feature'
 import VisaGuidePage from './visaGuides/VisaGuidePage'
@@ -29,8 +30,9 @@ export const routes: RouteObject[] = [
       {
         errorElement: <ServerError />,
         children: [
-          { index: true, element: <Home /> },
-          { path: 'faq', element: <Faq /> },
+          // handle: arabicPage marks the pages that are fully translated (CMPS271-16).
+          { index: true, element: <Home />, handle: arabicPage },
+          { path: 'faq', element: <Faq />, handle: arabicPage },
           // Not /visa-guides: that prefix is the API. Behind visa_guide; unknown while the flag is off.
           { path: 'visas', element: <Feature name="visa_guide" fallback={<NotFound />}><VisaGuides /></Feature> },
           { path: 'visas/:guideId', element: <Feature name="visa_guide" fallback={<NotFound />}><VisaGuidePage /></Feature> },
@@ -44,7 +46,7 @@ export const routes: RouteObject[] = [
           { path: 'dashboard/:applicationId', lazy: later(() => import('./dashboard/ApplicationDetail')) },
           // The account page uses the same header, sections and assistant as every signed-in page.
           { path: 'account', loader: () => readNavigation(window), lazy: later(() => import('./AuthRoute'), { accountPage: true, embedded: true }) },
-          { path: '*', element: <NotFound /> },
+          { path: '*', element: <NotFound />, handle: arabicPage },
         ],
       },
     ],

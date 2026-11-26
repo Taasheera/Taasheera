@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { formatDateTime } from '../dashboard/helpers'
 import { loadNotifications, loadUnreadCount, markAllRead, markRead, type NotificationItem } from './api'
 import './notifications.css'
+import { useText } from '../i18n/language'
 
 function BellIcon() {
   return (
@@ -23,6 +24,7 @@ type BellProps = {
 // The notification centre (US 107): a bell with the unread count that opens the traveler's
 // notifications, newest first, with mark-as-read and mark-all-read.
 export default function NotificationBell({ pathname, routed }: BellProps) {
+  const text = useText().notifications
   const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)
   const [items, setItems] = useState<NotificationItem[] | null>(null)
@@ -60,7 +62,7 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
     try {
       setItems(await loadNotifications())
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : 'We could not load your notifications. Please try again.')
+      setError(problem instanceof Error ? problem.message : text.loadFailed)
     }
   }
 
@@ -75,7 +77,7 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
     try {
       await markRead(item.id)
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : 'We could not mark it as read. Please try again.')
+      setError(problem instanceof Error ? problem.message : text.markFailed)
     }
   }
 
@@ -85,7 +87,7 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
       markLocally(() => true)
       setUnread(0)
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : 'We could not mark them as read. Please try again.')
+      setError(problem instanceof Error ? problem.message : text.markAllFailed)
     }
   }
 
@@ -97,7 +99,7 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
   return (
     <div className="notification-bell" ref={root}>
       <button ref={button} type="button" className="notification-bell-button" aria-expanded={open}
-        aria-controls={open ? panelId : undefined} aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+        aria-controls={open ? panelId : undefined} aria-label={unread ? text.withUnread(unread) : text.title}
         onClick={() => (open ? setOpen(false) : void show())}>
         <BellIcon />
         {unread > 0 && <span className="notification-count" aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}
@@ -105,19 +107,19 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
 
       {open && <section id={panelId} className="notification-panel" aria-labelledby={`${panelId}-title`}>
         <header className="notification-panel-header">
-          <h2 id={`${panelId}-title`}>Notifications</h2>
+          <h2 id={`${panelId}-title`}>{text.title}</h2>
           {items?.some(item => !item.read) &&
-            <button type="button" className="notification-action" onClick={() => void readAll()}>Mark all as read</button>}
+            <button type="button" className="notification-action" onClick={() => void readAll()}>{text.markAll}</button>}
         </header>
         {error && <p className="notification-error" role="alert">
-          {error} <button type="button" className="notification-action" onClick={() => void show()}>Try again</button>
+          {error} <button type="button" className="notification-action" onClick={() => void show()}>{text.retry}</button>
         </p>}
-        {!error && items === null && <p className="notification-note" role="status">Loading your notifications…</p>}
+        {!error && items === null && <p className="notification-note" role="status">{text.loading}</p>}
         {!error && items?.length === 0 &&
-          <p className="notification-note">No notifications yet. We will tell you here when an application changes.</p>}
+          <p className="notification-note">{text.empty}</p>}
         {items && items.length > 0 && <ul className="notification-list">
           {items.map(item => <li key={item.id} className={item.read ? 'is-read' : 'is-unread'}>
-            {!item.read && <span className="visually-hidden">Unread: </span>}
+            {!item.read && <span className="visually-hidden">{text.unread}</span>}
             {item.link
               ? (routed
                 ? <Link to={item.link} className="notification-message" onClick={() => openItem(item)}>{item.message}</Link>
@@ -126,7 +128,7 @@ export default function NotificationBell({ pathname, routed }: BellProps) {
             <span className="notification-meta">
               <time dateTime={item.created_at}>{formatDateTime(item.created_at)}</time>
               {!item.read && <button type="button" className="notification-action" onClick={() => void read(item)}>
-                Mark as read</button>}
+                {text.markOne}</button>}
             </span>
           </li>)}
         </ul>}

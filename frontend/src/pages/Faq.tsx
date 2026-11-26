@@ -1,19 +1,20 @@
 import { useEffect } from 'react'
-import { faqs } from '../content'
+import { useText } from '../i18n/language'
 import FaqList from './FaqList'
 
 export default function Faq() {
+  const { faqs, faqPage } = useText()
   useEffect(() => {
-    document.title = 'FAQ | Taasheera'
-  }, [])
+    document.title = faqPage.title
+  }, [faqPage.title])
 
   return (
     <section className="section page" aria-labelledby="faq-page-heading">
       <div className="container narrow">
         <header className="section-header">
-          <p className="badge">Help center</p>
-          <h1 id="faq-page-heading">Frequently asked questions</h1>
-          <p>Everything you need to know about preparing your visa application with Taasheera.</p>
+          <p className="badge">{faqPage.badge}</p>
+          <h1 id="faq-page-heading">{faqPage.heading}</h1>
+          <p>{faqPage.intro}</p>
         </header>
         <FaqList items={faqs} />
       </div>

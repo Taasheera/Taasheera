@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './appearance.css'
+import { useText } from './i18n/language'
 
 type Theme = 'light' | 'dark'
 
@@ -15,6 +16,7 @@ function current(): Theme {
 // One button that flips between light and dark. Until the traveler presses it, the page follows
 // the device setting (public/appearance.js applies a remembered choice before the app renders).
 export default function ThemeToggle() {
+  const text = useText().theme
   const [theme, setTheme] = useState<Theme>(current)
 
   // While no choice is saved, follow the device when it switches (for example at sunset).
@@ -37,7 +39,7 @@ export default function ThemeToggle() {
     }
   }
 
-  const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+  const label = theme === 'dark' ? text.toLight : text.toDark
   return (
     <button type="button" className="theme-toggle" aria-label={label} title={label} onClick={toggle}>
       {theme === 'dark'

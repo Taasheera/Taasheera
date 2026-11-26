@@ -24,6 +24,7 @@ FLAGS = {
     "privacy_consent": "Accept the privacy policy before uploading documents (CMPS271-115)",
     "email_notifications": "Email copies of notifications and reminders (CMPS271-98)",
     "visa_guide": "Public guide for each supported visa: who needs it, documents, fees, times (CMPS271-19/20/21/24)",
+    "arabic": "Switch the home page, FAQ and site header between English and Arabic (CMPS271-16)",
 }
 
 

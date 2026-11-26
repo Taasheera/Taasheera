@@ -4,6 +4,9 @@ import { toast, Toaster } from 'sonner'
 import { MenuIcon } from './icons'
 import AccountMenu from './AccountMenu'
 import ThemeToggle from './ThemeToggle'
+import LanguageProvider from './i18n/LanguageProvider'
+import LanguageToggle from './i18n/LanguageToggle'
+import { useText } from './i18n/language'
 import ActivityTracker from './ActivityTracker'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import Feature from './Feature'
@@ -17,13 +20,14 @@ import './site.css'
 
 // Signed out, the bar links to the homepage sections. Signed in, SectionNav replaces them.
 function MainLinks() {
+  const { site } = useText()
   return (
     <>
-      <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
-      <Link to="/#destinations" data-activity-id="destinations-link">Destinations</Link>
-      <Feature name="visa_guide"><NavLink to="/visas" data-activity-id="visa-guides-link">Visa guides</NavLink></Feature>
-      <Link to="/#privacy" data-activity-id="privacy-link">Privacy</Link>
-      <NavLink to="/faq" data-activity-id="faq-link">FAQ</NavLink>
+      <Link to="/#how-it-works" data-activity-id="how-it-works-link">{site.howItWorks}</Link>
+      <Link to="/#destinations" data-activity-id="destinations-link">{site.destinations}</Link>
+      <Feature name="visa_guide"><NavLink to="/visas" data-activity-id="visa-guides-link">{site.visaGuides}</NavLink></Feature>
+      <Link to="/#privacy" data-activity-id="privacy-link">{site.privacy}</Link>
+      <NavLink to="/faq" data-activity-id="faq-link">{site.faq}</NavLink>
     </>
   )
 }
@@ -32,13 +36,20 @@ export type LayoutContext = { traveler: Traveler | null }
 
 // Signed out: Log in and Get started. Signed in, the avatar's AccountMenu holds Log out instead.
 function GuestLinks({ inMenu = false }: { inMenu?: boolean }) {
+  const { site } = useText()
   return <>
-    <Link to={signInPath} className={inMenu ? undefined : 'login-link'} data-activity-id="login-link">Log in</Link>
-    <Link to={createAccountPath} reloadDocument className="header-cta" data-activity-id="get-started-link">Get started</Link>
+    <Link to={signInPath} className={inMenu ? undefined : 'login-link'} data-activity-id="login-link">{site.logIn}</Link>
+    <Link to={createAccountPath} reloadDocument className="header-cta" data-activity-id="get-started-link">{site.getStarted}</Link>
   </>
 }
 
+// The header, footer and translated pages read their text from the language provider (CMPS271-16).
 export default function Layout() {
+  return <LanguageProvider><Site /></LanguageProvider>
+}
+
+function Site() {
+  const { site } = useText()
   const navigate = useNavigate()
   const location = useLocation()
   // Below 1000px the nav links collapse into this menu (see site.css).
@@ -77,7 +88,7 @@ export default function Layout() {
       // Leaving the page unmounts anything it showed, such as a passport under review.
       navigate('/')
     } catch {
-      toast.error('Could not log out. Check your connection and try again.')
+      toast.error(site.logOutFailed)
     } finally {
       setLoggingOut(false)
     }
@@ -88,16 +99,17 @@ export default function Layout() {
       <ActivityTracker />
       <IdleGuard />
       <ScrollRestoration />
-      <a className="skip-link" href="#main" data-activity-id="skip-link">Skip to content</a>
+      <a className="skip-link" href="#main" data-activity-id="skip-link">{site.skip}</a>
       <header className={`navbar-wrap${traveler ? ' navbar-signed-in' : ''}`} onKeyDown={closeOnEscape}>
         <div className="navbar">
-          <Link to="/" className="logo" aria-label="Taasheera home" data-activity-id="home-link">
+          <Link to="/" className="logo" aria-label={site.home} data-activity-id="home-link">
             <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
           </Link>
           {traveler ? <SectionNav pathname={location.pathname} routed /> :
-            <nav className="nav-links" aria-label="Main"><MainLinks /></nav>}
+            <nav className="nav-links" aria-label={site.mainNav}><MainLinks /></nav>}
           <div className="nav-right">
             {!traveler && <GuestLinks />}
+            <LanguageToggle />
             <ThemeToggle />
             {traveler
               ? <AccountMenu traveler={traveler} loggingOut={loggingOut} onLogOut={logOut} />
@@ -107,7 +119,7 @@ export default function Layout() {
                   data-activity-id="menu-toggle"
                   aria-expanded={menuOpen}
                   aria-controls="mobile-menu"
-                  aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                  aria-label={menuOpen ? site.closeMenu : site.openMenu}
                   onClick={() => setMenuOpen(open => !open)}
                 >
                   <MenuIcon open={menuOpen} />
@@ -115,7 +127,7 @@ export default function Layout() {
           </div>
         </div>
         {menuOpen && !traveler && (
-          <nav id="mobile-menu" className="mobile-menu" aria-label="Menu" onClick={closeOnLink}>
+          <nav id="mobile-menu" className="mobile-menu" aria-label={site.menu} onClick={closeOnLink}>
             <MainLinks />
             <GuestLinks inMenu />
           </nav>
@@ -135,23 +147,19 @@ export default function Layout() {
             <Link to="/" className="logo" data-activity-id="home-link">
               <img className="logo-mark" src="/mark-ink.svg" alt="" />taasheera
             </Link>
-            <nav className="footer-links" aria-label="Footer">
-              <Link to="/#how-it-works" data-activity-id="how-it-works-link">How it works</Link>
-              <Link to="/faq" data-activity-id="faq-link">FAQ</Link>
-              <Feature name="visa_guide"><Link to="/visas" data-activity-id="visa-guides-link">Visa guides</Link></Feature>
+            <nav className="footer-links" aria-label={site.footer}>
+              <Link to="/#how-it-works" data-activity-id="how-it-works-link">{site.howItWorks}</Link>
+              <Link to="/faq" data-activity-id="faq-link">{site.faq}</Link>
+              <Feature name="visa_guide"><Link to="/visas" data-activity-id="visa-guides-link">{site.visaGuides}</Link></Feature>
               {traveler
                 ? <>
-                    <Link to="/dashboard" data-activity-id="dashboard-link">Your applications</Link>
-                    <Link to="/passport" data-activity-id="passport-link">Your passport</Link>
+                    <Link to="/dashboard" data-activity-id="dashboard-link">{site.yourApplications}</Link>
+                    <Link to="/passport" data-activity-id="passport-link">{site.yourPassport}</Link>
                   </>
-                : <Link to={signInPath} data-activity-id="login-link">Log in</Link>}
+                : <Link to={signInPath} data-activity-id="login-link">{site.logIn}</Link>}
             </nav>
           </div>
-          <p className="footer-legal">
-            Taasheera helps you prepare visa applications. We are not affiliated with any embassy or
-            government authority, and we do not give legal or immigration advice. Only the embassy or
-            consulate decides whether to issue a visa. Nothing is submitted without your confirmation.
-          </p>
+          <p className="footer-legal">{site.legal}</p>
         </div>
       </footer>
 

@@ -306,7 +306,8 @@
   gap: 10px;
 }
 
-.landing-start .pill-label::before { content: 'Start your application'; }
+/* Shown, not read: the link's name stays "Get started". The words come from the page's language. */
+.landing-start .pill-label::before { content: attr(data-label); }
 
 .hero-preview {
   inline-size: 100%;

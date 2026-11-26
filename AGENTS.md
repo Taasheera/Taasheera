@@ -243,3 +243,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
     PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).
     `POST /assistant/draft` (Help me write this) drafts one long free-text answer; the traveler edits and saves it.
+50. **Arabic and English (CMPS271-16).** Routes with `handle: arabicPage` (home, FAQ, not found) switch with
+    the header button (`arabic` flag); every other page stays English, left to right, until translated.
+    Text in `i18n/en.ts` (source) and `i18n/ar.ts` (type `Text`, checked by `arabic.test.mjs`); pages read
+    `useText()`. The provider sets `<html lang dir>`; CSS uses logical properties, so RTL needs no copies.
+    The choice is a display setting in browser storage, like the theme. Brand stays "Taasheera" in Arabic.

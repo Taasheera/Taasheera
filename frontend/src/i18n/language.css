@@ -1,0 +1,42 @@
+/* The English / العربية button in the header (CMPS271-16), quiet like the theme button beside it. */
+.language-toggle {
+  flex: none;
+  block-size: 40px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-out);
+}
+
+.language-toggle:hover { background: var(--surface-2); }
+.language-toggle:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.language-toggle:lang(ar) { font-family: var(--font-arabic); }
+
+/* Arabic pages: the Arabic face for text and headings, and arrows that point the reading way. */
+html[lang='ar'] {
+  --font-sans: var(--font-arabic);
+  --font-display: var(--font-arabic);
+}
+
+[dir='rtl'] .pill-icon svg { transform: scaleX(-1); }
+
+/* Arabic letters join, so spacing them apart (or together) breaks words. Wins over every Ink rule.
+   Passport specimen data keeps lang="en" and its code font. */
+*:lang(ar) { letter-spacing: 0 !important; }
+
+/* The small labels use a code font with no Arabic letters. */
+.eyebrow:lang(ar),
+.badge:lang(ar) { font-family: var(--font-arabic); }
+
+/* Arabic has marks above and below its letters: the Ink headings' tight lines would let them touch. */
+h1:lang(ar),
+h2:lang(ar) { line-height: 1.25; }
+
+@media (prefers-reduced-motion: reduce) {
+  .language-toggle { transition: none; }
+}

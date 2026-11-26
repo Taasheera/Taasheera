@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { Traveler } from './auth'
+import { useText } from './i18n/language'
 
 type AccountMenuProps = { traveler: Traveler; loggingOut: boolean; onLogOut: () => void }
 
@@ -11,6 +12,7 @@ function initials(name: string) {
 // The signed-in traveler's avatar opens their account, FAQ and Log out. Keeping these here leaves
 // the bar for the sections themselves.
 export default function AccountMenu({ traveler, loggingOut, onLogOut }: AccountMenuProps) {
+  const text = useText().accountMenu
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -35,7 +37,7 @@ export default function AccountMenu({ traveler, loggingOut, onLogOut }: AccountM
 
   return (
     <div className="account-menu" ref={root}>
-      <button ref={button} type="button" className="nav-avatar" aria-label="Account menu" aria-expanded={open}
+      <button ref={button} type="button" className="nav-avatar" aria-label={text.label} aria-expanded={open}
         aria-controls="account-menu-panel" data-activity-id="menu-toggle" onClick={() => setOpen(value => !value)}>
         {initials(traveler.name)}
       </button>
@@ -46,10 +48,10 @@ export default function AccountMenu({ traveler, loggingOut, onLogOut }: AccountM
             <strong>{traveler.name}</strong>
             <span>{traveler.email}</span>
           </div>
-          <Link to="/account">Account settings</Link>
-          <Link to="/faq" data-activity-id="faq-link">Help and FAQ</Link>
+          <Link to="/account">{text.settings}</Link>
+          <Link to="/faq" data-activity-id="faq-link">{text.help}</Link>
           <button type="button" className="logout-button" data-activity-id="logout-button" disabled={loggingOut}
-            onClick={onLogOut}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
+            onClick={onLogOut}>{loggingOut ? text.loggingOut : text.logOut}</button>
         </div>
       )}
     </div>
