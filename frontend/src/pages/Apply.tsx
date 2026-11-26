@@ -13,6 +13,7 @@ import DocumentChecklist from '../documents/DocumentChecklist'
 import Feature from '../Feature'
 import StartChat from '../application/StartChat'
 import SuggestedAnswer from '../application/SuggestedAnswer'
+import BookingUpload from '../application/BookingUpload'
 import {
   getApplication, isRecorded, listApplications, saveAnswer,
   type AnswerInput as Answer, type ApplicationState, type ApplicationSummary,
@@ -161,6 +162,15 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
     if (log) log.scrollTop = log.scrollHeight
   }, [asides.length])
 
+  // After a booking upload: the server may now suggest the current answer from it.
+  async function reloadAfterUpload() {
+    const state = await getApplication(applicationId)
+    if (!state) return false
+    setApplication(state)
+    onChange(state)
+    return Boolean(state.current?.suggestion)
+  }
+
   async function answer(questionId: string, input: Answer) {
     const state = await saveAnswer(applicationId, questionId, input)
     setApplication(state)
@@ -291,6 +301,9 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
             </header>
             <div className="chat-answer">
               {handoffError && <p className="answer-error" role="alert">{handoffError}</p>}
+              {!application.current.suggestion && application.current.upload_hint &&
+                <BookingUpload key={`${application.current.id}-upload`} applicationId={applicationId}
+                  hint={application.current.upload_hint} onUploaded={reloadAfterUpload} />}
               {application.current.suggestion
                 ? <SuggestedAnswer key={application.current.id}
                     question={{ ...application.current, suggestion: application.current.suggestion }}

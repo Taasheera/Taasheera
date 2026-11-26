@@ -146,6 +146,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 19. **Opening steps (US 4/12).** Destination/visa/group choose the questionnaire before creation and stay fixed.
 20. **Pre-fill (US 10).** Server recomputes suggestions from the owner's confirmed passport/profile; strict
     confirmed fields are separate from loose OCR output. Editing an application never rewrites source data.
+    Uploaded bookings suggest arrival, departure and stay (`document.*` prefill, `booking_dates.booked_value`,
+    labeled values only, disagreeing files give nothing); the question offers the upload (`upload_hint`).
 21. **Completeness (CMPS271-48/49/51/53/55).** The owner-scoped check and assistant share a deterministic report:
     missing items and eligibility stops block; identity and explicit booking-date conflicts warn. The UI links
     to questions/uploads. The percentage covers applicable answers and required uploads, never approval odds.

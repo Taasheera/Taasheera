@@ -287,7 +287,7 @@ def test_a_confirmed_passport_is_offered_and_confirmed_with_one_click(api):
     storage.save_review(1, storage.save(1, b"jpeg"), SPECIMEN)
     application_id = start(client, headers[0])["id"]
     current = answer_all(client, headers[0], application_id, stop_at="passport")["current"]
-    assert current["suggestion"] == {"value": SPECIMEN, "source": "passport"}
+    assert current["suggestion"] == {"value": SPECIMEN, "source": "passport", "document": None}
     response = client.put(f"/applications/{application_id}/answers/passport", headers=headers[0],
                           json={"use_suggestion": True})
     assert response.status_code == 200
@@ -314,11 +314,11 @@ def test_the_profile_offers_the_address_and_phone(api):
     client.put("/profile", headers=headers[1], json={**PROFILE, "phone": "+33 1 23 45 67 89"})
     application_id = start(client, headers[0])["id"]
     current = answer_all(client, headers[0], application_id, stop_at="home_address")["current"]
-    assert current["suggestion"] == {"source": "profile", "value": {
+    assert current["suggestion"] == {"source": "profile", "document": None, "value": {
         "line1": "1 Example Street", "line2": "", "city": "Beirut", "region": "", "postal_code": "", "country": "LBN"}}
     put(client, headers[0], application_id, "home_address", ANSWERS["home_address"])
     current = client.get(f"/applications/{application_id}", headers=headers[0]).json()["current"]
-    assert current["id"] == "phone" and current["suggestion"] == {"value": "+96171123456", "source": "profile"}
+    assert current["id"] == "phone" and current["suggestion"] == {"value": "+96171123456", "source": "profile", "document": None}
 
 
 def test_an_incomplete_profile_address_is_not_offered(api):

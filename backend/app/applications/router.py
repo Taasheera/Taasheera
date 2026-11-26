@@ -61,10 +61,20 @@ class AnswerRequest(BaseModel):
 
 
 class Suggestion(BaseModel):
-    """An answer the saved passport or profile already gives. Shown for confirming, never saved unasked."""
+    """An answer the saved passport, profile or an uploaded booking already gives.
+    Shown for confirming, never saved unasked."""
 
     value: Any
-    source: Literal["passport", "profile"]
+    source: Literal["passport", "profile", "document"]
+    # For a document: what it is ("Flight booking") and the traveler's file name.
+    document: str | None = None
+
+
+class UploadHint(BaseModel):
+    """A booking the traveler could upload now so Ta'asheera reads this answer from it."""
+
+    requirement: str
+    label: str
 
 
 class QuestionPublic(BaseModel):
@@ -80,6 +90,7 @@ class QuestionPublic(BaseModel):
     date_min: date | None = None
     date_max: date | None = None
     suggestion: Suggestion | None = None
+    upload_hint: UploadHint | None = None
 
 
 class AnswerPublic(BaseModel):
@@ -288,6 +299,8 @@ def create_applications_router(
     remove_document_files: Callable[[int, list[str]], None] = lambda traveler_id, document_ids: None,
     document_issues: DocumentIssues = no_document_issues,
     remove_agent_files: Callable[[int, str], None] = lambda traveler_id, application_id: None,
+    # The application's uploaded bookings as `DocumentText`s, or None while supporting documents are off.
+    booking_documents: Callable[[Session, Application], list | None] = lambda session, application: None,
 ) -> APIRouter:
     from ..auth import check_origin
     from .lifecycle import add_lifecycle_routes
@@ -331,15 +344,27 @@ def create_applications_router(
         session.commit()
         return answers, cleared
 
-    def suggest(session: Session, traveler: Traveler, question: flow.Question,
+    def suggest(session: Session, traveler: Traveler, application: Application, question: flow.Question,
                 answers: flow.Answers) -> Suggestion | None:
-        """What the traveler's own saved passport or profile says for this question, if it passes its rules.
+        """What the traveler's own saved passport, profile or uploaded booking says for this question,
+        if it passes its rules.
 
         Loaded here for the signed-in traveler only, and checked like any answer, so an
         expired passport or a half-filled address is never offered.
         """
         if question.prefill is None:
             return None
+        if question.prefill.startswith("document."):
+            from ..documents.booking_dates import booked_value
+            booked = booked_value(question.prefill.removeprefix("document."),
+                                  booking_documents(session, application) or [])
+            if booked is None:
+                return None
+            try:
+                return Suggestion(value=flow.check_answer(question, booked[0], answers, today()), source="document",
+                                  document=booked[1].where)
+            except flow.InvalidAnswer:
+                return None
         passport = load_latest_passport(traveler.id) if question.prefill == "passport" else None
         profile = saved_profile(session, traveler.id) if question.prefill.startswith("profile.") else None
         found = flow.prefill_value(question, passport, profile)
@@ -350,19 +375,34 @@ def create_applications_router(
         except flow.InvalidAnswer:
             return None
 
+    def upload_hint(session: Session, application: Application, questionnaire: flow.Questionnaire,
+                    question: flow.Question, answers: flow.Answers) -> UploadHint | None:
+        """The booking to upload so this question can be filled from it, when it can be uploaded now."""
+        if (question.prefill is None or not question.prefill.startswith("document.")
+                or application.archived_at is not None or booking_documents(session, application) is None):
+            return None
+        from ..documents.booking_dates import BOOKED_FROM
+        available = {document.id: document for document in flow.required_documents(questionnaire, answers)}
+        requirement = next((available[r] for r in BOOKED_FROM[question.prefill.removeprefix("document.")]
+                            if r in available), None)
+        return UploadHint(requirement=requirement.id, label=requirement.label) if requirement else None
+
     def public_question(questionnaire: flow.Questionnaire, question: flow.Question,
-                        answers: flow.Answers, suggestion: Suggestion | None = None) -> QuestionPublic:
+                        answers: flow.Answers, suggestion: Suggestion | None = None,
+                        hint: UploadHint | None = None) -> QuestionPublic:
         earliest, latest = flow.date_bounds(question, answers, today())
         return QuestionPublic(
             id=question.id, step_id=questionnaire.step_of(question.id).id, type=question.type,
             prompt=question.prompt, help=question.help, required=question.required,
             options=question.options, max_length=question.max_length, date_min=earliest, date_max=latest,
-            suggestion=suggestion,
+            suggestion=suggestion, upload_hint=hint,
         )
 
     def state(session: Session, traveler: Traveler, application: Application, questionnaire: flow.Questionnaire,
               answers: flow.Answers, rows: dict[str, ApplicationAnswer], cleared: list[str]) -> ApplicationState:
         current = flow.next_question(questionnaire, answers)
+        suggestion = suggest(session, traveler, application, current, answers) if current else None
+        hint = upload_hint(session, application, questionnaire, current, answers) if current and not suggestion else None
         return ApplicationState(
             **_summary(application, questionnaire, answers),
             steps=[StepPublic(id=step.id, title=step.title) for step in questionnaire.steps],
@@ -372,8 +412,7 @@ def create_applications_router(
                              value=answers[question.id], source=rows[question.id].source)
                 for question in flow.visible_questions(questionnaire, answers) if question.id in answers
             ],
-            current=public_question(questionnaire, current, answers, suggest(session, traveler, current, answers))
-            if current else None,
+            current=public_question(questionnaire, current, answers, suggestion, hint) if current else None,
             stopped=flow.stop_message(questionnaire, answers),
             cleared=cleared,
         )
@@ -463,7 +502,7 @@ def create_applications_router(
 
         if data.use_suggestion:
             # Worked out again here, not taken from the browser, so "from your passport" stays true.
-            suggestion = suggest(session, traveler, question, answers)
+            suggestion = suggest(session, traveler, application, question, answers)
             if suggestion is None:
                 raise HTTPException(status_code=409, detail="There's nothing saved to use for this question.")
             value, source = suggestion.value, suggestion.source

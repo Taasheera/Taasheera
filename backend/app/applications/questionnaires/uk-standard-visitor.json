@@ -158,6 +158,7 @@
         {
           "id": "arrival_date",
           "type": "date",
+          "prefill": "document.arrival",
           "prompt": "When do you plan to arrive in the UK?",
           "rules": [
             {"op": ">=", "ref": "today", "days": 1, "message": "Your arrival date needs to be in the future."},
@@ -167,6 +168,7 @@
         {
           "id": "departure_date",
           "type": "date",
+          "prefill": "document.departure",
           "prompt": "And when will you leave?",
           "rules": [
             {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},

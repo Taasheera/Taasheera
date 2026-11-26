@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from ..applications import completeness, flow
 from ..models import Application, SupportingDocument
-from .booking_dates import booking_findings
+from .booking_dates import BOOKED_FROM, booking_findings
 from .crosscheck import DocumentText, Report, cross_check
 from .storage import DocumentStorage
 
@@ -37,6 +37,17 @@ def document_cross_check(session: Session, storage: DocumentStorage, application
         for document in texts:
             report.findings.extend(booking_findings(document, date.fromisoformat(arrival), date.fromisoformat(departure)))
     return report
+
+
+def booking_documents(session: Session, storage: DocumentStorage, application: Application) -> list[DocumentText]:
+    """The text of the bookings that can suggest answers: flights, itineraries and accommodation."""
+    questionnaire = flow.load_questionnaire(application.questionnaire_id)
+    labels = {document.id: document.label for document in questionnaire.documents}
+    wanted = {requirement for requirements in BOOKED_FROM.values() for requirement in requirements}
+    return [DocumentText(id=document.id, requirement=document.requirement,
+                         label=labels.get(document.requirement, "Document"), filename=document.filename,
+                         text=storage.load_text(application.traveler_id, document.id, purpose="document_prefill"))
+            for document in _documents(session, application) if document.requirement in wanted]
 
 
 def completeness_issues(session: Session, storage: DocumentStorage, application: Application, answers: flow.Answers,

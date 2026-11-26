@@ -31,6 +31,10 @@ PREFILL_SOURCES: dict[str, str] = {
     "passport": "passport",  # the traveler's latest confirmed passport review
     "profile.address": "address",
     "profile.phone": "phone",
+    # The traveler's uploaded bookings (`documents/booking_dates.booked_value`), read by the router.
+    "document.arrival": "date",
+    "document.departure": "date",
+    "document.stay": "text",
 }
 # A reference used by a date rule: "today", a question id, or "question.field" for an answer
 # made of several fields, such as "passport.expiry_date".

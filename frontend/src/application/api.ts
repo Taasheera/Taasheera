@@ -21,10 +21,14 @@ export type Question = {
   date_max: string | null
   // What the saved passport or profile already says (US 10), for the traveler to confirm or change.
   suggestion: Suggestion | null
+  // A booking the traveler could upload so this answer is read from it (fill from your documents).
+  upload_hint?: UploadHint | null
 }
 
-export type Suggestion = { value: AnswerValue; source: 'passport' | 'profile' }
-export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile'
+// For a document: what it is and the file name, such as "Flight reservation (booking.pdf)".
+export type Suggestion = { value: AnswerValue; source: 'passport' | 'profile' | 'document'; document?: string | null }
+export type UploadHint = { requirement: string; label: string }
+export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile' | 'document'
 export type Answer = { question: Question; value: AnswerValue; source: AnswerSource }
 // The last three are recorded by the traveler (US 55); the first three follow from the answers.
 export type Status = 'DRAFT' | 'INELIGIBLE' | 'ANSWERS_COMPLETE' | 'SUBMITTED' | 'APPROVED' | 'REFUSED'

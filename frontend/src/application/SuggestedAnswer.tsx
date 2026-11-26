@@ -9,14 +9,15 @@ type Props = {
   onAnswer: (answer: Answer) => Promise<void>
 }
 
-// US 10: a question the saved passport or profile already answers is shown pre-filled, to confirm
+// US 10: a question the saved passport, profile or an uploaded booking already answers is shown pre-filled, to confirm
 // or change, instead of asked again. Changing it here changes this application only.
 export default function SuggestedAnswer({ question, applicationId, onAnswer }: Props) {
   const [changing, setChanging] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const { suggestion } = question
-  const from = suggestion.source === 'passport' ? 'your saved passport' : 'your profile'
+  const from = suggestion.source === 'passport' ? 'your saved passport'
+    : suggestion.source === 'document' ? 'the booking you uploaded' : 'your profile'
 
   if (changing) {
     return <div className="answer">
@@ -38,7 +39,9 @@ export default function SuggestedAnswer({ question, applicationId, onAnswer }: P
   }
 
   return <div className="answer suggestion">
-    <p className="suggestion-label">{sourceLabel(suggestion.source)}</p>
+    <p className="suggestion-label">{suggestion.document
+      ? `From your ${suggestion.document.charAt(0).toLowerCase()}${suggestion.document.slice(1)}`
+      : sourceLabel(suggestion.source)}</p>
     <p className="suggestion-value">{formatAnswer(question, suggestion.value)}</p>
     <p className="suggestion-ask">Is this still correct?</p>
     <div className="answer-choices">

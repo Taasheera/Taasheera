@@ -70,3 +70,53 @@ def booking_findings(document: DocumentText, arrival: date, departure: date) -> 
     return [Finding(field="travel_dates", source="document", where=document.where,
                     expected=expected, found=found, document_id=document.id, requirement=document.requirement,
                     message=f"{document.where} {reason}. Compare {found} with your trip ({expected}).")]
+
+
+# --- Suggesting answers from uploaded bookings ("fill from your documents") ---------------------
+
+# Where each suggested answer can come from, best first: a flight's dates beat a hotel's check-in.
+BOOKED_FROM: dict[str, tuple[str, ...]] = {
+    "arrival": ("flight_booking", "itinerary", "accommodation_proof"),
+    "departure": ("flight_booking", "itinerary", "accommodation_proof"),
+    "stay": ("accommodation_proof",),
+}
+_STAY_NAME = r"(?:HOTEL|PROPERTY|ACCOMMODATION)(?: NAME)?"
+_STAY_ADDRESS = r"(?:(?:HOTEL|PROPERTY) )?ADDRESS"
+
+
+def _line_after(text: str, label: str) -> str | None:
+    """The rest of a line that starts with "Label:"; none when missing or repeated differently."""
+    found = {" ".join(match["value"].split()).strip(" ,.")
+             for match in re.finditer(rf"^[ \t]*{label}[ \t]*:[ \t]*(?P<value>[^\n]{{2,150}})$", text,
+                                      re.IGNORECASE | re.MULTILINE)}
+    found.discard("")
+    return found.pop() if len(found) == 1 else None
+
+
+def _booked(kind: str, document: DocumentText) -> str | None:
+    text = document.text.replace("‑", "-")
+    if kind == "stay":
+        name, address = _line_after(text, _STAY_NAME), _line_after(text, _STAY_ADDRESS)
+        return ", ".join(part for part in (name, address) if part) or None
+    start_label, end_label = (_FLIGHT_ROLES if document.requirement != "accommodation_proof"
+                              else _PERIODS["accommodation_proof"])
+    found = _date_after(text, start_label if kind == "arrival" else end_label)
+    return found.isoformat() if found else None
+
+
+def booked_value(kind: str, documents: list[DocumentText]) -> tuple[str, DocumentText] | None:
+    """The answer the traveler's own bookings give for the trip's arrival, departure or stay.
+
+    Only explicitly labeled values are read, and the first kind of document that gives one
+    wins. Two documents of that kind that disagree give nothing rather than a guess. The
+    traveler still confirms the suggestion, and the engine checks it like any answer.
+    """
+    for requirement in BOOKED_FROM[kind]:
+        found = {(value, document.id): document for document in documents
+                 if document.requirement == requirement and (value := _booked(kind, document))}
+        values = {value for value, _ in found}
+        if len(values) == 1:
+            return values.pop(), next(iter(found.values()))
+        if values:
+            return None
+    return None
