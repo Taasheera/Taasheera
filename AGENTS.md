@@ -64,8 +64,8 @@ Layout: `backend/app/` (`applications/` pure engine/router and destination JSON 
 `backend/tests/`, `backend/scripts/`, `backend/manage.py`, `backend/preview.py`, `backend/agent_worker.py`,
 `backend/retry_erasures.py`, `frontend/src/`, `frontend/tests/`, `frontend/e2e/`, `deploy/aws/`, `docs/`.
 Signed-in pages show one navigation panel, `SectionNav` (US 15): sections live in `frontend/src/sections.ts`
-(the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant button calls `openAssistant()`, which every
-`AssistantPanel` listens for. It makes the sticky header about 60px taller; `sectionNav.css` adjusts offsets below it.
+(the notification bell, `notifications/NotificationBell.tsx`, sits after them), and its Assistant icon calls `openAssistant()`, which every
+`AssistantPanel` listens for. The bar's right side is `ThemeToggle` and `AccountMenu` (avatar: Account settings, FAQ, Log out).
 
 ## Local commands and routing
 
@@ -233,7 +233,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     and staff pages are `lazy` routes (`later()` in `routes.tsx`), so home, FAQ and visa guides download less.
     Slow 3G home page measured 14.4 s before, 4.3 s after. A new heavy page should be `later()` too.
 48. **Ink redesign.** Paper and black ink in light mode, graphite and soft white in dark mode. Both use
-    the same layouts and status dots. Appearance follows the device by default and a choice is stored locally.
+    the same layouts and status dots. Appearance follows the device until the one-press `ThemeToggle` stores a
+    choice. Emphasis panels (`--panel-*`) invert the page in both modes. The mark is a geometric ش (three dots
+    over three stems), replacing a ت that read as a smiley face.
 49. **Official form guides.** Destinations whose application is an online portal or paper form get
     `applications/portals/<questionnaire>.json`: the portal's pages in order, fields mapped to answers in that
     portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
