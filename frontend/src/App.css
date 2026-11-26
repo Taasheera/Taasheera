@@ -92,14 +92,37 @@
   background: var(--card);
 }
 
-.account-card { max-width: 760px; }
-
-/* The account page inside the site layout: below the header, not centred in the window. */
+/* The account page is a plain settings page: a title, then each section under a hairline rule,
+   aligned with the rest of the site instead of boxed into one long card. */
 .sign-in-page.account-page {
   min-height: 0;
   justify-content: flex-start;
-  padding: 48px 20px 96px;
+  padding: 56px 0 96px;
 }
+.account-page .auth-body {
+  justify-items: start;
+  inline-size: 100%;
+  max-inline-size: calc(var(--container) + 48px);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+.sign-in-card.account-card {
+  max-width: 760px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.account-card > h1 { font: 700 clamp(36px, 5vw, 52px)/1 var(--font-display); letter-spacing: -0.05em; }
+.account-card > .intro { margin-block-end: 36px; color: var(--fg-muted); }
+.account-card section:not(section section) {
+  margin: 0;
+  padding-block: 32px;
+  border-block-start: 1px solid var(--border);
+}
+.account-card > section:first-of-type { border-block-start-color: var(--fg); }
+.account-card section:not(section section) > h2 { margin: 0 0 6px; font: 600 18px/1.3 var(--font-sans); letter-spacing: -0.01em; }
+@media (max-width: 600px) { .account-page .auth-body { padding-inline: 16px; } }
 .account-link { display: block; margin-bottom: 12px; }
 .profile-section { margin-bottom: 32px; }
 .profile-section h2 { margin: 0 0 8px; font-size: 20px; }
