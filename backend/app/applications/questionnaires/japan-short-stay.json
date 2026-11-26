@@ -127,11 +127,13 @@
         {
           "id": "home_address",
           "type": "address",
+          "prefill": "profile.address",
           "prompt": "What's your home address?"
         },
         {
           "id": "phone",
           "type": "phone",
+          "prefill": "profile.phone",
           "prompt": "What phone number can the embassy reach you on?",
           "help": "Include the country code, for example +961 71 123 456."
         },
@@ -214,6 +216,7 @@
         {
           "id": "arrival_date",
           "type": "date",
+          "prefill": "document.arrival",
           "prompt": "When do you plan to arrive in Japan?",
           "rules": [
             {
@@ -227,6 +230,7 @@
         {
           "id": "departure_date",
           "type": "date",
+          "prefill": "document.departure",
           "prompt": "And when will you leave?",
           "rules": [
             {
@@ -286,6 +290,7 @@
         {
           "id": "accommodation_details",
           "type": "text",
+          "prefill": "document.stay",
           "prompt": "What's the name, address and phone number of the place you're staying?",
           "max_length": 300,
           "show_if": {

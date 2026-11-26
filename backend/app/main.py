@@ -50,7 +50,7 @@ from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
-from .documents.review import completeness_issues
+from .documents.review import booking_documents as booking_texts, completeness_issues
 from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
 
@@ -203,11 +203,17 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
 
     app.state.document_issues = document_issues
 
+    def booking_documents(session, application):
+        # Bookings suggest answers only once supporting documents are released.
+        if not app.state.feature_flags.is_on("supporting_documents"):
+            return None
+        return booking_texts(session, document_storage, application)
+
     app.include_router(create_applications_router(get_session, current_traveler,
         lambda owner, upload: passport_storage.load_review(owner, upload, purpose="application_prefill"),
         load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="application_prefill"),
         remove_document_files=remove_document_files, document_issues=document_issues,
-        remove_agent_files=agent_files.remove_application))
+        remove_agent_files=agent_files.remove_application, booking_documents=booking_documents))
     app.include_router(create_agent_router(get_session, current_traveler, agent_files))
     app.include_router(create_form_review_router(get_session, current_traveler,
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))

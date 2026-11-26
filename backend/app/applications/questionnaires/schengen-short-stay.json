@@ -202,6 +202,7 @@
         {
           "id": "arrival_date",
           "type": "date",
+          "prefill": "document.arrival",
           "prompt": "When do you plan to arrive in the Schengen area?",
           "rules": [
             {"op": ">=", "ref": "today", "days": 1, "message": "Your arrival date needs to be in the future."},
@@ -211,6 +212,7 @@
         {
           "id": "departure_date",
           "type": "date",
+          "prefill": "document.departure",
           "prompt": "And when will you leave?",
           "rules": [
             {"op": ">=", "ref": "arrival_date", "message": "You can't leave before you arrive."},
@@ -242,6 +244,7 @@
         {
           "id": "accommodation_details",
           "type": "text",
+          "prefill": "document.stay",
           "prompt": "What's the name and address of the place you're staying?",
           "max_length": 300,
           "show_if": {"question": "accommodation", "in": ["hotel", "rental", "other"]}
