@@ -85,7 +85,7 @@ test('every Get started button loads the account page as a new document', async 
   assert.equal(router.state.location.pathname, '/')
 })
 
-test('signed-in travelers see Account, Log out and Start an application instead of Log in and Get started', async (t) => {
+test('signed-in travelers get an account menu with Account settings, FAQ and Log out instead of Log in and Get started', async (t) => {
   const requests = []
   t.mock.method(globalThis, 'fetch', async (url) => {
     requests.push(url)
@@ -96,25 +96,30 @@ test('signed-in travelers see Account, Log out and Start an application instead 
   const router = await render('/faq')
   await settle()
   const header = container.querySelector('.nav-right')
-  // Account lives in the section panel below the bar, so the bar doesn't repeat it.
-  assert.equal(header.querySelector('a[href="/account"]'), null)
   assert.equal(container.querySelector('.section-nav a[href="/account"]')?.textContent, 'Account')
-  assert.equal(header.querySelector('.logout-button')?.textContent, 'Log out')
-  assert.equal(header.querySelector('a.header-cta')?.getAttribute('href'), '/apply')
+  // The bar keeps only the theme button and the avatar; there is no hamburger or Get started.
+  assert.equal(header.querySelector('.logout-button'), null, 'Log out waits inside the account menu')
+  assert.equal(header.querySelector('.header-cta'), null)
+  assert.equal(container.querySelector('.menu-button'), null)
   assert.equal(container.querySelector('a[href^="/sign-in"]'), null, 'no Log in or Get started anywhere')
   assert.ok(container.querySelector('.footer-links a[href="/passport"]'))
   assert.ok(container.querySelector('.footer-links a[href="/dashboard"]'))
 
-  await click(container.querySelector('.menu-button'))
-  const items = [...container.querySelectorAll('#mobile-menu a, #mobile-menu button')].map(el => el.textContent.trim())
-  // Signed in, the marketing links give way to the traveler's own sections.
-  assert.deepEqual(items, ['FAQ', 'Log out', 'New application'])
+  const avatar = header.querySelector('button[aria-label="Account menu"]')
+  assert.equal(avatar.textContent, 'A')
+  assert.equal(avatar.getAttribute('aria-expanded'), 'false')
+  await click(avatar)
+  assert.equal(avatar.getAttribute('aria-expanded'), 'true')
+  const panel = container.querySelector('#account-menu-panel')
+  assert.match(panel.textContent, /anna@example\.com/)
+  const items = [...panel.querySelectorAll('a, button')].map(el => el.textContent.trim())
+  assert.deepEqual(items, ['Account settings', 'Help and FAQ', 'Log out'])
 
-  await click(container.querySelector('#mobile-menu .logout-button'))
+  await click(panel.querySelector('.logout-button'))
   await settle()
   assert.ok(requests.includes('/auth/logout'))
   assert.equal(router.state.location.pathname, '/')
-  assert.equal(container.querySelector('#mobile-menu'), null)
+  assert.equal(container.querySelector('#account-menu-panel'), null)
   assert.equal(container.querySelector('.nav-right .login-link')?.textContent, 'Log in')
 })
 
