@@ -18,6 +18,7 @@ const controls = new Set([
   'assistant-proposal-confirm', 'assistant-proposal-dismiss', 'assistant-proposal-go',
   'document-upload', 'document-open', 'document-replace', 'document-delete', 'document-delete-confirm',
   'agent-start', 'agent-cancel', 'agent-screenshot',
+  'document-attach', 'document-translate', 'vault-delete', 'vault-delete-confirm', 'passport-pages-save', 'photo-check',
 ])
 
 export default function ActivityTracker() {

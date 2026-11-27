@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { checkApplication, type CheckReport } from './api'
 
 // The completeness check before submission (US 13). The server decides what is missing or
@@ -61,8 +62,12 @@ export default function CompletenessCheck({ applicationId, documents = 0, upload
             {' '}<button type="button" className="chat-explain" onClick={() => fixQuestion(issue.question_id!)}>Go to question</button></>}
           {issue.document_id && fixDocument && <>
             {' '}<button type="button" className="chat-explain" onClick={() => fixDocument(issue.document_id!)}>Go to document</button></>}
-          {!issue.document_id && uploadLinks && issue.kind === 'missing' && issue.question_id === null && <>
+          {!issue.document_id && !issue.link && uploadLinks && issue.kind === 'missing' && issue.question_id === null && <>
             {' '}<a href="#docs-title" className="completeness-fix">Upload</a></>}
+          {issue.link?.startsWith('/') && <>
+            {' '}<Link to={issue.link} className="completeness-fix">Update</Link></>}
+          {issue.source?.startsWith('https://') && <>
+            {' '}<a href={issue.source} className="completeness-fix" target="_blank" rel="noopener noreferrer">Official rule</a></>}
         </li>)}
       </ul>}
     </div>}

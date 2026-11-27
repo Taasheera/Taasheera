@@ -144,6 +144,8 @@ export type CheckIssue = {
   question_id: string | null
   step_id: string | null
   document_id?: string | null
+  link?: string | null
+  source?: string | null
 }
 export type CheckReport = { ready: boolean; answered: number; total: number; issues: CheckIssue[]; readiness_score?: number; readiness_reason?: string }
 

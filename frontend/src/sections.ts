@@ -12,7 +12,7 @@ export type Section = {
 
 export const sections: Section[] = [
   { id: 'applications', label: 'Applications', href: '/dashboard', prefixes: ['/dashboard', '/apply'], activityId: 'dashboard-link' },
-  { id: 'documents', label: 'Passport & documents', href: '/passport', prefixes: ['/passport'], activityId: 'passport-link' },
+  { id: 'documents', label: 'Passport & documents', href: '/passport', prefixes: ['/passport', '/documents'], activityId: 'passport-link' },
   { id: 'account', label: 'Account', href: '/account', prefixes: ['/account'] },
 ]
 
