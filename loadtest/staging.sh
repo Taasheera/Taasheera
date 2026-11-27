@@ -66,7 +66,10 @@ print('Settings updated:', ', '.join(sorted(line.split('=')[0] for line in Path(
 PY
 rm -f /tmp/taasheera-edits
 $compose up -d --no-build --force-recreate --wait --wait-timeout 180 api worker
+# nginx resolves the api container's address once at start; a recreated api gets a new one.
+$compose restart web
 echo ready";;
+  restart-web) run "$compose restart web";;
   seed)
     users=${2:-300}
     [[ "$users" =~ ^[0-9]+$ ]]
