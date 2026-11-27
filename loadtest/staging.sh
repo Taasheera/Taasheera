@@ -13,6 +13,8 @@ export AWS_PAGER="" AWS_CLI_AUTO_PROMPT=off AWS_REGION=${AWS_REGION:-us-east-1}
 export AWS_DEFAULT_REGION=$AWS_REGION
 stack=${TAASHEERA_STACK:-taasheera-staging}
 test "$stack" = taasheera-staging || { echo "staging.sh only operates taasheera-staging." >&2; exit 1; }
+# Windows (Git Bash) AWS CLI needs a native path inside file://
+native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 PY=$(command -v python3 >/dev/null 2>&1 && python3 -c 'import sys' >/dev/null 2>&1 && echo python3 || echo python)
 instance=$(aws cloudformation describe-stacks --stack-name "$stack" \
   --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue | [0]" --output text)
@@ -25,7 +27,7 @@ run() {  # run one shell script on the host and print its output
   SCRIPT="$script" "$PY" -c 'import json, os, sys; json.dump({"commands": [os.environ["SCRIPT"]], "executionTimeout": ["1800"]}, open(sys.argv[1], "w"))' "$file"
   local id
   id=$(aws ssm send-command --instance-ids "$instance" --document-name AWS-RunShellScript \
-       --parameters "file://$file" --query Command.CommandId --output text)
+       --parameters "file://$(native "$file")" --query Command.CommandId --output text)
   rm -f "$file"
   for _ in $(seq 1 180); do
     status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$instance" --query Status --output text 2>/dev/null || echo Pending)
