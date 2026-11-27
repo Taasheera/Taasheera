@@ -48,7 +48,8 @@ export function browse() {
   group('browse', () => {
     const home = anonymousGet('/', 'GET / (page)')
     const script = /src="(\/assets\/[^"]+\.js)"/.exec(home.body || '')
-    if (script) anonymousGet(script[1], 'GET /assets/*.js')
+    // Returning visitors' browsers keep built files for a year (immutable), so only first visits fetch them.
+    if (script && Math.random() < 0.2) anonymousGet(script[1], 'GET /assets/*.js')
     anonymousGet('/features', 'GET /features')
     pause(0.5)
     const guides = anonymousGet('/visa-guides', 'GET /visa-guides')
