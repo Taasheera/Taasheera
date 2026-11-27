@@ -43,6 +43,8 @@ parameters = {'OwnerEmail': 'mhs86@mail.aub.edu', 'VpcId': os.environ['TAASHEERA
               'OriginToken': os.environ['TAASHEERA_ORIGIN_TOKEN']}
 if os.environ.get('TAASHEERA_INSTANCE_TYPE'):
     parameters['InstanceType'] = os.environ['TAASHEERA_INSTANCE_TYPE']
+if os.environ.get('TAASHEERA_CPU_CREDITS'):
+    parameters['CpuCredits'] = os.environ['TAASHEERA_CPU_CREDITS']
 with open(os.environ['TAASHEERA_PARAMETER_FILE'], 'w') as f:
     json.dump([{'ParameterKey':k, 'ParameterValue':v} for k,v in parameters.items()], f)
 PY
