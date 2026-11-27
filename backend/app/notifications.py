@@ -7,6 +7,7 @@ the change and its notification are saved together or not at all:
   (the applications router does this; recording an embassy decision, CMPS271-80, is one more call).
 - `notify_agent_run(session, application, stopped_reason=None)` when the form-filling agent
   finishes or stops (CMPS271-67).
+- `notify_payment(session, application)` when a payment completes (CMPS271-108).
 
 Messages are fixed sentences about the traveler's own application. Never put passport fields,
 answer values or other personal data in them. The timer in notification_jobs.py can email a
@@ -84,6 +85,14 @@ def notify_agent_run(session: Session, application: Application, stopped_reason:
         kind = "agent_stopped"
         message = f"The agent stopped filling the embassy form for your {name} application: {stopped_reason}."
     return notify(session, application.traveler_id, kind, message,
+                  application_id=application.id, link=f"/dashboard/{application.id}")
+
+
+def notify_payment(session: Session, application: Application) -> Notification:
+    """Tell the owner their payment went through and submission is unlocked (CMPS271-108). No amounts."""
+    return notify(session, application.traveler_id, "payment_completed",
+                  f"Your payment for your {application_name(application)} application went through. "
+                  "The agent can now fill the embassy form, and your receipt is on the application page.",
                   application_id=application.id, link=f"/dashboard/{application.id}")
 
 
