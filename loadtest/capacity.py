@@ -45,7 +45,7 @@ class HealthSampler(threading.Thread):
         super().__init__(daemon=True)
         self.base_url, self.email, self.password, self.interval = base_url, email, password, interval
         self.samples, self.errors = [], 0
-        self._stop = threading.Event()
+        self._halt = threading.Event()
         self._token = None
 
     def _call(self, method, path, body=None, token=None):
@@ -59,7 +59,7 @@ class HealthSampler(threading.Thread):
     def run(self):
         if not (self.email and self.password):
             return
-        while not self._stop.is_set():
+        while not self._halt.is_set():
             try:
                 if self._token is None:
                     self._token = self._call("POST", "/auth/login", {"email": self.email, "password": self.password})["access_token"]
@@ -77,10 +77,10 @@ class HealthSampler(threading.Thread):
                     self._token = None
             except Exception:
                 self.errors += 1
-            self._stop.wait(self.interval)
+            self._halt.wait(self.interval)
 
     def stop(self):
-        self._stop.set()
+        self._halt.set()
 
     def summary(self):
         def values(key):
