@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true,
     // Same-origin browser requests; FastAPI needs no CORS middleware locally.
     proxy: {
-      ...Object.fromEntries(['auth', 'passports', 'profile', 'sessions', 'activity', 'assistant', 'applications', 'features', 'notifications', 'visa-guides', 'vault']
+      ...Object.fromEntries(['auth', 'passports', 'profile', 'sessions', 'activity', 'assistant', 'applications', 'features', 'notifications', 'visa-guides', 'vault', 'support', 'help-content']
         .map(route => [`/${route}`, process.env.TAASHEERA_API_TARGET || 'http://127.0.0.1:8000'])),
       '/admin-api': { target: process.env.TAASHEERA_API_TARGET || 'http://127.0.0.1:8000',
         rewrite: path => path.replace(/^\/admin-api/, '/admin') },
