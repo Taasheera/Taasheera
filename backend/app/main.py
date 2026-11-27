@@ -60,6 +60,8 @@ from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
 from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_upload_check
 from .payments.router import create_payments_router
+from .requirements import RequirementStore, create_requirements_router
+from .kpis import create_kpi_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
@@ -68,6 +70,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     install_query_timing(engine)
     # Before the engine is used, so database spans are recorded from the first request.
     monitoring = configure_monitoring()
+    requirements = RequirementStore(engine)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -87,10 +90,12 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
         set_api_threads()
+        requirements.install()
         notification_jobs = start_notification_jobs(app)
         try:
             yield
         finally:
+            requirements.uninstall()
             if notification_jobs is not None:
                 notification_jobs.stop()
                 notification_jobs.leader.release()
@@ -180,6 +185,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_auth_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
     app.include_router(create_system_health_router(get_session, current_traveler, passport_storage.root))
+    app.include_router(create_requirements_router(get_session, current_traveler, requirements))
+    app.include_router(create_kpi_router(get_session, current_traveler))
     app.include_router(create_sessions_router(get_session, current_traveler))
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))

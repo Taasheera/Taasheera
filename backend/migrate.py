@@ -112,7 +112,12 @@ def upgrade() -> None:
                                      ("add_index", "ix_payment_traveler_id"),
                                      ("add_index", "ix_payment_application_id"),
                                      ("add_index", "ix_payment_status"),
-                                     ("add_index", "ix_payment_created_at")}
+                                     ("add_index", "ix_payment_created_at"),
+                                     ("add_table", "requirementrevision"),
+                                     ("add_index", "ix_requirementrevision_questionnaire_id"),
+                                     ("add_index", "ix_requirementrevision_author_id"),
+                                     ("add_table", "requirementdraft"),
+                                     ("add_index", "ix_requirementdraft_author_id")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

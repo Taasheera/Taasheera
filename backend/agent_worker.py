@@ -16,6 +16,7 @@ from app.agent.worker import serve
 from app.database import build_engine
 from app.monitoring import capture_job_error, configure_monitoring
 from app.file_encryption import cipher_from_environment
+from app.requirements import RequirementStore
 from app.schema import require_current_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -37,6 +38,7 @@ def chromium():
 def main() -> None:
     engine = build_engine(os.environ.get("DATABASE_URL"))
     require_current_schema(engine)
+    RequirementStore(engine).install()
     root = Path(os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parent / "storage" / "passports")))
     stopping = False
 
