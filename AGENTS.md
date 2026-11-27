@@ -247,4 +247,6 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     (staging/production) is the Sentry environment. Traces are opt in (`SENTRY_TRACES_SAMPLE_RATE`) and keep only route
     templates, timings and placeholder SQL; jobs use `monitored_job` (cron check-ins). Request logs add `db_ms`, `db_queries`
     and `trace_id` and accept a safe `X-Request-ID`. Admin `GET /admin/system-health` feeds `/backoffice`;
-    `deploy/aws/monitoring.sh <stack>` creates the CloudWatch dashboard and alarms.
+    `deploy/aws/monitoring.sh <stack>` creates the CloudWatch dashboard and alarms. Capacity: `loadtest/` (k6 mixed
+    workload, `capacity.py` loop) against the `taasheera-staging` stack; results in `docs/CAPACITY_REPORT.md`.
+    Staging-only switches (`THROTTLE_EXEMPT_IPS`, `ASSISTANT_FAKE_LATENCY_MS`, `seed-load-test`) refuse to start elsewhere.

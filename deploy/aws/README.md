@@ -193,6 +193,30 @@ image releases supply both again. Local `taasheera-api`/`taasheera-web` tags als
 images so existing operator/backup commands keep using the current release after setup exits.
 See [AWS's repository-scoped push permissions](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-push-iam.html).
 
+## Staging copy for load tests (Sprint 5)
+
+`taasheera-staging` is a second stack from the same template: its own EC2 host, data volume and
+CloudFront URL (https://d3125pr28zp4zv.cloudfront.net), synthetic data only. Created with:
+
+```bash
+export AWS_FREE_ELIGIBILITY_CONFIRMED=yes TAASHEERA_STACK=taasheera-staging TAASHEERA_INSTANCE_TYPE=t3.micro \
+  TAASHEERA_CPU_CREDITS=unlimited TAASHEERA_DEPLOY_ENVIRONMENT=staging \
+  TAASHEERA_SENTRY_DSN=<api dsn> TAASHEERA_SENTRY_FRONTEND_DSN=<browser dsn> TAASHEERA_SENTRY_TRACES_SAMPLE_RATE=1
+bash deploy/aws/deploy.sh            # prepares the change set; execute it, then run again
+bash deploy/aws/monitoring.sh taasheera-staging
+```
+
+Its state lives in `.aws-deploy-state/taasheera-staging/`, apart from production's. `unlimited` CPU credits
+let a new t3 host burst like the long-idle production host (a new t3 starts with no saved credits);
+production stays `standard`. `bash loadtest/staging.sh stop` stops it between test sessions (disks and
+the address still cost a little); `start` brings it back. Delete the stack, then its retained data volume,
+when it is no longer needed. From Windows Git Bash, give the AWS CLI native paths: set
+`TAASHEERA_STATE_DIR` and `TMPDIR` to `C:/...` folders.
+
+**After changing `app.env`, recreate api and restart web.** nginx resolves the api container's address
+when it starts; a recreated api container gets a new address and nginx answers 502 until restarted:
+`docker compose -f /opt/taasheera/deploy/aws/compose.yaml up -d --no-build --force-recreate api && docker compose -f /opt/taasheera/deploy/aws/compose.yaml restart web`.
+
 ## Form-filling agent worker (CMPS271-236)
 
 `compose.yaml` runs a `worker` container from the API image with `python agent_worker.py`. It shares the
@@ -222,7 +246,8 @@ Gemini remains an external dependency. Enter its key privately in
 `/srv/taasheera/private/app.env` if needed; use specimen data with the free tier.
 
 After a private settings change, run `docker compose -f
-/opt/taasheera/deploy/aws/compose.yaml up -d --force-recreate api` on the host.
+/opt/taasheera/deploy/aws/compose.yaml up -d --force-recreate api` on the host, then
+`docker compose -f /opt/taasheera/deploy/aws/compose.yaml restart web` (nginx keeps the old api address otherwise).
 Check HTTPS home page, `/health/ready`, register/login/refresh/logout, upload a
 specimen passport, review/save/read it, and confirm data survives a container
 restart. Verify assistant and reset-email delivery separately when configured.
