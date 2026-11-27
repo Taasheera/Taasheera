@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { restoreSession } from '../auth'
 import IdleGuard from '../IdleGuard'
 import GlobalAssistant from '../assistant/GlobalAssistant'
+import Feature from '../Feature'
 import { signInPath } from '../paths'
 import { ADMIN_REQUIRED, AdminRequestError, getAdminMe, type AdminProfile } from './api'
 import '../site.css'
@@ -55,6 +56,8 @@ export default function AdminLayout() {
         {admin && <nav className="admin-nav" aria-label="Admin">
           <Link to="/admin">Users</Link>
           <Link to="/backoffice">Monitoring</Link>
+          <Feature name="requirements_editor"><Link to="/admin/requirements">Requirements</Link></Feature>
+          <Feature name="kpi_dashboard"><Link to="/admin/kpis">KPIs</Link></Feature>
           <span className="admin-signed-in">Signed in as {admin.name}</span>
         </nav>}
       </div>

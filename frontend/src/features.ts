@@ -5,6 +5,7 @@ import { apiFetch } from './api'
 // every flag in development, none on the live site until FEATURE_<NAME>=true is set there.
 export type FeatureName = 'agent_form_filling' | 'supporting_documents' | 'embassy_pdf' | 'passport_scan_quality'
   | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'malware_scan' | 'payments'
+  | 'requirements_editor' | 'kpi_dashboard'
 export type FeatureFlags = Partial<Record<FeatureName, boolean>>
 
 const HIDDEN: FeatureFlags = {}
