@@ -257,3 +257,5 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 52. **Upload malware scan (CMPS271-31).** `app/upload_scan.py` scans uploads before parsing or storage: EICAR,
     executables, PDF active content, declared-type mismatch, optional clamd (`CLAMD_ADDRESS`, fails closed with 503,
     off on t3.micro). Fixed 422 message and an `upload_rejected` event. Behind released `malware_scan`.
+53. **Payments (CMPS271-106/108/109).** Preparation and the packet are free; a paid `Payment` unlocks the agent run (402 before).
+    `payments/quote.py`: first visa-guide fee + `SERVICE_FEE` in its currency, minor units, discount hook. Simulated provider only (no card data), idempotent key, audited PDF receipt.
