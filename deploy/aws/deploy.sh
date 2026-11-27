@@ -61,6 +61,17 @@ aws cloudformation create-change-set --stack-name "$stack" --change-set-name "$c
 if aws cloudformation wait change-set-create-complete --stack-name "$stack" --change-set-name "$change_set"; then
   # Show only resource changes; NoEcho parameters are not printed.
   aws cloudformation describe-change-set --stack-name "$stack" --change-set-name "$change_set" --query Changes
+  # AmiId resolves the latest Amazon Linux on every update, so a newer AMI means a new host. The new host
+  # cannot take the data volume while the old one holds it, and the update rolls back. Refuse it instead.
+  replaced=$(aws cloudformation describe-change-set --stack-name "$stack" --change-set-name "$change_set" \
+    --query "length(Changes[?ResourceChange.LogicalResourceId=='Host' && ResourceChange.Replacement=='True'])" --output text)
+  if [ "$change_type" = UPDATE ] && [ "$replaced" != 0 ]; then
+    aws cloudformation delete-change-set --stack-name "$stack" --change-set-name "$change_set"
+    printf 'This update would replace the EC2 host (usually a newer Amazon Linux AMI); it would roll back\n'
+    printf 'because the data volume stays attached to the old host. To resize, stop the instance and use\n'
+    printf 'aws ec2 modify-instance-attribute (deploy/aws/README.md); use redeploy.sh for application changes.\n'
+    exit 1
+  fi
   if [ "${TAASHEERA_EXECUTE_CHANGE_SET:-no}" != yes ]; then
     printf 'Prepared change set %s. Review resources and costs, then execute it and run this script again.\n' "$change_set"
     exit 0

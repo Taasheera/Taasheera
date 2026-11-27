@@ -213,6 +213,14 @@ the address still cost a little); `start` brings it back. Delete the stack, then
 when it is no longer needed. From Windows Git Bash, give the AWS CLI native paths: set
 `TAASHEERA_STATE_DIR` and `TMPDIR` to `C:/...` folders.
 
+**Resizing a host.** Do not change `InstanceType` through `deploy.sh`: the template resolves the latest
+Amazon Linux AMI on every update, so an update after a new AMI release replaces the host, the new host
+cannot attach the data volume the old one still holds, and the update rolls back (found on staging on
+November 27; `deploy.sh` now refuses such a change set). Stop the instance, then
+`aws ec2 modify-instance-attribute --instance-id <id> --instance-type '{"Value":"t3.small"}'` and start it;
+the Elastic IP and CloudFront origin stay the same. The stack parameter then lags the real size until a
+planned host replacement (back up, detach and reattach the data volume by hand).
+
 **After changing `app.env`, recreate api and restart web.** nginx resolves the api container's address
 when it starts; a recreated api container gets a new address and nginx answers 502 until restarted:
 `docker compose -f /opt/taasheera/deploy/aws/compose.yaml up -d --no-build --force-recreate api && docker compose -f /opt/taasheera/deploy/aws/compose.yaml restart web`.
