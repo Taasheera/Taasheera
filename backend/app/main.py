@@ -16,7 +16,7 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
-from .database import build_engine
+from .database import api_threads, build_engine
 from .applications.form_review import create_form_review_router
 from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
@@ -130,13 +130,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         return jobs
 
     def set_api_threads() -> None:
-        """API_THREADS sizes the pool that runs this app's (synchronous) endpoints; AnyIO's default is 40."""
-        raw = os.environ.get("API_THREADS", "").strip()
-        if not raw:
-            return
-        if not raw.isascii() or not raw.isdigit() or not 10 <= int(raw) <= 200:
-            raise RuntimeError("API_THREADS must be a whole number between 10 and 200.")
-        anyio.to_thread.current_default_thread_limiter().total_tokens = int(raw)
+        """Match the endpoint thread pool to API_THREADS, the size build_engine gave the SQLite pool."""
+        anyio.to_thread.current_default_thread_limiter().total_tokens = api_threads()
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine

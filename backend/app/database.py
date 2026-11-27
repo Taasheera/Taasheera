@@ -27,12 +27,33 @@ def sqlite_journal_mode() -> str | None:
     return mode or None
 
 
+DEFAULT_API_THREADS = 40  # AnyIO's default thread pool for synchronous endpoints
+
+
+def api_threads() -> int:
+    """API_THREADS sizes the thread pool that runs the (synchronous) endpoints, and the SQLite pool."""
+    raw = os.environ.get("API_THREADS", "").strip()
+    if not raw:
+        return DEFAULT_API_THREADS
+    if not raw.isascii() or not raw.isdigit() or not 10 <= int(raw) <= 200:
+        raise RuntimeError("API_THREADS must be a whole number between 10 and 200.")
+    return int(raw)
+
+
 def build_engine(database_url: str | None = None):
     url = normalize_database_url(database_url or os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
-    sqlite = make_url(url).get_backend_name() == "sqlite"
+    parsed = make_url(url)
+    sqlite = parsed.get_backend_name() == "sqlite"
     # FastAPI may use different threads during a request. Sessions stay per-request.
     connect_args = {"check_same_thread": False} if sqlite else {}
-    engine = create_engine(url, connect_args=connect_args)
+    pool = {}
+    if sqlite and parsed.database not in (None, "", ":memory:"):
+        # A request keeps its connection until it ends, including slow work such as password hashing.
+        # SQLAlchemy's default pool (5 + 10) is smaller than the endpoint threads, so during a burst of
+        # sign-ins other requests waited 30 s for a connection and failed (docs/CAPACITY_REPORT.md).
+        # SQLite connections are cheap and SQLite orders writes itself: give every thread one.
+        pool = {"pool_size": api_threads(), "max_overflow": 10, "pool_use_lifo": True}
+    engine = create_engine(url, connect_args=connect_args, **pool)
     if sqlite and sqlite_journal_mode() == "wal":
         @event.listens_for(engine, "connect")
         def write_ahead_log(connection, _record):

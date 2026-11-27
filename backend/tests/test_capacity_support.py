@@ -128,6 +128,23 @@ def test_sqlite_write_ahead_log_is_opt_in(tmp_path, monkeypatch):
         build_engine(f"sqlite:///{tmp_path / 'other.db'}")
 
 
+def test_every_endpoint_thread_gets_its_own_sqlite_connection(tmp_path, monkeypatch):
+    # Capacity run 2: behind SQLAlchemy's default pool (5 + 10) and 40 endpoint threads, a burst of
+    # sign-ins, each keeping its connection while hashing, left other requests waiting 30 s and failing.
+    assert build_engine(f"sqlite:///{tmp_path / 'default.db'}").pool.size() == 40
+    monkeypatch.setenv("API_THREADS", "24")
+    engine = build_engine(f"sqlite:///{tmp_path / 'pool.db'}")
+    assert engine.pool.size() == 24
+    connections = [engine.connect() for _ in range(24 + 10)]  # every thread, plus background jobs
+    for connection in connections:
+        assert connection.execute(text("SELECT 1")).scalar() == 1
+        connection.close()
+    engine.dispose()
+    # In-memory databases (some tests) keep SQLAlchemy's own pool for them.
+    with build_engine("sqlite://").connect() as connection:
+        assert connection.execute(text("SELECT 1")).scalar() == 1
+
+
 @pytest.mark.parametrize("value", ["5", "500", "many"])
 def test_api_threads_must_be_sensible(tmp_path, monkeypatch, value):
     monkeypatch.setenv("API_THREADS", value)
