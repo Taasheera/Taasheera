@@ -113,6 +113,30 @@ def test_traces_name_routes_by_template_and_carry_release_and_environment(tmp_pa
     assert APPLICATION_ID not in payload and "Bearer" not in payload and "traveler@example.com" not in payload
 
 
+def test_a_request_failure_is_one_sentry_issue_with_its_route(tmp_path, monkeypatch, sentry_memory):
+    monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "1")
+    built = build(tmp_path, roles=("traveler",))
+    try:
+        created = built.client.post("/applications", headers=built.headers("traveler"),
+                                    json={"destination": "SCHENGEN", "visa_type": "short_stay"})
+        assert created.status_code == 201
+        application_id = created.json()["id"]
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("private detail TEST0001")
+        monkeypatch.setattr("app.applications.router.flow.load_questionnaire", broken)
+        sentry_memory.clear()
+        with TestClient(built.app, raise_server_exceptions=False) as client:
+            assert client.get(f"/applications/{application_id}", headers=built.headers("traveler")).status_code == 500
+        sentry_sdk.flush()
+    finally:
+        built.client.__exit__(None, None, None)
+    errors = [item.get_event() for item in items(sentry_memory, "event")]
+    assert len(errors) == 1, errors
+    assert errors[0]["tags"]["route"] == "/applications/{application_id}" and errors[0]["tags"]["request_id"]
+    assert "TEST0001" not in json.dumps(errors) and "RuntimeError" not in json.dumps(errors)
+
+
 def test_monitoring_settings_are_validated(monkeypatch):
     monkeypatch.setenv("SENTRY_DSN", "https://public@sentry.example.com/1")
     for name, value in (("SENTRY_TRACES_SAMPLE_RATE", "2"), ("SENTRY_TRACES_SAMPLE_RATE", "all"),

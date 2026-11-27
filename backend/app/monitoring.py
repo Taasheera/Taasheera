@@ -24,6 +24,7 @@ DESCRIBED_OPS = ("db", "job")
 # Starlette names a transaction after its route template, or after the raw path when no route matched.
 TEMPLATE_SOURCES = {"route", "component", "task", "custom"}
 RELEASE = re.compile(r"[A-Za-z0-9._@+-]{1,200}")
+ASGI_MECHANISM = "taasheera_asgi"
 ENVIRONMENT = re.compile(r"[a-z0-9-]{1,32}")
 
 
@@ -35,6 +36,11 @@ def scrub_event(event, hint):
     if event.get("type") == "check_in":
         # Cron check-ins also pass through before_send: our job name, status, duration and schedule.
         return {key: event[key] for key in CHECK_IN_KEYS if key in event}
+    exceptions = (event.get("exception") or {}).get("values") or []
+    if any((value.get("mechanism") or {}).get("type") == ASGI_MECHANISM for value in exceptions):
+        # The tracing middleware's copy of a request failure; capture_service_error already reported it
+        # with its route and request ID. Other exceptions (jobs, startup) are still sent.
+        return None
     # No request, user, headers, breadcrumbs, local variables, paths or exception messages.
     result = {key: event[key] for key in ("event_id", "timestamp", "platform", "level", "environment", "release")
               if key in event}
@@ -143,7 +149,7 @@ def install_tracing(app, client) -> None:
         return
     from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
     # Added last, so it wraps every other middleware and times the whole request.
-    app.add_middleware(SentryAsgiMiddleware, transaction_style="url", mechanism_type="taasheera_asgi")
+    app.add_middleware(SentryAsgiMiddleware, transaction_style="url", mechanism_type=ASGI_MECHANISM)
 
 
 def current_trace_id() -> str | None:
