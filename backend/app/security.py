@@ -89,8 +89,22 @@ def admitted(request: Request, session: Session, limits: list[tuple[str, str, in
     return allowed
 
 
+def exempt_from_limits(request: Request) -> bool:
+    """Staging's own load generator (AuthSettings.throttle_exempt, refused outside staging)."""
+    networks = request.app.state.auth_settings.throttle_exempt
+    if not networks:
+        return False
+    try:
+        address = ipaddress.ip_address(client_address(request))
+    except ValueError:
+        return False
+    return any(address in network for network in networks)
+
+
 def throttle(request: Request, session: Session, operation: str,
              *, account: str | None = None, ip_limit: int = 30, account_limit: int = 10):
+    if exempt_from_limits(request):
+        return
     limits = [(f"{operation}-ip", client_address(request), ip_limit, 900)]
     if account is not None:
         limits.append((f"{operation}-account", account, account_limit, 900))

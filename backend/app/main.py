@@ -4,7 +4,9 @@ import shutil
 from pathlib import Path
 from typing import Annotated
 
+import anyio.to_thread
 import bcrypt
+from filelock import FileLock, Timeout
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -44,6 +46,7 @@ from .consent import create_consent_requirement, create_consent_router
 from .notification_preferences import create_notification_preferences_router
 from .applications.visa_guides import create_visa_guides_router
 from .document_audit import create_document_audit_router, record_document_access
+from .load_testing import fake_assistant_from_environment
 from .monitoring import configure_monitoring, install_tracing, monitored_job
 from .privacy import create_privacy_router, retry_erasures
 from .system_health import create_system_health_router
@@ -80,12 +83,14 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         else:
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
+        set_api_threads()
         notification_jobs = start_notification_jobs(app)
         try:
             yield
         finally:
             if notification_jobs is not None:
                 notification_jobs.stop()
+                notification_jobs.leader.release()
             if monitoring is not None:
                 monitoring.flush(timeout=2)
             engine.dispose()
@@ -102,6 +107,14 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                       if app.state.runtime_settings.environment == "development" else None)
         if not interval or sender is None:
             return None
+        # With several API worker processes (WEB_CONCURRENCY), exactly one runs the timer: whichever
+        # takes this lock on the shared storage volume first. The others serve requests only.
+        app.state.account_lock_directory.parent.mkdir(parents=True, exist_ok=True)
+        leader = FileLock(str(app.state.account_lock_directory.parent / ".notification-jobs.lock"))
+        try:
+            leader.acquire(timeout=0)
+        except Timeout:
+            return None
         # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
         site_url = app.state.auth_settings.allowed_origins[0]
         show_notification_logs()
@@ -112,8 +125,18 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                 run_notification_jobs(engine, sender, site_url)
 
         jobs = NotificationJobThread(run_jobs, interval)
+        jobs.leader = leader
         jobs.start()
         return jobs
+
+    def set_api_threads() -> None:
+        """API_THREADS sizes the pool that runs this app's (synchronous) endpoints; AnyIO's default is 40."""
+        raw = os.environ.get("API_THREADS", "").strip()
+        if not raw:
+            return
+        if not raw.isascii() or not raw.isdigit() or not 10 <= int(raw) <= 200:
+            raise RuntimeError("API_THREADS must be a whole number between 10 and 200.")
+        anyio.to_thread.current_default_thread_limiter().total_tokens = int(raw)
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine
@@ -253,6 +276,10 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     assistant_model = os.environ.get("ASSISTANT_MODEL", DEFAULT_MODEL)
     assistant_ask = gemini_ask(assistant_client, assistant_model) if assistant_client else None
     assistant_ask_tools = gemini_ask_tools(assistant_client, assistant_model) if assistant_client else None
+    # Staging capacity tests only: a fixed-latency stand-in instead of Gemini (app/load_testing.py).
+    stand_in = fake_assistant_from_environment()
+    if stand_in is not None:
+        assistant_ask, assistant_ask_tools = stand_in
 
     def load_application_context(traveler_id: int, application_id: str) -> str | None:
         with Session(engine) as session:
