@@ -50,18 +50,23 @@ def booking_documents(session: Session, storage: DocumentStorage, application: A
             for document in _documents(session, application) if document.requirement in wanted]
 
 
+def missing_document_issues(session: Session, application: Application, answers: flow.Answers) -> list[completeness.Issue]:
+    """Required documents not uploaded yet, from the upload records alone: no file is read."""
+    questionnaire = flow.load_questionnaire(application.questionnaire_id)
+    uploaded = {document.requirement for document in _documents(session, application)}
+    return [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}",
+                               document_id=requirement.id)
+            for requirement in flow.required_documents(questionnaire, answers)
+            if requirement.required and requirement.id not in uploaded]
+
+
 def completeness_issues(session: Session, storage: DocumentStorage, application: Application, answers: flow.Answers,
                         *, latest_passport: dict | None, profile: dict | None) -> list[completeness.Issue]:
     """Required documents not uploaded yet, and documents that disagree with the passport.
 
     Passport-versus-profile differences are left out: the completeness check reports those itself.
     """
-    questionnaire = flow.load_questionnaire(application.questionnaire_id)
-    uploaded = {document.requirement for document in _documents(session, application)}
-    issues = [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}",
-                                 document_id=requirement.id)
-              for requirement in flow.required_documents(questionnaire, answers)
-              if requirement.required and requirement.id not in uploaded]
+    issues = missing_document_issues(session, application, answers)
     report = document_cross_check(session, storage, application, answers,
                                   latest_passport=latest_passport, profile=profile)
     issues += [completeness.Issue(kind="inconsistent", severity="warning", message=finding.message,

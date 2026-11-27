@@ -19,9 +19,10 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete, select, update
 
-from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, Payment, SupportingDocument, Traveler
+from ..models import (Application, ApplicationAnswer, AssistantMessage, Notification, Payment, SupportAccessGrant,
+                      SupportRequest, SupportingDocument, Traveler)
 from ..notifications import notify_status_change
 from . import flow
 from .router import ApplicationSummary, _status, _summary, _utc, current_answers, is_recorded
@@ -92,6 +93,8 @@ def delete_application(session: Session, application: Application) -> list[str]:
     document_ids = unused_files(session, file_keys)
     session.exec(delete(AssistantMessage).where(AssistantMessage.application_id == application.id))
     session.exec(delete(Notification).where(Notification.application_id == application.id))
+    session.exec(delete(SupportAccessGrant).where(SupportAccessGrant.application_id == application.id))
+    session.exec(update(SupportRequest).where(SupportRequest.application_id == application.id).values(application_id=None))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
     session.exec(delete(Payment).where(Payment.application_id == application.id))
     session.delete(application)

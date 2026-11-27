@@ -55,7 +55,7 @@ from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
-from .documents.review import booking_documents as booking_texts, completeness_issues
+from .documents.review import booking_documents as booking_texts, completeness_issues, missing_document_issues
 from .documents.storage import DocumentStorage
 from .documents.translation import gemini_translate
 from .documents.vault import create_vault_router, vault_issues
@@ -64,6 +64,8 @@ from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_u
 from .payments.router import create_payments_router
 from .requirements import RequirementStore, create_requirements_router
 from .kpis import create_kpi_router
+from .support import create_staff_support_router, create_support_router
+from .help_content import create_help_content_admin_router, create_help_content_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
@@ -277,6 +279,16 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
     app.include_router(create_portal_guide_router(get_session, current_traveler))
     app.include_router(create_payments_router(get_session, current_traveler))
+
+    def missing_uploads(session, application, answers):
+        if not app.state.feature_flags.is_on("supporting_documents"):
+            return None
+        return missing_document_issues(session, application, answers)
+
+    app.include_router(create_support_router(get_session, current_traveler))
+    app.include_router(create_staff_support_router(get_session, current_traveler, document_issues=missing_uploads))
+    app.include_router(create_help_content_router(get_session))
+    app.include_router(create_help_content_admin_router(get_session, current_traveler))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
