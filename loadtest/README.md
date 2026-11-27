@@ -58,4 +58,5 @@ Each is refused at startup unless `DEPLOY_ENVIRONMENT=staging`:
 `ASSISTANT_FAKE_LATENCY_MS` (assistant answers after a fixed delay instead of calling Gemini) and
 `manage.py seed-load-test` (synthetic `loadtest-NNNN@example.com` accounts plus a synthetic admin).
 Scaling settings tried after the baseline, all off by default: `SQLITE_JOURNAL_MODE=wal`,
-`WEB_CONCURRENCY` (API processes; one runs the notification timer), `API_THREADS`.
+`WEB_CONCURRENCY` (API processes; one runs the notification timer), `API_THREADS` (request threads per
+process, default 40; the SQLite connection pool gets as many, plus 10).
