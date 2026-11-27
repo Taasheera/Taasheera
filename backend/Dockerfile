@@ -31,6 +31,10 @@ COPY --chown=taasheera:taasheera alembic.ini migrate.py manage.py retry_erasures
 RUN mkdir -p /app/storage \
     && chown -R taasheera:taasheera /app/storage
 
+# Sentry groups errors and traces by release (taasheera@<commit>); empty for local builds.
+ARG SENTRY_RELEASE=
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+
 USER taasheera
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

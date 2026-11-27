@@ -3,6 +3,18 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 
+def deploy_environment() -> str:
+    """development, staging or production: which copy of the site this process is.
+
+    APP_ENV says how strictly to run (staging runs as production); this says where."""
+    value = os.environ.get("DEPLOY_ENVIRONMENT", "").strip().lower()
+    if not value:
+        return "production" if os.environ.get("APP_ENV", "development").lower() == "production" else "development"
+    if value not in {"development", "staging", "production"}:
+        raise RuntimeError("DEPLOY_ENVIRONMENT must be development, staging or production.")
+    return value
+
+
 @dataclass(frozen=True)
 class RuntimeSettings:
     # Tests may still bootstrap with create_all. Local development (dev.py run) and

@@ -18,3 +18,15 @@
 .deletion-confirm { border: 1px solid var(--danger); padding: 1.5rem; margin-top: 1rem; border-radius: var(--radius-sm); }
 .pagination { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
 @media (max-width: 550px) { .dashboard-content { padding: 1.5rem .75rem; } .dashboard-content section { padding: 1rem; } .dashboard-header { padding: 1rem; } }
+
+/* System health (Sprint 5 infrastructure monitoring): status dots match the rest of the site. */
+.system-health .health-overall { font-weight: 600; }
+.system-health .health-checks { list-style: none; padding: 0; display: grid; gap: .35rem; margin: 1rem 0; }
+.system-health .health-checks li::before { content: ""; display: inline-block; inline-size: .6rem; block-size: .6rem; border-radius: 50%; margin-inline-end: .5rem; background: var(--ok); }
+.system-health .health-checks li.health-warn::before { background: var(--warn); }
+.system-health .health-checks li.health-fail::before { background: var(--danger); }
+.system-health .health-checks li span { color: var(--fg-muted); margin-inline-end: .35rem; }
+.system-health .health-overall.health-warn { color: var(--warn-text); }
+.system-health .health-overall.health-fail { color: var(--danger-text); }
+.system-health .status-card small { display: block; color: var(--fg-muted); font-size: .78rem; margin-top: .25rem; }
+.system-health .status-card strong { font-size: 1.5rem; }

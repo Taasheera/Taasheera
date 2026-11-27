@@ -29,7 +29,7 @@ from .google_auth import create_google_auth_router
 from .config import AuthSettings, RuntimeSettings
 from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
-from .observability import install_private_no_store, install_request_logging
+from .observability import install_private_no_store, install_query_timing, install_request_logging
 from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
 from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
                                 record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
@@ -44,8 +44,9 @@ from .consent import create_consent_requirement, create_consent_router
 from .notification_preferences import create_notification_preferences_router
 from .applications.visa_guides import create_visa_guides_router
 from .document_audit import create_document_audit_router, record_document_access
-from .monitoring import configure_monitoring
+from .monitoring import configure_monitoring, install_tracing, monitored_job
 from .privacy import create_privacy_router, retry_erasures
+from .system_health import create_system_health_router
 from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
@@ -58,6 +59,9 @@ from .personal_data import create_data_export_router
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
                notification_sender: NotificationSender | None = None) -> FastAPI:
     engine = build_engine(database_url)
+    install_query_timing(engine)
+    # Before the engine is used, so database spans are recorded from the first request.
+    monitoring = configure_monitoring()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -77,14 +81,13 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
         notification_jobs = start_notification_jobs(app)
-        monitoring = configure_monitoring()
         try:
             yield
         finally:
             if notification_jobs is not None:
                 notification_jobs.stop()
             if monitoring is not None:
-                monitoring.close()
+                monitoring.flush(timeout=2)
             engine.dispose()
 
     def start_notification_jobs(app: FastAPI) -> NotificationJobThread | None:
@@ -102,7 +105,13 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
         site_url = app.state.auth_settings.allowed_origins[0]
         show_notification_logs()
-        jobs = NotificationJobThread(lambda: run_notification_jobs(engine, sender, site_url), interval)
+
+        def run_jobs():
+            # A Sentry cron monitor alerts when a run fails or stops arriving.
+            with monitored_job("notification-jobs", interval_seconds=interval):
+                run_notification_jobs(engine, sender, site_url)
+
+        jobs = NotificationJobThread(run_jobs, interval)
         jobs.start()
         return jobs
 
@@ -111,6 +120,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     install_request_logging(app)
     install_admin_no_store(app)
     install_private_no_store(app)
+    install_tracing(app, monitoring)
 
     @app.get("/health/live", include_in_schema=False)
     def liveness():
@@ -147,6 +157,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_data_export_router(get_session, current_traveler, passport_storage))
     app.include_router(create_auth_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
+    app.include_router(create_system_health_router(get_session, current_traveler, passport_storage.root))
     app.include_router(create_sessions_router(get_session, current_traveler))
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))

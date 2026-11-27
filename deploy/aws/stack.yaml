@@ -85,7 +85,8 @@ Resources:
             Encrypted: true
             DeleteOnTermination: true
       Tags:
-        - {Key: Name, Value: taasheera}
+        # "taasheera" for production; a staging stack names its host after itself.
+        - {Key: Name, Value: !Ref 'AWS::StackName'}
         - {Key: OwnerEmail, Value: !Ref OwnerEmail}
       UserData:
         Fn::Base64: |
@@ -103,7 +104,7 @@ Resources:
       VolumeType: gp3
       Encrypted: true
       Tags:
-        - {Key: Name, Value: taasheera-data}
+        - {Key: Name, Value: !Sub '${AWS::StackName}-data'}
         - {Key: OwnerEmail, Value: !Ref OwnerEmail}
   DataAttachment:
     Type: AWS::EC2::VolumeAttachment
