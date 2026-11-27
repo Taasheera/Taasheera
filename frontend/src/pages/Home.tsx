@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router'
 import type { LayoutContext } from '../Layout'
-import { destinations, faqs, privacyPoints, requiredDocuments, steps } from '../content'
+import { destinations, privacyPoints, requiredDocuments, steps } from '../content'
 import { ArrowIcon, CheckIcon } from '../icons'
 import Feature from '../Feature'
+import { useHelpEntries } from '../help/helpContent'
 import { createAccountPath } from '../paths'
 import FaqList from './FaqList'
 
@@ -23,6 +24,7 @@ function MainButton() {
 }
 
 export default function Home() {
+  const faqs = useHelpEntries()
   useEffect(() => {
     document.title = 'Taasheera | Your AI visa agent'
   }, [])

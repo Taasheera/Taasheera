@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { adminRequest } from '../admin'
+import { getStaffMe } from '../admin/supportApi'
+import { useFeature } from '../features'
 import { isRecorded, listApplications, type ApplicationSummary } from '../application/api'
 import { ArrowIcon } from '../icons'
 import ApplicationActions from './ApplicationActions'
@@ -29,12 +31,21 @@ export default function Dashboard() {
 
   // Staff also get a way into the staff dashboard. The server decides; anyone else gets a quiet 403.
   const [staff, setStaff] = useState(false)
+  const [notAdmin, setNotAdmin] = useState(false)
+  const [support, setSupport] = useState(false)
+  const supportTools = useFeature('support_tools')
   useEffect(() => {
     if (!traveler) return
     let active = true
-    adminRequest('/me').then(() => { if (active) setStaff(true) }).catch(() => {})
+    adminRequest('/me').then(() => { if (active) setStaff(true) }).catch(() => { if (active) setNotAdmin(true) })
     return () => { active = false }
   }, [traveler])
+  useEffect(() => {
+    if (!notAdmin || !supportTools) return
+    let active = true
+    getStaffMe().then(() => { if (active) setSupport(true) }).catch(() => {})
+    return () => { active = false }
+  }, [notAdmin, supportTools])
 
   useEffect(() => {
     if (!traveler) return
@@ -86,6 +97,7 @@ export default function Dashboard() {
       </div>
       <div className="dash-head-actions">
         {staff && <a href="/backoffice" className="button button-secondary">Staff dashboard</a>}
+        {support && <a href="/admin/support" className="button button-secondary">Support requests</a>}
         {!firstVisit && <Link to="/apply" className="button button-primary button-with-icon" data-activity-id="application-new">New application <span className="action-icon" aria-hidden="true">+</span></Link>}
       </div>
     </div>

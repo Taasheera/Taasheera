@@ -12,6 +12,7 @@ import DocumentChecklist from '../documents/DocumentChecklist'
 import AgentPanel from '../agent/AgentPanel'
 import PaymentStep from '../payments/PaymentStep'
 import FormReview from '../submission/FormReview'
+import SupportAccess from '../support/SupportAccess'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
 import '../ui.css'
@@ -136,6 +137,10 @@ function Detail({ applicationId }: { applicationId: string }) {
           onPaid={() => setPayments(count => count + 1)} />
       </Feature>
       <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}-${payments}`} />
+    </Feature>
+
+    <Feature name="support_tools">
+      <SupportAccess applicationId={application.id} />
     </Feature>
 
     <div className="dash-detail-grid">

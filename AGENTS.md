@@ -87,10 +87,10 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications`, `/visa-guides`, `/vault` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides`, `/vault`, `/support`, `/help-content` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
-`/passport/:uploadId`, `/documents`, `/account`, `/admin` and `/backoffice`.
+`/passport/:uploadId`, `/documents`, `/account`, `/faq`, `/admin` (`/admin/help`), `/admin/support` and `/backoffice`.
 Deployments run `python migrate.py upgrade`, `APP_ENV=production`, `SCHEMA_AUTO_CREATE=false`.
 Operator role assignment: `python manage.py set-role --email <email> --role admin`.
 
@@ -278,3 +278,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     only (no face recognition), warnings. Translation sends extracted text to Gemini (stored nowhere, 503 without a key),
     shown as "not a certified translation, not legal advice". Flags `passport_rules`, `photo_check`, `document_vault`,
     `document_translation`, released.
+57. **Support tools (CMPS271-128/92/129).** A traveler lets support read one application for 24 h, 72 h or 7 days
+    (`/support/access`, revocable, checked on every read). Support and admin staff (`/admin/support`) see answers,
+    the check and timeline, never files; each read is a `support_view` access shown as "Support". Help requests open
+    only through `support_requests.create_support_request` (website and Telegram; no chat copied); replies notify.
+    Admins edit `FaqEntry` at `/admin/help`; public `GET /help-content`, migration-seeded, bundled fallback. `support_tools`.

@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import { askAssistant, getHistory, type AssistantStep, type ChatTurn, type Proposal } from './api'
 import ProposalCard from './ProposalCard'
 import { saveAnswer } from '../application/api'
+import Feature from '../Feature'
+import TalkToPerson from '../support/TalkToPerson'
 import { APPLICATION_CHANGED_EVENT, OPEN_ASSISTANT_EVENT } from './openAssistant'
 import '../ui.css'
 import './assistant.css'
@@ -42,6 +44,7 @@ export default function AssistantPanel({ step: pageStep, open, onOpenChange, app
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [talking, setTalking] = useState(false)
   const panelId = useId()
   const launcher = useRef<HTMLButtonElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -113,6 +116,9 @@ export default function AssistantPanel({ step: pageStep, open, onOpenChange, app
         <div>
           <h2 id={`${panelId}-title`}>{copy(step).title}</h2>
           <p>Answers use the details you confirmed. Not legal or immigration advice.</p>
+          {!talking && <Feature name="support_tools">
+            <button type="button" className="assistant-escalate" onClick={() => setTalking(true)}>Talk to a person</button>
+          </Feature>}
         </div>
         <button type="button" className="assistant-close" onClick={close} aria-label="Close assistant"
           data-activity-id="assistant-close">
@@ -120,6 +126,9 @@ export default function AssistantPanel({ step: pageStep, open, onOpenChange, app
         </button>
       </header>
 
+      {talking ? <div className="assistant-log">
+        <TalkToPerson applicationId={applicationId} onClose={() => setTalking(false)} />
+      </div> : <>
       <div className="assistant-log" ref={log} aria-live="polite">
         {turns.length === 0 && <div className="assistant-empty">
           <p>{copy(step).intro} For example:</p>
@@ -158,6 +167,7 @@ export default function AssistantPanel({ step: pageStep, open, onOpenChange, app
             data-activity-id="assistant-send"><ArrowIcon /><span className="visually-hidden">Send</span></button>
         </div>
       </form>
+      </>}
     </section>}
 
     <button ref={launcher} type="button" className={`assistant-launcher${open ? ' is-open' : ''}`}

@@ -126,6 +126,13 @@ creates its own synthetic traveler and verifies the form download before recordi
   **Check changes**, **Publish** with a note, and confirm `/visas/schengen-short-stay` and an open draft
   application pick it up (the draft asks the new question). Roll back to the packaged files from History.
 - Open `/admin/kpis`, choose a range of up to 180 days and **Download CSV**; it holds totals only.
+- Support tools (CMPS271-128/92/129): the seeded demo admin also acts as support; on the normal local app,
+  `python manage.py set-role --email <email> --role support` makes a support account. As the traveler, open the assistant, choose
+  **Talk to a person** and tick the 72-hour share on an application page; or use **Share with support** on
+  `/dashboard/<id>`. As support, open `/admin/support`: assign, reply and resolve, then open the shared
+  application. The traveler sees the reply under **Help requests** on `/account`, a bell notification,
+  and a "Support" entry in the document access history. **Stop sharing** makes the staff view a 404.
+  As an admin, edit, reorder and publish FAQ entries at `/admin/help`; `/faq` and the home page update at once.
 
 The earlier preliminary preview dataset is left intact; the integrated branch uses
 `feature-preview-sprint3` and `e2e-preview-sprint3-*` so no old or existing local data

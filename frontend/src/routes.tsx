@@ -60,6 +60,18 @@ export const routes: RouteObject[] = [
       { path: 'users/:userId', lazy: later(() => import('./admin/AdminUser')) },
       { path: 'requirements', lazy: later(() => import('./admin/Requirements')) },
       { path: 'kpis', lazy: later(() => import('./admin/Kpis')) },
+      { path: 'help', lazy: later(() => import('./admin/HelpContent')) },
+      { path: '*', element: <NotFound /> },
+    ],
+  },
+  {
+    path: 'admin/support',
+    lazy: later(() => import('./admin/AdminLayout'), { access: 'staff' as const }),
+    errorElement: <ServerError standalone />,
+    children: [
+      { index: true, lazy: later(() => import('./admin/SupportQueue')) },
+      { path: 'requests/:requestId', lazy: later(() => import('./admin/SupportRequest')) },
+      { path: 'applications/:applicationId', lazy: later(() => import('./admin/SupportApplication')) },
       { path: '*', element: <NotFound /> },
     ],
   },
