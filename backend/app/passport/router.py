@@ -102,6 +102,7 @@ def create_passport_router(
     check_quality=lambda: False,
     upload_dependencies: list | None = None,
     on_confirmed=None,
+    scan_upload=None,
 ) -> APIRouter:
     router = APIRouter(prefix="/passports", tags=["passports"])
     TravelerId = Annotated[int, Depends(current_traveler_id)]
@@ -121,6 +122,13 @@ def create_passport_router(
             raise HTTPException(status_code=503, detail="Passport uploads are not available on this deployment.")
         # Read one byte past the limit so oversized files are detected without reading them fully.
         data = file.file.read(MAX_UPLOAD_BYTES + 1)
+        if scan_upload:
+            try:
+                scan_upload(traveler_id, "passport", data, file.content_type)
+            except HTTPException:
+                if record_event:
+                    record_event(traveler_id, "passport_upload", "failure")
+                raise
         try:
             jpeg = normalize_image(data, validate=validate_scan if check_quality() else None)
         except InvalidImageError as exc:

@@ -90,6 +90,7 @@ def create_documents_router(
     reader: Callable = read_text,
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
     upload_dependencies: list | None = None,
+    scan_upload: Callable[[int, str, bytes, str | None], None] | None = None,
 ) -> APIRouter:
     from ..applications.router import saved_profile
     from ..auth import check_origin
@@ -140,10 +141,13 @@ def create_documents_router(
             read_only=application.archived_at is not None,
         )
 
-    def read_upload(file: UploadFile):
+    def read_upload(file: UploadFile, traveler_id: int, requirement: str):
         # One byte past the limit, so an oversized file is caught without reading it all.
+        data = file.file.read(MAX_UPLOAD_BYTES + 1)
+        if scan_upload:
+            scan_upload(traveler_id, requirement, data, file.content_type)
         try:
-            return check_document(file.file.read(MAX_UPLOAD_BYTES + 1))
+            return check_document(data)
         except InvalidDocumentError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc)) from None
 
@@ -210,7 +214,7 @@ def create_documents_router(
         if sum(d.requirement == requirement for d in documents) >= MAX_PER_REQUIREMENT:
             raise HTTPException(status_code=409, detail=(
                 f"You can upload up to {MAX_PER_REQUIREMENT} files for one document. Delete one first, or combine them into one PDF."))
-        checked = read_upload(file)
+        checked = read_upload(file, traveler.id, requirement)
         document = SupportingDocument(
             id=storage.new_id(), traveler_id=traveler.id, application_id=application.id, requirement=requirement,
             filename=clean_filename(file.filename, checked.extension), content_type=checked.content_type,
@@ -233,7 +237,7 @@ def create_documents_router(
         """A new file for the same requirement. It gets a new id, so a cached old file is never shown as the new one."""
         application = writable(session, traveler, application_id)
         old = owned_document(session, application, document_id)
-        checked = read_upload(file)
+        checked = read_upload(file, traveler.id, old.requirement)
         new = SupportingDocument(
             id=storage.new_id(), traveler_id=traveler.id, application_id=application.id, requirement=old.requirement,
             filename=clean_filename(file.filename, checked.extension), content_type=checked.content_type,
