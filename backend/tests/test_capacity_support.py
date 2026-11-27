@@ -136,6 +136,67 @@ def test_api_threads_must_be_sensible(tmp_path, monkeypatch, value):
             pass
 
 
+def signed_up(tmp_path, monkeypatch):
+    import bcrypt
+    app = create_app(f"sqlite:///{tmp_path / 'login.db'}")
+    client = TestClient(app)
+    client.__enter__()
+    with Session(app.state.engine) as session:
+        session.add(Traveler(name="Synthetic", email="login@example.com",
+                             password_hash=bcrypt.hashpw(b"Synthetic-password-1", bcrypt.gensalt(rounds=4)).decode()))
+        session.commit()
+    return app, client
+
+
+def test_sign_in_checks_the_password_without_holding_the_database_write_lock(tmp_path, monkeypatch):
+    """Capacity bottleneck: bcrypt used to run inside the row lock, which on SQLite blocks every writer."""
+    import bcrypt as real_bcrypt
+    app, client = signed_up(tmp_path, monkeypatch)
+    wrote = []
+    checkpw = real_bcrypt.checkpw
+
+    def check_while_someone_writes(password, hashed):
+        # Another request writes while this one hashes; it must not wait for the sign-in to finish.
+        with app.state.engine.connect() as other:
+            other.exec_driver_sql("PRAGMA busy_timeout = 200")
+            other.execute(text("UPDATE traveler SET last_login_method = 'x' WHERE email = 'nobody@example.com'"))
+            other.commit()
+        wrote.append(True)
+        return checkpw(password, hashed)
+
+    monkeypatch.setattr("app.auth.bcrypt.checkpw", check_while_someone_writes)
+    try:
+        reply = client.post("/auth/login", json={"email": "login@example.com", "password": "Synthetic-password-1"})
+        assert reply.status_code == 200 and wrote == [True]
+    finally:
+        client.__exit__(None, None, None)
+
+
+def test_a_password_reset_between_checking_and_signing_in_still_wins(tmp_path, monkeypatch):
+    import bcrypt as real_bcrypt
+    from app.models import AuthSession
+    app, client = signed_up(tmp_path, monkeypatch)
+    checkpw = real_bcrypt.checkpw
+
+    def reset_lands_meanwhile(password, hashed):
+        matched = checkpw(password, hashed)
+        with Session(app.state.engine) as other:
+            traveler = other.exec(select(Traveler).where(Traveler.email == "login@example.com")).one()
+            traveler.password_hash = real_bcrypt.hashpw(b"Brand-new-password-2", real_bcrypt.gensalt(rounds=4)).decode()
+            other.add(traveler)
+            other.commit()
+        return matched
+
+    monkeypatch.setattr("app.auth.bcrypt.checkpw", reset_lands_meanwhile)
+    try:
+        reply = client.post("/auth/login", json={"email": "login@example.com", "password": "Synthetic-password-1"})
+        assert reply.status_code == 401
+        with Session(app.state.engine) as session:
+            assert session.exec(select(AuthSession)).all() == []
+    finally:
+        client.__exit__(None, None, None)
+
+
 def test_only_one_api_process_runs_the_notification_timer(tmp_path, monkeypatch):
     from filelock import FileLock
     monkeypatch.setenv("NOTIFICATION_JOB_SECONDS", "60")

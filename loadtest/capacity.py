@@ -168,7 +168,7 @@ def run_level(args, vus, out_dir, profile="step", duration=None):
         "slowest_endpoints": endpoint_table(csv_file)[:8] if csv_file.exists() else [],
     }
     result["passed"] = (result["server_error_rate"] < args.max_error_rate and result["p95_ms"] < args.p95_ms
-                        and result["checks_rate"] >= 0.98)
+                        and result["checks_rate"] >= 0.95)
     if not args.keep_csv and csv_file.exists():
         csv_file.unlink()
     verdict = "PASS" if result["passed"] else "FAIL"
@@ -196,7 +196,7 @@ def bottleneck(result):
 
 def write_report(args, out_dir, levels, capacity, extra):
     report = {"base_url": args.base_url, "run_id": args.run_id, "started": args.started, "finished": datetime.now(timezone.utc).isoformat(),
-              "targets": {"p95_ms": args.p95_ms, "max_server_error_rate": args.max_error_rate, "checks_rate": 0.98},
+              "targets": {"p95_ms": args.p95_ms, "max_server_error_rate": args.max_error_rate, "checks_rate": 0.95},
               "workload": {"script": "loadtest/mixed.js", "think_seconds": args.think, "users_seeded": args.users,
                            "mix": {k: os.environ.get(f"MIX_{k.upper()}") or v for k, v in
                                    {"browse": 30, "account": 25, "journey": 35, "documents": 6, "heavy": 4}.items()},

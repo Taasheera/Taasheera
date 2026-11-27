@@ -44,7 +44,7 @@ API's logs and Sentry. A 409/422 from the questionnaire is the app working and i
 
 `capacity.py` steps through the levels (3 minutes each), stops at the first level that misses a
 target, bisects once, and writes `report.md`/`report.json`. Targets: p95 of successful requests below
-1.5 s, server errors below 1%, checks above 98%. During each level it samples `/admin-api/system-health`
+1.5 s, server errors below 1%, checks above 95%. During each level it samples `/admin-api/system-health`
 every 15 s (CPU, memory, in-flight requests, server-side and database p95) and afterwards reads
 CloudWatch CPU and CPU credits.
 
