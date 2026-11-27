@@ -417,3 +417,32 @@ class AccountErasure(SQLModel, table=True):
     # Durable work item: failed file/database cleanup is retried, never reported as complete.
     traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+PAYMENT_STATUSES = ("pending", "paid", "failed")
+
+
+class Payment(SQLModel, table=True):
+    """One payment for an application's submission (CMPS271-106, 108, 109). Never holds card details.
+
+    Provider-neutral: `provider` collected it ("simulated" charges nothing) under `provider_reference`.
+    Amounts are integers in the currency's minor unit; `line_items` are the quote's lines as paid.
+    The browser sends one `idempotency_key` per checkout, so a double click can't pay twice.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("application_id", "idempotency_key", name="uq_payment_application_idempotency"),
+        CheckConstraint("status IN ('pending', 'paid', 'failed')", name="ck_payment_status"),
+    )
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    amount_minor: int
+    currency: str = Field(max_length=3)
+    line_items: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))
+    status: str = Field(default="pending", max_length=10, index=True)
+    provider: str = Field(default="simulated", max_length=20)
+    provider_reference: str | None = Field(default=None, max_length=64)
+    idempotency_key: str = Field(max_length=64)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    paid_at: datetime | None = None

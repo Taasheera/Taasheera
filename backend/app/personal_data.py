@@ -27,7 +27,7 @@ from .activity import record_activity
 from .agent.storage import AgentFiles
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
                      DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
-                     PasswordResetChallenge, PasswordResetToken, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
+                     PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
 from .documents.storage import DocumentStorage
 from .security import throttle
 
@@ -62,6 +62,7 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(AgentRun, "traveler", True),
     Holding(AgentFieldEntry, "run", True),
     Holding(AgentScreenshot, "run", True),
+    Holding(Payment, "traveler", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
@@ -118,7 +119,7 @@ Downloaded {when} (UTC) for the account {email}.
 
 data.json        Everything we hold about you, one section per kind of record:
                  your account, profile, linked Google account, sign-in sessions,
-                 applications and their answers, supporting documents, what the
+                 applications and their answers, payments, supporting documents, what the
                  form-filling agent typed, assistant conversations, notifications
                  and your email settings, account activity, who opened your
                  passport files, and

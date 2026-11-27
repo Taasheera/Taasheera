@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, delete, select
 
-from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, SupportingDocument, Traveler
+from ..models import Application, ApplicationAnswer, AssistantMessage, Notification, Payment, SupportingDocument, Traveler
 from ..notifications import notify_status_change
 from . import flow
 from .router import ApplicationSummary, _status, _summary, _utc, current_answers, is_recorded
@@ -79,7 +79,7 @@ class Timeline(BaseModel):
 
 
 def delete_application(session: Session, application: Application) -> list[str]:
-    """Remove the conversation, answers, documents and agent runs before their application (foreign keys on all).
+    """Remove the conversation, answers, documents, agent runs and payments before their application (foreign keys on all).
 
     Returns the ids of the deleted supporting documents, whose files go once the deletion is committed.
     """
@@ -92,6 +92,7 @@ def delete_application(session: Session, application: Application) -> list[str]:
     session.exec(delete(AssistantMessage).where(AssistantMessage.application_id == application.id))
     session.exec(delete(Notification).where(Notification.application_id == application.id))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
+    session.exec(delete(Payment).where(Payment.application_id == application.id))
     session.delete(application)
     return document_ids
 
