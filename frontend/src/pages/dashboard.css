@@ -28,5 +28,8 @@
 .system-health .health-checks li span { color: var(--fg-muted); margin-inline-end: .35rem; }
 .system-health .health-overall.health-warn { color: var(--warn-text); }
 .system-health .health-overall.health-fail { color: var(--danger-text); }
-.system-health .status-card small { display: block; color: var(--fg-muted); font-size: .78rem; margin-top: .25rem; }
-.system-health .status-card strong { font-size: 1.5rem; }
+.system-health .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+.system-health .health-card { padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); }
+.system-health .health-card span { font-size: .8rem; }
+.system-health .health-card strong { display: block; font-size: 1.5rem; }
+.system-health .health-card small { display: block; color: var(--fg-muted); font-size: .78rem; margin-top: .25rem; }

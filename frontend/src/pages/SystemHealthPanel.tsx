@@ -53,16 +53,16 @@ export default function SystemHealthPanel() {
         <thead><tr><th>Window</th><th>Requests</th><th>Req/s</th><th>p50</th><th>p95</th><th>p99</th><th>DB p95</th><th>Errors</th><th>Peak in flight</th></tr></thead>
         <tbody><Traffic label="1 min" window={health.api.last_1m} /><Traffic label="5 min" window={health.api.last_5m} /><Traffic label="15 min" window={health.api.last_15m} /></tbody>
       </table></div>
-      <div className="status-grid">
-        <div className="status-card"><span>CPU</span><strong>{percent(health.host.cpu_percent)}</strong><small>{health.host.cpu_count ?? '—'} vCPU · load {health.host.load_average?.join(' / ') ?? '—'}</small></div>
-        <div className="status-card"><span>Memory used</span><strong>{percent(health.host.memory.used_percent)}</strong><small>{health.host.memory.available_mb ?? '—'} MB free · API {health.process.rss_mb ?? '—'} MB</small></div>
-        <div className="status-card"><span>Data disk</span><strong>{percent(health.storage.used_percent)}</strong><small>{health.storage.free_gb} GB free · {health.storage.writable ? 'writable' : 'NOT writable'}</small></div>
-        <div className="status-card"><span>Root disk</span><strong>{percent(health.host.root_disk.used_percent)}</strong><small>{health.host.root_disk.free_gb} GB free</small></div>
-        <div className="status-card"><span>Database</span><strong>{health.database.reachable ? ms(health.database.probe_ms) : 'down'}</strong><small>{health.database.backend} · {health.database.size_mb ?? '—'} MB</small></div>
-        <div className="status-card"><span>Agent queue</span><strong>{health.queue.queued} waiting</strong><small>{health.queue.running} running · oldest {age(health.queue.oldest_queued_seconds)}</small></div>
-        <div className="status-card"><span>Email backlog</span><strong>{health.notifications.email_pending}</strong><small>oldest {age(health.notifications.oldest_pending_seconds)} · {health.notifications.email_failed_last_day} failed today</small></div>
-        {health.payments && <div className="status-card"><span>Payments (24 h)</span><strong>{String(health.payments.paid ?? 0)} paid</strong><small>{String(health.payments.pending ?? 0)} pending · {String(health.payments.failed ?? 0)} failed</small></div>}
-        <div className="status-card"><span>API process</span><strong>{age(health.process.uptime_seconds)}</strong><small>{health.process.workers} worker(s) · {health.api.in_flight} in flight</small></div>
+      <div className="health-grid">
+        <div className="health-card"><span>CPU</span><strong>{percent(health.host.cpu_percent)}</strong><small>{health.host.cpu_count ?? '—'} vCPU · load {health.host.load_average?.join(' / ') ?? '—'}</small></div>
+        <div className="health-card"><span>Memory used</span><strong>{percent(health.host.memory.used_percent)}</strong><small>{health.host.memory.available_mb ?? '—'} MB free · API {health.process.rss_mb ?? '—'} MB</small></div>
+        <div className="health-card"><span>Data disk</span><strong>{percent(health.storage.used_percent)}</strong><small>{health.storage.free_gb} GB free · {health.storage.writable ? 'writable' : 'NOT writable'}</small></div>
+        <div className="health-card"><span>Root disk</span><strong>{percent(health.host.root_disk.used_percent)}</strong><small>{health.host.root_disk.free_gb} GB free</small></div>
+        <div className="health-card"><span>Database</span><strong>{health.database.reachable ? ms(health.database.probe_ms) : 'down'}</strong><small>{health.database.backend} · {health.database.size_mb ?? '—'} MB</small></div>
+        <div className="health-card"><span>Agent queue</span><strong>{health.queue.queued} waiting</strong><small>{health.queue.running} running · oldest {age(health.queue.oldest_queued_seconds)}</small></div>
+        <div className="health-card"><span>Email backlog</span><strong>{health.notifications.email_pending}</strong><small>oldest {age(health.notifications.oldest_pending_seconds)} · {health.notifications.email_failed_last_day} failed today</small></div>
+        {health.payments && <div className="health-card"><span>Payments (24 h)</span><strong>{String(health.payments.paid ?? 0)} paid</strong><small>{String(health.payments.pending ?? 0)} pending · {String(health.payments.failed ?? 0)} failed</small></div>}
+        <div className="health-card"><span>API process</span><strong>{age(health.process.uptime_seconds)}</strong><small>{health.process.workers} worker(s) · {health.api.in_flight} in flight</small></div>
       </div>
     </>}
   </section>
