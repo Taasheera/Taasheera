@@ -28,7 +28,7 @@ def document_cross_check(session: Session, storage: DocumentStorage, application
     skipped = {document.id for document in questionnaire.documents if not document.crosscheck}
     texts = [DocumentText(id=document.id, requirement=document.requirement,
                           label=labels.get(document.requirement, "Document"), filename=document.filename,
-                          text=storage.load_text(application.traveler_id, document.id, purpose="document_check"))
+                          text=storage.load_text(application.traveler_id, document.file_key, purpose="document_check"))
              for document in _documents(session, application) if document.requirement not in skipped]
     passport = answers.get("passport") if isinstance(answers.get("passport"), dict) else None
     report = cross_check(passport, latest_passport=latest_passport, profile=profile, documents=texts)
@@ -46,7 +46,7 @@ def booking_documents(session: Session, storage: DocumentStorage, application: A
     wanted = {requirement for requirements in BOOKED_FROM.values() for requirement in requirements}
     return [DocumentText(id=document.id, requirement=document.requirement,
                          label=labels.get(document.requirement, "Document"), filename=document.filename,
-                         text=storage.load_text(application.traveler_id, document.id, purpose="document_prefill"))
+                         text=storage.load_text(application.traveler_id, document.file_key, purpose="document_prefill"))
             for document in _documents(session, application) if document.requirement in wanted]
 
 

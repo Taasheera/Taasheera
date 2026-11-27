@@ -13,6 +13,7 @@ PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update"
                       "application_prefill", "data_export",
                       # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
                       "document_view", "document_check", "document_packet", "document_prefill",
+                      "document_translation", "document_delete",
                       # The passport read by the document cross-check (CMPS271-50).
                       "consistency_check",
                       # A screenshot the form-filling agent took of a filled page (CMPS271-70).

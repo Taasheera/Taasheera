@@ -29,6 +29,7 @@ from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, A
                      DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
                      PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, RequirementDraft, RequirementRevision,
                      SupportingDocument, Traveler, TravelerProfile)
+from .models import PassportPages
 from .documents.storage import DocumentStorage
 from .security import throttle
 
@@ -64,6 +65,7 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(AgentFieldEntry, "run", True),
     Holding(AgentScreenshot, "run", True),
     Holding(Payment, "traveler", True),
+    Holding(PassportPages, "traveler", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
@@ -132,12 +134,14 @@ data.json        Everything we hold about you, one section per kind of record:
                  and your email settings, account activity, who opened your
                  passport files, and
                  which privacy policy versions you accepted, and when, and your
-                 passport's expiry date if you saved one, for reminders.
+                 passport's expiry date if you saved one, for reminders, and how
+                 many blank visa pages you said your passport has.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
 agent/           Each screenshot the form-filling agent took (.png), by application.
-documents/       Each supporting document you uploaded (.pdf or .jpg), named by
-                 its id in data.json's supportingdocument section.
+documents/       Each supporting document you uploaded (.pdf or .jpg), once, named
+                 by its file_id in data.json's supportingdocument section. A file
+                 you reused for several applications has a row for each.
 
 Left out on purpose: your password (we only keep a hash of it), and the hashed
 sign-in and reset tokens that keep your account secure. Nothing here belongs to
@@ -168,11 +172,13 @@ def build_archive(session: Session, traveler: Traveler, passport_storage) -> byt
                 archive.writestr(f"passport/{upload_id}.json", json.dumps(review, indent=2, ensure_ascii=False))
         documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
                                     cipher=passport_storage.cipher)
+        stored = {}
         for document in session.exec(select(SupportingDocument).where(SupportingDocument.traveler_id == traveler.id)):
-            extension = "pdf" if document.content_type == "application/pdf" else "jpg"
-            content = documents.load(traveler.id, document.id, extension, purpose="data_export")
+            stored.setdefault(document.file_key, "pdf" if document.content_type == "application/pdf" else "jpg")
+        for file_key, extension in stored.items():
+            content = documents.load(traveler.id, file_key, extension, purpose="data_export")
             if content is not None:
-                archive.writestr(f"documents/{document.id}.{extension}", content)
+                archive.writestr(f"documents/{file_key}.{extension}", content)
         screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access,
                                  cipher=passport_storage.cipher)
         shots = session.exec(select(AgentScreenshot, AgentRun.application_id).join(AgentRun)

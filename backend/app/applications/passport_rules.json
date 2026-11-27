@@ -1,0 +1,107 @@
+{
+  "checked_on": "2026-11-27",
+  "rules": [
+    {
+      "questionnaire_id": "schengen-short-stay",
+      "validity": [
+        {"after": "departure", "months": 3, "severity": "blocking", "text": "3 months after you leave the Schengen area"}
+      ],
+      "issued_within_years": 10,
+      "blank_pages": 2,
+      "note": null,
+      "sources": [
+        {"label": "EU Visa Code, article 12 (travel document)", "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:02009R0810-20200202"},
+        {"label": "European Commission: Applying for a Schengen visa", "url": "https://home-affairs.ec.europa.eu/policies/schengen/schengen-visas/applying-schengen-visa_en"}
+      ]
+    },
+    {
+      "questionnaire_id": "uk-standard-visitor",
+      "validity": [
+        {"after": "departure", "severity": "blocking", "text": "the whole of your stay in the UK"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": null,
+      "note": "Successful applicants now get an eVisa, so GOV.UK no longer asks for a blank page.",
+      "sources": [
+        {"label": "GOV.UK: Apply for a Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"}
+      ]
+    },
+    {
+      "questionnaire_id": "us-b2-tourist",
+      "validity": [
+        {"after": "departure", "severity": "blocking", "text": "the whole of your stay in the United States"},
+        {"after": "departure", "months": 6, "severity": "warning", "text": "6 months beyond your stay, unless your country is exempt", "exemption": "Citizens of the countries on the State Department's Six-Month Club list only need a passport valid for their stay. Check the official list for your passport."}
+      ],
+      "issued_within_years": null,
+      "blank_pages": 1,
+      "note": null,
+      "sources": [
+        {"label": "US Foreign Affairs Manual, 9 FAM 403.9-3 (passport validity and the Six-Month Club)", "url": "https://fam.state.gov/fam/09FAM/09FAM040309.html"},
+        {"label": "US Embassy London: Passport and travel documents (one blank page for the visa)", "url": "https://uk.usembassy.gov/nonimmigrant-visas-faqs-passport-and-travel-documents/"}
+      ]
+    },
+    {
+      "questionnaire_id": "canada-visitor",
+      "validity": [
+        {"after": "departure", "severity": "blocking", "text": "the whole of your stay: a visa can't outlast your passport"},
+        {"after": "arrival", "months": 6, "severity": "warning", "text": "6 months from the date you plan to travel, as IRCC advises"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": 1,
+      "note": "The blank page can't be the passport's last page.",
+      "sources": [
+        {"label": "IRCC: Apply for a visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/apply-visitor-visa.html"},
+        {"label": "IRCC: Guide 5256, applying for a visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application/application-forms-guides/guide-5256-applying-visitor-visa-temporary-resident-visa.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "china-tourist-l",
+      "validity": [
+        {"after": "application", "months": 6, "severity": "blocking", "text": "6 months from the day you apply"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": 2,
+      "note": "Each Chinese visa application centre publishes its own list; check the one where you apply.",
+      "sources": [
+        {"label": "Chinese Visa Application Service Center: Application procedure", "url": "https://www.visaforchina.cn/YTO4_EN/qianzhengyewu/jichuzhishi/banliliucheng/552371933803581448.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "japan-short-stay",
+      "validity": [
+        {"after": "departure", "severity": "blocking", "text": "the whole of your stay in Japan"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": 1,
+      "note": "The embassy may refuse to accept an application when the passport's validity or space for the visa is insufficient.",
+      "sources": [
+        {"label": "Ministry of Foreign Affairs of Japan: Visa FAQ", "url": "https://www.mofa.go.jp/j_info/visit/visa/faq.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "india-tourist",
+      "validity": [
+        {"after": "application", "months": 6, "severity": "blocking", "text": "6 months from the day you apply"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": 2,
+      "note": "The two blank pages are for the immigration officer's stamps.",
+      "sources": [
+        {"label": "Government of India: e-Visa requirements", "url": "https://indianvisaonline.gov.in/evisa/tvoa.html"}
+      ]
+    },
+    {
+      "questionnaire_id": "turkiye-evisa",
+      "validity": [
+        {"after": "departure", "days": 60, "severity": "blocking", "text": "60 days beyond your stay in Türkiye"},
+        {"after": "arrival", "months": 6, "severity": "warning", "text": "6 months from the day you arrive, as the Ministry advises"}
+      ],
+      "issued_within_years": null,
+      "blank_pages": null,
+      "note": null,
+      "sources": [
+        {"label": "Ministry of Foreign Affairs of Türkiye: Passport validity requirements", "url": "https://www.mfa.gov.tr/passport-validity-requirements-while-entering-turkey-in-accordance-with-law-on-foreigners-and-international-protection.en.mfa"}
+      ]
+    }
+  ]
+}

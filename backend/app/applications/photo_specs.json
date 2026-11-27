@@ -1,0 +1,72 @@
+{
+  "checked_on": "2026-11-27",
+  "specs": [
+    {
+      "questionnaire_id": "schengen-short-stay",
+      "requirement": "photo",
+      "label": "Schengen visa photo (35 x 45 mm, ICAO standard)",
+      "width": 35, "height": 45, "shape": "35 x 45 mm",
+      "min_pixels": [413, 531],
+      "colour": true,
+      "background": "light",
+      "source": {"label": "European Commission: Applying for a Schengen visa", "url": "https://home-affairs.ec.europa.eu/policies/schengen/schengen-visas/applying-schengen-visa_en"}
+    },
+    {
+      "questionnaire_id": "us-b2-tourist",
+      "requirement": "photo",
+      "label": "US visa photo (2 x 2 in, 600 to 1200 pixels square)",
+      "width": 1, "height": 1, "shape": "square",
+      "min_pixels": [600, 600],
+      "max_pixels": [1200, 1200],
+      "max_kb": 240,
+      "colour": true,
+      "background": "white",
+      "source": {"label": "US Department of State: Photo requirements", "url": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/photos.html"}
+    },
+    {
+      "questionnaire_id": "canada-visitor",
+      "requirement": "photo",
+      "label": "Canada visa photo (35 x 45 mm)",
+      "width": 35, "height": 45, "shape": "35 x 45 mm",
+      "min_pixels": [413, 531],
+      "colour": false,
+      "background": "light",
+      "source": {"label": "IRCC: Visa application photograph specifications", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application/application-forms-guides/temporary-resident-visa-application-photograph-specifications.html"}
+    },
+    {
+      "questionnaire_id": "china-tourist-l",
+      "requirement": "photo",
+      "label": "China visa photo (354 x 472 to 420 x 560 pixels for the online form)",
+      "width": 3, "height": 4, "shape": "3 x 4",
+      "min_pixels": [354, 472],
+      "max_pixels": [420, 560],
+      "min_kb": 40,
+      "max_kb": 120,
+      "colour": true,
+      "background": "white",
+      "source": {"label": "Chinese Embassy: Visa photo requirements", "url": "https://ma.china-embassy.gov.cn/lsfw/zytz/202504/t20250427_11605604.htm"}
+    },
+    {
+      "questionnaire_id": "japan-short-stay",
+      "requirement": "photo",
+      "label": "Japan visa photo (45 x 35 mm)",
+      "width": 35, "height": 45, "shape": "35 x 45 mm",
+      "min_pixels": [413, 531],
+      "colour": false,
+      "background": null,
+      "source": {"label": "Ministry of Foreign Affairs of Japan: Visa application form", "url": "https://www.mofa.go.jp/files/000124525.pdf"}
+    },
+    {
+      "questionnaire_id": "india-tourist",
+      "requirement": "photo",
+      "label": "India e-Visa photo (square, at least 350 x 350 pixels)",
+      "width": 1, "height": 1, "shape": "square",
+      "min_pixels": [350, 350],
+      "min_kb": 10,
+      "max_kb": 1024,
+      "colour": false,
+      "background": "light",
+      "source": {"label": "Government of India: e-Visa requirements", "url": "https://indianvisaonline.gov.in/evisa/tvoa.html"}
+    }
+  ]
+}

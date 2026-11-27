@@ -28,13 +28,18 @@ FLAGS = {
     "payments": "Price breakdown, simulated payment before submission, and receipts (CMPS271-106/108/109)",
     "requirements_editor": "Admins publish destination requirements without a deploy (CMPS271-123)",
     "kpi_dashboard": "Admin KPI page: usage, completion and agent success (CMPS271-140)",
+    "passport_rules": "Passport validity and blank pages checked per destination (CMPS271-32)",
+    "photo_check": "Passport photos checked against each destination's photo specs (CMPS271-33)",
+    "document_vault": "Document vault: reuse and delete uploaded documents (CMPS271-34/35)",
+    "document_translation": "Machine translation of a supporting document's text (CMPS271-37)",
 }
 
 
 # Tested features that default on in production as well (Sprint 5 release). FEATURE_<NAME>=false still
 # turns one off. The agent waits for a larger host and email copies for SES production access.
 RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_documents", "privacy_consent", "visa_guide",
-                      "malware_scan", "payments", "requirements_editor", "kpi_dashboard"})
+                      "malware_scan", "payments", "requirements_editor", "kpi_dashboard",
+                      "passport_rules", "photo_check", "document_vault", "document_translation"})
 
 
 def _variable(name: str) -> str:

@@ -12,7 +12,7 @@ from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
 from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken, Payment,
-                        NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile,
+                        NotificationPreference, PassportExpiry, PassportPages, PrivacyConsent, RefreshToken, Traveler, TravelerProfile,
                         RequirementDraft, RequirementRevision)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
@@ -43,6 +43,7 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(PrivacyConsent(traveler_id=traveler_id, policy_version="2026-11-25"))
         session.add(NotificationPreference(traveler_id=traveler_id, reminders=False))
         session.add(PassportExpiry(traveler_id=traveler_id, expiry_date=date(2031, 4, 15)))
+        session.add(PassportPages(traveler_id=traveler_id, blank_pages=3))
         session.add(GoogleIdentity(subject=f"google-subject-{traveler_id}", traveler_id=traveler_id))
         session.add(RefreshToken(token_hash=f"{traveler_id}" * 64, session_id=f"application-session-{traveler_id}"))
         session.add(PasswordResetChallenge(traveler_id=traveler_id, nonce="n" * 64, code_digest="c" * 64, expires_at=2**31))
@@ -111,6 +112,7 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     assert data["privacyconsent"][0]["policy_version"] == "2026-11-25" and data["privacyconsent"][0]["accepted_at"]
     assert data["notificationpreference"][0]["reminders"] is False
     assert data["passportexpiry"][0]["expiry_date"] == "2031-04-15"
+    assert data["passportpages"][0]["blank_pages"] == 3
     assert data["notification"][0]["kind"] == "status_changed"
     assert data["payment"][0]["amount_minor"] == 11700 and data["payment"][0]["status"] == "paid"
     # Who opened my passport: staff are not named, and my staff work on someone else is not mine to download.

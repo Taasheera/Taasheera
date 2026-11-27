@@ -355,6 +355,11 @@ class SupportingDocument(SQLModel, table=True):
     content_type: str = Field(max_length=40)
     size_bytes: int
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    file_id: str | None = Field(default=None, max_length=32, index=True)
+
+    @property
+    def file_key(self) -> str:
+        return self.file_id or self.id
 
 
 class AgentRun(SQLModel, table=True):
@@ -482,4 +487,10 @@ class RequirementDraft(SQLModel, table=True):
     guide: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
     base_revision: int
     author_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PassportPages(SQLModel, table=True):
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    blank_pages: int
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
