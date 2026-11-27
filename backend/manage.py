@@ -1,24 +1,29 @@
-"""Operator commands that need database access, never an HTTP endpoint.
+"""Operator commands that need database or storage access, never an HTTP endpoint.
 
 Usage: python manage.py set-role --email someone@example.com --role admin
        python manage.py seed-load-test --users 300   (staging only; see loadtest/README.md)
+       python manage.py encrypt-documents
 """
 
 import argparse
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 import bcrypt
+from fastapi import HTTPException
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import update
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
+from app.account_lock import account_lock
 from app.activity import activity_directory_from_environment, record_activity
 from app.config import deploy_environment
 from app.consent import PRIVACY_POLICY_VERSION
 from app.database import build_engine
+from app.file_encryption import FileCipher, encrypt_existing_files
 from app.models import ROLES, AccountErasure, PrivacyConsent, Traveler
 from app.schema import require_current_schema
 
@@ -118,6 +123,38 @@ def set_role(email: str, role: str) -> str:
     return message
 
 
+def encrypt_documents() -> str:
+    """Encrypt the traveler files written before DOCUMENT_ENCRYPTION_KEY was set (CMPS271-114)."""
+    try:
+        cipher = FileCipher.from_environment()
+        lock_directory = activity_directory_from_environment().parent / ".account-locks"
+    except RuntimeError as error:
+        raise SystemExit(str(error)) from None
+    if cipher is None:
+        raise SystemExit("Set DOCUMENT_ENCRYPTION_KEY first, to the same key the API and agent worker use.")
+    root = Path(os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parent / "storage" / "passports")))
+    if not root.is_dir():
+        raise SystemExit("No storage folder at that path. Check PASSPORT_STORAGE_DIR.")
+
+    @contextmanager
+    def owner_lock(owner_id: int):
+        try:
+            with account_lock(lock_directory, owner_id):
+                yield
+        except HTTPException:
+            raise TimeoutError from None
+
+    counts = encrypt_existing_files(root, cipher, owner_lock)
+    message = f"Encrypted {counts['encrypted']} files; {counts['already_encrypted']} were already encrypted."
+    if counts["unreadable"]:
+        message += f" {counts['unreadable']} encrypted files do not open with this key."
+    if counts["busy_owners"]:
+        message += f" {counts['busy_owners']} accounts were busy; run the command again."
+    if counts["unreadable"] or counts["busy_owners"]:
+        raise SystemExit(message)
+    return message
+
+
 def main(argv: list[str] | None = None) -> None:
     # No abbreviations: '--em' or '--ro' must not silently mean something.
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
@@ -130,6 +167,8 @@ def main(argv: list[str] | None = None) -> None:
         "seed-load-test", help="Create synthetic load-test accounts on staging.", allow_abbrev=False)
     seed_parser.add_argument("--users", type=int, default=300)
     seed_parser.add_argument("--prefix", default="loadtest", choices=["loadtest"])
+    commands.add_parser("encrypt-documents", allow_abbrev=False,
+                        help="Encrypt stored traveler files written before DOCUMENT_ENCRYPTION_KEY was set.")
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] not in commands.choices and argv[0] not in ("-h", "--help"):
         # Anything before the command would be echoed as an invalid choice.
@@ -140,8 +179,10 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("unrecognized arguments (not shown)")
     if args.command == "seed-load-test":
         print(seed_load_test(args.users, args.prefix))
-        return
-    print(set_role(args.email, args.role))
+    elif args.command == "encrypt-documents":
+        print(encrypt_documents())
+    else:
+        print(set_role(args.email, args.role))
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
 from .database import api_threads, build_engine
+from .file_encryption import cipher_from_environment
 from .applications.form_review import create_form_review_router
 from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
@@ -166,6 +167,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parents[1] / "storage" / "passports")),
         on_access=lambda owner, upload, purpose: record_document_access(
             engine, app.state.activity_directory, owner, upload, purpose),
+        cipher=cipher_from_environment(),
     )
     app.state.passport_storage = passport_storage
     app.include_router(create_features_router())
@@ -213,9 +215,10 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
-    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
+                                       cipher=passport_storage.cipher)
     # The agent's screenshots show passport details, so they live there too (CMPS271-70).
-    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access, cipher=passport_storage.cipher)
 
     def remove_document_files(owner: int, document_ids: list[str]):
         for document_id in document_ids:

@@ -15,6 +15,7 @@ from app.agent.storage import AgentFiles
 from app.agent.worker import serve
 from app.database import build_engine
 from app.monitoring import capture_job_error, configure_monitoring
+from app.file_encryption import cipher_from_environment
 from app.schema import require_current_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -48,7 +49,7 @@ def main() -> None:
     # Same opt-in, allowlisted Sentry as the API, tagged so worker crashes alert separately.
     monitoring = configure_monitoring(component="worker")
     try:
-        serve(engine, AgentFiles(root), chromium, stop=lambda: stopping)
+        serve(engine, AgentFiles(root, cipher=cipher_from_environment()), chromium, stop=lambda: stopping)
     except Exception:
         capture_job_error("agent-worker")
         raise
