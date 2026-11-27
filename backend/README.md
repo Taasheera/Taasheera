@@ -108,6 +108,12 @@ OCR outside tests.
 Set `PASSPORT_UPLOADS_ENABLED=false` on a host without durable private file storage.
 The free Render blueprint does this; it runs the existing API for registration and sign-in only.
 
+Stored traveler files are encrypted when the environment sets `DOCUMENT_ENCRYPTION_KEY` (32 random
+bytes, base64, for example from `openssl rand -base64 32`); a malformed key stops startup and no key
+keeps plain files with one startup warning. `python manage.py encrypt-documents` encrypts files
+stored before the key. Uploads are scanned for malware first (`app/upload_scan.py`); set
+`CLAMD_ADDRESS=host:port` to add ClamAV. See `deploy/aws/README.md` and `docs/BACKUPS.md`.
+
 ## Activity audit
 
 `ActivityEvent` links each server-timestamped event to a traveler. The backend records successful

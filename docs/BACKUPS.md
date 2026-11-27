@@ -10,7 +10,7 @@ runs it with Amazon Linux's Python 3.9); its tests are `backend/tests/test_backu
 
 | Included | Not included |
 |---|---|
-| `taasheera.db`: a consistent copy made with SQLite's online backup while the API keeps running, checked with `PRAGMA integrity_check` | `private/app.env` and `web.env` (JWT secret, origin token): they are recreated by `bootstrap.sh`, and must never sit in a bucket |
+| `taasheera.db`: a consistent copy made with SQLite's online backup while the API keeps running, checked with `PRAGMA integrity_check` | `private/app.env` and `web.env` (JWT secret, origin token, document encryption key): they must never sit in a bucket. `bootstrap.sh` recreates the first two, but **not** the document key (see below) |
 | `passports/`: every uploaded passport image | the pre-migration copies in `private/backups/*.db` |
 | `activity-logs/`: the per-traveler JSONL mirrors | the containers and code (they come from Git) |
 | `manifest.json`: time, schema revision, row counts, and a SHA-256 for every file | |
@@ -26,6 +26,20 @@ requests, encrypts every object (SSE-S3) and keeps old versions. The host can wr
 backups but has no permission to delete them; S3 lifecycle rules remove old ones. A
 compromised host could still overwrite a backup, but the overwritten copy stays as an old
 version for the same 30 days. Never share presigned links to backup objects.
+
+## The document encryption key
+
+Passport images and details, supporting documents and agent screenshots are encrypted by the
+application with `DOCUMENT_ENCRYPTION_KEY` (CMPS271-114), so `passports/` in a backup holds
+ciphertext. The key lives only in `private/app.env`, which backups leave out, and **losing it loses
+every encrypted document**: a backup alone can't recover them. Keep a copy of the key separately from
+the data and from these backups (the team password manager, or an operator-only SecureString
+parameter), never in the backup bucket, and check that copy after adding the key
+(`deploy/aws/README.md`, Document encryption key, explains how an operator adds it to production).
+
+A restore needs the same key in `app.env`. Archives made before the key was added hold plain files,
+which still open with or without it; files encrypted under a key you no longer have cannot be opened.
+To rehearse a restore onto a fresh host, copy the key into its `app.env` before starting the API.
 
 ## One-time setup (AWS)
 
