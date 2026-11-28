@@ -30,6 +30,8 @@ def auth_environment(monkeypatch, tmp_path):
                  "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TIMEOUT_SECONDS", "RESET_MAIL_PROVIDER",
                  "SES_FROM_EMAIL", "SES_REGION", "AUTH_TRUST_CLOUDFRONT_PROXY", "AUTH_IDLE_TIMEOUT_SECONDS"):
         monkeypatch.delenv(name, raising=False)
+    for name in ("DOCUMENT_ENCRYPTION_KEY", "CLAMD_ADDRESS"):
+        monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture

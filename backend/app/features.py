@@ -24,12 +24,14 @@ FLAGS = {
     "privacy_consent": "Accept the privacy policy before uploading documents (CMPS271-115)",
     "email_notifications": "Email copies of notifications and reminders (CMPS271-98)",
     "visa_guide": "Public guide for each supported visa: who needs it, documents, fees, times (CMPS271-19/20/21/24)",
+    "malware_scan": "Scan every uploaded file for malware before it is stored (CMPS271-31)",
 }
 
 
 # Tested features that default on in production as well (Sprint 5 release). FEATURE_<NAME>=false still
 # turns one off. The agent waits for a larger host and email copies for SES production access.
-RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_documents", "privacy_consent", "visa_guide"})
+RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_documents", "privacy_consent", "visa_guide",
+                      "malware_scan"})
 
 
 def _variable(name: str) -> str:

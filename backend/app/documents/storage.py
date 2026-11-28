@@ -11,14 +11,17 @@ import re
 import uuid
 from pathlib import Path
 
+from ..file_encryption import FileCipher, read_sealed, seal
+
 _DOCUMENT_ID = re.compile(r"[0-9a-f]{32}")
 _EXTENSIONS = ("pdf", "jpg")
 
 
 class DocumentStorage:
-    def __init__(self, root: Path | str, *, on_access=None):
+    def __init__(self, root: Path | str, *, on_access=None, cipher: FileCipher | None = None):
         self.root = Path(root)
         self.on_access = on_access
+        self.cipher = cipher
 
     def _folder(self, owner_id: int) -> Path:
         return self.root / str(int(owner_id)) / "documents"
@@ -38,12 +41,11 @@ class DocumentStorage:
         self._write(self._path(owner_id, document_id, extension), content)
         self._write(self._path(owner_id, document_id, "txt"), text.encode("utf-8"))
 
-    @staticmethod
-    def _write(path: Path, data: bytes) -> None:
+    def _write(self, path: Path, data: bytes) -> None:
         # Owner-only permissions; O_EXCL refuses to overwrite an existing file.
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "wb") as file:
-            file.write(data)
+            file.write(seal(self.cipher, self.root, path, data))
 
     def load(self, owner_id: int, document_id: str, extension: str, *, purpose: str) -> bytes | None:
         path = self._path(owner_id, document_id, extension)
@@ -51,7 +53,7 @@ class DocumentStorage:
             return None
         if self.on_access is not None:
             self.on_access(owner_id, document_id, purpose)
-        return path.read_bytes()
+        return read_sealed(self.cipher, self.root, path)
 
     def load_text(self, owner_id: int, document_id: str, *, purpose: str) -> str:
         text = self.load(owner_id, document_id, "txt", purpose=purpose)

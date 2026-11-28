@@ -250,3 +250,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `deploy/aws/monitoring.sh <stack>` creates the CloudWatch dashboard and alarms. Capacity: `loadtest/` (k6 mixed
     workload, `capacity.py` loop) against the `taasheera-staging` stack; results in `docs/CAPACITY_REPORT.md`.
     Staging-only switches (`THROTTLE_EXEMPT_IPS`, `ASSISTANT_FAKE_LATENCY_MS`, `seed-load-test`) refuse to start elsewhere.
+51. **Document encryption (CMPS271-114).** Storage classes seal passport images/details, documents/text and agent
+    screenshots with AES-256-GCM under `DOCUMENT_ENCRYPTION_KEY`, the path below the storage root as associated data.
+    No key: plain files and one startup warning; plain files still open with one. `manage.py encrypt-documents`
+    converts in place. Losing the key loses the files: keep it apart from data backups (`docs/BACKUPS.md`).
+52. **Upload malware scan (CMPS271-31).** `app/upload_scan.py` scans uploads before parsing or storage: EICAR,
+    executables, PDF active content, declared-type mismatch, optional clamd (`CLAMD_ADDRESS`, fails closed with 503,
+    off on t3.micro). Fixed 422 message and an `upload_rejected` event. Behind released `malware_scan`.

@@ -17,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
 from .database import api_threads, build_engine
+from .file_encryption import cipher_from_environment
 from .applications.form_review import create_form_review_router
 from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
@@ -57,6 +58,7 @@ from .documents.router import create_documents_router
 from .documents.review import booking_documents as booking_texts, completeness_issues
 from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
+from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_upload_check
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
@@ -166,6 +168,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parents[1] / "storage" / "passports")),
         on_access=lambda owner, upload, purpose: record_document_access(
             engine, app.state.activity_directory, owner, upload, purpose),
+        cipher=cipher_from_environment(),
     )
     app.state.passport_storage = passport_storage
     app.include_router(create_features_router())
@@ -199,6 +202,17 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     if uploads_setting not in {"true", "false"}:
         raise RuntimeError("PASSPORT_UPLOADS_ENABLED must be true or false.")
 
+    def record_upload_rejection(traveler_id: int, identifier: str, reason: str):
+        with Session(engine) as session:
+            record_activity(session, app.state.activity_directory, traveler_id, "upload_rejected", identifier, reason)
+
+    upload_scanner = UploadScanner.from_environment()
+
+    def scan_check(source: str, allowed: frozenset[str]):
+        return create_upload_check(upload_scanner, allowed, source=source,
+                                   enabled=lambda: app.state.feature_flags.is_on("malware_scan"),
+                                   record_rejection=record_upload_rejection)
+
     def remember_passport_expiry(traveler_id: int, fields) -> None:
         # Only the expiry date, for reminders (CMPS271-36); kept while email notifications are on.
         if app.state.feature_flags.is_on("email_notifications"):
@@ -210,12 +224,14 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
         upload_dependencies=[privacy_consent],
         on_confirmed=remember_passport_expiry,
+        scan_upload=scan_check("passport", PASSPORT_TYPES),
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
-    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
+                                       cipher=passport_storage.cipher)
     # The agent's screenshots show passport details, so they live there too (CMPS271-70).
-    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access, cipher=passport_storage.cipher)
 
     def remove_document_files(owner: int, document_ids: list[str]):
         for document_id in document_ids:
@@ -255,7 +271,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_documents_router(get_session, current_traveler, document_storage,
                                                record_event=record_document_activity,
                                                load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
-                                               upload_dependencies=[privacy_consent]))
+                                               upload_dependencies=[privacy_consent],
+                                               scan_upload=scan_check("document", DOCUMENT_TYPES)))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:

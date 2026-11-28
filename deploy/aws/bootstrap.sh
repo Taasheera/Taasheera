@@ -99,7 +99,7 @@ git fetch origin "$TAASHEERA_REVISION"
 git checkout --detach "$TAASHEERA_REVISION"
 test -f deploy/aws/compose.yaml
 
-# Preserve JWT across redeployments and host replacement on the retained data disk.
+# Preserve JWT and the document encryption key across redeployments and host replacement on the retained data disk.
 phase='prepare private application configuration'
 printf 'Setup: %s\n' "$phase"
 mkdir -p /srv/taasheera/private /etc/taasheera
@@ -115,9 +115,10 @@ if [ "${TAASHEERA_PRESERVE_CONFIG:-0}" = 1 ]; then
 else
 if [ ! -f /srv/taasheera/private/app.env ]; then
   python3 - <<'PY'
-import os, secrets
+import base64, os, secrets
 with open('/srv/taasheera/private/app.env', 'x') as f:
     f.write('JWT_SECRET=' + secrets.token_urlsafe(48) + '\n')
+    f.write('DOCUMENT_ENCRYPTION_KEY=' + base64.b64encode(secrets.token_bytes(32)).decode() + '\n')
 PY
 fi
 python3 - <<'PY'

@@ -13,13 +13,16 @@ import uuid
 import json
 from pathlib import Path
 
+from ..file_encryption import FileCipher, read_sealed, seal
+
 _UPLOAD_ID = re.compile(r"[0-9a-f]{32}")
 
 
 class PassportImageStorage:
-    def __init__(self, root: Path | str, *, on_access=None):
+    def __init__(self, root: Path | str, *, on_access=None, cipher: FileCipher | None = None):
         self.root = Path(root)
         self.on_access = on_access
+        self.cipher = cipher
 
     def audit_access(self, owner_id: int, upload_id: str, purpose: str):
         if self.on_access is not None:
@@ -38,7 +41,7 @@ class PassportImageStorage:
         # Owner-only permissions; O_EXCL refuses to overwrite an existing file.
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "wb") as file:
-            file.write(jpeg)
+            file.write(seal(self.cipher, self.root, path, jpeg))
         return upload_id
 
     def load(self, owner_id: int, upload_id: str, *, purpose: str = "image_view") -> bytes | None:
@@ -46,7 +49,7 @@ class PassportImageStorage:
         if path is None or not path.is_file():
             return None
         self.audit_access(owner_id, upload_id, purpose)
-        return path.read_bytes()
+        return read_sealed(self.cipher, self.root, path)
 
     def save_review(self, owner_id: int, upload_id: str, fields: dict) -> None:
         image_path = self._path(owner_id, upload_id)
@@ -56,8 +59,8 @@ class PassportImageStorage:
         temporary = review_path.with_name(f"{review_path.name}.{uuid.uuid4().hex}.tmp")
         try:
             fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as file:
-                json.dump(fields, file)
+            with os.fdopen(fd, "wb") as file:
+                file.write(seal(self.cipher, self.root, review_path, json.dumps(fields).encode("utf-8")))
             os.replace(temporary, review_path)
         finally:
             temporary.unlink(missing_ok=True)
@@ -70,7 +73,7 @@ class PassportImageStorage:
         if not review_path.is_file():
             return None
         self.audit_access(owner_id, upload_id, purpose)
-        return json.loads(review_path.read_text(encoding="utf-8"))
+        return json.loads(read_sealed(self.cipher, self.root, review_path))
 
     def upload_count(self, owner_id: int) -> int:
         """How many passport images the traveler has uploaded; the admin API reports only this number."""
@@ -89,4 +92,4 @@ class PassportImageStorage:
             return None
         newest = max(reviews, key=lambda path: path.stat().st_mtime_ns)
         self.audit_access(owner_id, newest.stem, purpose)
-        return json.loads(newest.read_text(encoding="utf-8"))
+        return json.loads(read_sealed(self.cipher, self.root, newest))

@@ -157,13 +157,15 @@ def build_archive(session: Session, traveler: Traveler, passport_storage) -> byt
             review = passport_storage.load_review(traveler.id, upload_id, purpose="data_export")
             if review is not None:
                 archive.writestr(f"passport/{upload_id}.json", json.dumps(review, indent=2, ensure_ascii=False))
-        documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+        documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
+                                    cipher=passport_storage.cipher)
         for document in session.exec(select(SupportingDocument).where(SupportingDocument.traveler_id == traveler.id)):
             extension = "pdf" if document.content_type == "application/pdf" else "jpg"
             content = documents.load(traveler.id, document.id, extension, purpose="data_export")
             if content is not None:
                 archive.writestr(f"documents/{document.id}.{extension}", content)
-        screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+        screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access,
+                                 cipher=passport_storage.cipher)
         shots = session.exec(select(AgentScreenshot, AgentRun.application_id).join(AgentRun)
                              .where(AgentRun.traveler_id == traveler.id))
         for shot, application_id in shots:
