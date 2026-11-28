@@ -24,8 +24,10 @@ from ..passport.images import MAX_UPLOAD_BYTES
 from .crosscheck import Report as CrossCheckReport
 from .files import InvalidDocumentError, check_document, read_text
 from .packet import PacketItem, build_packet
+from .photo import PhotoReport, check_document_photo, photo_spec
 from .review import document_cross_check
 from .storage import DocumentStorage
+from .usage import unused_files
 
 # Enough for a few months of statements per requirement; stops one application filling the disk.
 MAX_PER_REQUIREMENT = 5
@@ -174,7 +176,7 @@ def create_documents_router(
             files = []
             for document in (d for d in documents if d.requirement == requirement.id):
                 extension = "pdf" if document.content_type == "application/pdf" else "jpg"
-                content = storage.load(traveler.id, document.id, extension, purpose="document_packet")
+                content = storage.load(traveler.id, document.file_key, extension, purpose="document_packet")
                 if content is not None:
                     files.append((document.filename, document.content_type, content))
             items.append(PacketItem(label=requirement.label, required=requirement.required, files=files))
@@ -215,10 +217,11 @@ def create_documents_router(
             raise HTTPException(status_code=409, detail=(
                 f"You can upload up to {MAX_PER_REQUIREMENT} files for one document. Delete one first, or combine them into one PDF."))
         checked = read_upload(file, traveler.id, requirement)
+        document_id = storage.new_id()
         document = SupportingDocument(
-            id=storage.new_id(), traveler_id=traveler.id, application_id=application.id, requirement=requirement,
-            filename=clean_filename(file.filename, checked.extension), content_type=checked.content_type,
-            size_bytes=len(checked.content))
+            id=document_id, file_id=document_id, traveler_id=traveler.id, application_id=application.id,
+            requirement=requirement, filename=clean_filename(file.filename, checked.extension),
+            content_type=checked.content_type, size_bytes=len(checked.content))
         storage.save(traveler.id, document.id, checked.extension, checked.content, reader(checked))
         session.add(document)
         try:
@@ -237,11 +240,13 @@ def create_documents_router(
         """A new file for the same requirement. It gets a new id, so a cached old file is never shown as the new one."""
         application = writable(session, traveler, application_id)
         old = owned_document(session, application, document_id)
+        old_file = old.file_key
         checked = read_upload(file, traveler.id, old.requirement)
+        new_id = storage.new_id()
         new = SupportingDocument(
-            id=storage.new_id(), traveler_id=traveler.id, application_id=application.id, requirement=old.requirement,
-            filename=clean_filename(file.filename, checked.extension), content_type=checked.content_type,
-            size_bytes=len(checked.content))
+            id=new_id, file_id=new_id, traveler_id=traveler.id, application_id=application.id,
+            requirement=old.requirement, filename=clean_filename(file.filename, checked.extension),
+            content_type=checked.content_type, size_bytes=len(checked.content))
         storage.save(traveler.id, new.id, checked.extension, checked.content, reader(checked))
         session.delete(old)
         session.add(new)
@@ -252,7 +257,8 @@ def create_documents_router(
             storage.delete(traveler.id, new.id)
             raise
         # Only once the new row is saved: until then the old file is still the one on record.
-        storage.delete(traveler.id, document_id)
+        for unused in unused_files(session, [old_file]):
+            storage.delete(traveler.id, unused)
         event(traveler.id, "document_replace", new.requirement)
         response.headers["Cache-Control"] = "private, no-store"
         return public(new)
@@ -261,18 +267,34 @@ def create_documents_router(
     def remove(application_id: str, document_id: str, traveler: TravelerDep, session: SessionDep):
         application = writable(session, traveler, application_id)
         document = owned_document(session, application, document_id)
-        requirement = document.requirement
+        requirement, file_key = document.requirement, document.file_key
         session.delete(document)
         session.commit()
-        storage.delete(traveler.id, document_id)
+        for unused in unused_files(session, [file_key]):
+            storage.delete(traveler.id, unused)
         event(traveler.id, "document_delete", requirement)
         return Response(status_code=204, headers={"Cache-Control": "private, no-store"})
+
+    @router.get("/{document_id}/photo-check", response_model=PhotoReport,
+                dependencies=[Depends(require_feature("photo_check"))])
+    def photo_check(application_id: str, document_id: str, traveler: TravelerDep, session: SessionDep,
+                    response: Response):
+        application = owned(session, traveler, application_id)
+        document = owned_document(session, application, document_id)
+        spec = photo_spec(application.questionnaire_id, document.requirement)
+        if spec is None:
+            raise HTTPException(status_code=404, detail="This document isn't a photo we can check.")
+        report = check_document_photo(storage, document, spec, purpose="document_check")
+        if report is None:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        response.headers["Cache-Control"] = "private, no-store"
+        return report
 
     @router.get("/{document_id}/file")
     def download(application_id: str, document_id: str, traveler: TravelerDep, session: SessionDep):
         document = owned_document(session, owned(session, traveler, application_id), document_id)
         extension = "pdf" if document.content_type == "application/pdf" else "jpg"
-        content = storage.load(traveler.id, document.id, extension, purpose="document_view")
+        content = storage.load(traveler.id, document.file_key, extension, purpose="document_view")
         if content is None:
             raise HTTPException(status_code=404, detail="Document not found.")
         # PDFs download rather than open on our origin; images are our own re-encoded JPEGs.

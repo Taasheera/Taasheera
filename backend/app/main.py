@@ -57,6 +57,8 @@ from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
 from .documents.review import booking_documents as booking_texts, completeness_issues
 from .documents.storage import DocumentStorage
+from .documents.translation import gemini_translate
+from .documents.vault import create_vault_router, vault_issues
 from .personal_data import create_data_export_router
 from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_upload_check
 from .payments.router import create_payments_router
@@ -250,9 +252,12 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         if not app.state.feature_flags.is_on("supporting_documents"):
             return None
         from .applications.router import saved_profile
+        flags = app.state.feature_flags
         return completeness_issues(session, document_storage, application, answers,
                                    latest_passport=passport_storage.latest_review(application.traveler_id, purpose="consistency_check"),
-                                   profile=saved_profile(session, application.traveler_id))
+                                   profile=saved_profile(session, application.traveler_id)) + vault_issues(
+            session, document_storage, application, answers,
+            photos=flags.is_on("photo_check"), passport=flags.is_on("passport_rules"))
 
     app.state.document_issues = document_issues
 
@@ -301,6 +306,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     stand_in = fake_assistant_from_environment()
     if stand_in is not None:
         assistant_ask, assistant_ask_tools = stand_in
+    app.include_router(create_vault_router(get_session, current_traveler, document_storage,
+                                           record_event=record_document_activity,
+                                           translate=gemini_translate(assistant_client, assistant_model) if assistant_client else None))
 
     def load_application_context(traveler_id: int, application_id: str) -> str | None:
         with Session(engine) as session:

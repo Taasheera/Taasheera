@@ -24,7 +24,8 @@ _request_metrics: ContextVar[dict | None] = ContextVar("taasheera_request_metric
 
 
 def install_private_no_store(app: FastAPI) -> None:
-    private_prefixes = ("/auth", "/passports", "/profile", "/sessions", "/activity", "/applications", "/assistant", "/notifications")
+    private_prefixes = ("/auth", "/passports", "/profile", "/sessions", "/activity", "/applications", "/assistant", "/notifications",
+                        "/vault")
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):

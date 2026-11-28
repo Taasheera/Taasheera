@@ -81,14 +81,15 @@ class Timeline(BaseModel):
 def delete_application(session: Session, application: Application) -> list[str]:
     """Remove the conversation, answers, documents, agent runs and payments before their application (foreign keys on all).
 
-    Returns the ids of the deleted supporting documents, whose files go once the deletion is committed.
+    Returns the supporting document files no other application uses, which go once the deletion is committed.
     """
     from ..agent.queue import delete_application_runs
+    from ..documents.usage import FILE_KEY, unused_files
 
     delete_application_runs(session, application.id)
-    document_ids = list(session.exec(select(SupportingDocument.id)
-                                     .where(SupportingDocument.application_id == application.id)).all())
+    file_keys = list(session.exec(select(FILE_KEY).where(SupportingDocument.application_id == application.id)).all())
     session.exec(delete(SupportingDocument).where(SupportingDocument.application_id == application.id))
+    document_ids = unused_files(session, file_keys)
     session.exec(delete(AssistantMessage).where(AssistantMessage.application_id == application.id))
     session.exec(delete(Notification).where(Notification.application_id == application.id))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))

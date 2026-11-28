@@ -35,6 +35,8 @@ class Issue(BaseModel):
     question_id: str | None = None
     step_id: str | None = None
     document_id: str | None = None
+    link: str | None = None
+    source: str | None = None
 
 
 class Report(BaseModel):

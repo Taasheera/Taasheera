@@ -87,10 +87,10 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications`, `/visa-guides` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides`, `/vault` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
-`/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
+`/passport/:uploadId`, `/documents`, `/account`, `/admin` and `/backoffice`.
 Deployments run `python migrate.py upgrade`, `APP_ENV=production`, `SCHEMA_AUTO_CREATE=false`.
 Operator role assignment: `python manage.py set-role --email <email> --role admin`.
 
@@ -269,3 +269,12 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
 55. **KPIs (CMPS271-140).** Admin-only `GET /admin/kpis?start&end` (at most 180 days): grouped-query aggregates for
     traveler accounts (active users, sign-ins, funnel, time to complete, agent and assistant rates, API errors, per
     destination), never ids, names or answers. `/admin/kpis` shows plain CSS bars and downloads CSV. Behind `kpi_dashboard`.
+56. **Document vault (CMPS271-32/33/34/35/37).** Page `/documents`, API `/vault`. Reusing a file adds a
+    `supportingdocument` row naming the same `file_id`; a file goes only when no row uses it (remove, replace,
+    application delete). Vault delete detaches it everywhere, is audited (`document_delete`), and the UI confirms.
+    Passport validity, issue date and blank pages per destination live in `applications/passport_rules.json` (official
+    sources); blank pages are declared on `/documents` (`PassportPages`). Failures block and advice warns, through
+    `document_issues`, so they need `supporting_documents`. Photo specs: `applications/photo_specs.json`, Pillow checks
+    only (no face recognition), warnings. Translation sends extracted text to Gemini (stored nowhere, 503 without a key),
+    shown as "not a certified translation, not legal advice". Flags `passport_rules`, `photo_check`, `document_vault`,
+    `document_translation`, released.

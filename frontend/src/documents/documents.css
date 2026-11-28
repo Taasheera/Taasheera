@@ -243,3 +243,9 @@
 
 .docs-packet { display: grid; gap: 6px; margin-top: 14px; }
 .docs-packet .docs-note { margin: 0; }
+
+.docs-photo-check { display: grid; gap: 8px; margin-top: 10px; }
+.docs-photo-result { margin: 0; font-size: 14px; font-weight: 600; }
+.docs-photo-list { display: grid; gap: 6px; margin: 0; padding-inline-start: 20px; font-size: 14px; }
+.docs-photo-list .is-failed { color: var(--warn-text); }
+.docs-photo-list strong { font-weight: 500; color: var(--fg); }
