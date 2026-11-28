@@ -1,0 +1,132 @@
+/* Generated documents (CMPS271-57 to 62). Sits on the application detail page. */
+.gen {
+  margin-top: 40px;
+}
+
+.gen h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.gen-head {
+  margin-bottom: 16px;
+}
+
+.gen-note,
+.gen-notice,
+.gen-state {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.gen-notice {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.gen-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gen-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.gen-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.gen-tab-active {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.gen-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.gen-panel {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.gen-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.gen-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.gen-language select {
+  padding: 4px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  background: var(--field-bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.gen-editor-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.gen-editor {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-md);
+  background: var(--field-bg);
+  color: var(--fg);
+  font: 14px/1.55 var(--font-sans);
+  resize: vertical;
+}
+
+.gen-editor:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.gen-editor[readonly] {
+  color: var(--fg-muted);
+}
+
+.gen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

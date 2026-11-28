@@ -55,6 +55,7 @@ from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
+from .generated.router import create_generated_documents_router, generated_packet_files
 from .documents.review import booking_documents as booking_texts, completeness_issues, missing_document_issues
 from .documents.storage import DocumentStorage
 from .documents.translation import gemini_translate
@@ -290,6 +291,11 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_help_content_router(get_session))
     app.include_router(create_help_content_admin_router(get_session, current_traveler))
 
+    def packet_generated_files(session, application, questionnaire, answers, email):
+        if not app.state.feature_flags.is_on("generated_documents"):
+            return {}
+        return generated_packet_files(session, application, questionnaire, answers, email)
+
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
             record_activity(session, app.state.activity_directory, traveler_id, event_type, requirement, "success")
@@ -298,7 +304,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                                                record_event=record_document_activity,
                                                load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
                                                upload_dependencies=[privacy_consent],
-                                               scan_upload=scan_check("document", DOCUMENT_TYPES)))
+                                               scan_upload=scan_check("document", DOCUMENT_TYPES),
+                                               generated_files=packet_generated_files))
+    app.include_router(create_generated_documents_router(get_session, current_traveler))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:

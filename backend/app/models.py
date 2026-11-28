@@ -562,3 +562,22 @@ class FaqEntry(SQLModel, table=True):
     updated_by: int | None = Field(default=None, foreign_key="traveler.id", index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class GeneratedDocument(SQLModel, table=True):
+    """The traveler's own edit of a generated document (CMPS271-58), one per application, kind and language.
+
+    Only edits are stored: an unedited document is written again from the answers on every read, so it
+    always matches them. Deleting the row is "regenerate".
+    """
+
+    __table_args__ = (
+        UniqueConstraint("application_id", "kind", "language", name="uq_generateddocument_application_kind_language"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    kind: str = Field(max_length=30)
+    language: str = Field(max_length=5)
+    body: str = Field(sa_column=Column(Text, nullable=False), repr=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
