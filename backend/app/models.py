@@ -598,6 +598,9 @@ class ApplicationTracking(SQLModel, table=True):
     # Reminder levels already sent for this appointment, in days before it (7, then 1); a new time resets it.
     appointment_reminded_days: int | None = None
     packet_downloaded_at: datetime | None = None
+    # The traveler asked to hear when an appointment slot opens (CMPS271-85), and the last slot they were told about.
+    watch_slots: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    slot_notified: str | None = Field(default=None, max_length=120)
 
 
 class GroupMember(SQLModel, table=True):

@@ -12,6 +12,7 @@
 from datetime import date, datetime, timedelta, timezone
 from functools import cache
 import json
+import os
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -24,6 +25,7 @@ from ..notifications import application_name, notify
 from . import flow
 
 GUIDES_FILE = Path(__file__).with_name("submission_guides.json")
+SLOTS_FILE = Path(__file__).with_name("appointment_slots.json")
 PRIVATE = {"Cache-Control": "private, no-store"}
 DECIDED = ("APPROVED", "REFUSED")
 RECORDED = ("SUBMITTED", *DECIDED)
@@ -81,13 +83,32 @@ class ChecklistItem(BaseModel):
     optional: bool = False
 
 
+class Slot(BaseModel):
+    centre: str
+    day: date
+
+
+class Slots(BaseModel):
+    # Whether this destination has a slot feed at all, whether the traveler is watching, and the earliest open slot.
+    available: bool
+    watching: bool
+    earliest: Slot | None
+    note: str
+
+
 class Submission(BaseModel):
     stage: str
     steps: list[Step]
     current: str | None
     appointment: Appointment
     checklist: list[ChecklistItem]
+    slots: Slots
     read_only: bool
+
+
+class WatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    watch: bool
 
 
 class AppointmentRequest(BaseModel):
@@ -186,8 +207,88 @@ def build_submission(session: Session, application: Application, questionnaire: 
         appointment=Appointment(needed=bool(guide and guide.appointment), at=appointment_at,
                                 location=tracking.appointment_location if tracking else None),
         checklist=checklist(questionnaire, answers, uploaded, guide),
+        slots=slots_view(questionnaire, answers, tracking, guide, date.today()),
         read_only=application.archived_at is not None or application.status in DECIDED,
     )
+
+
+SLOTS_NOTE = ("Slots come from a published feed checked every 15 minutes. Booking is always on the official site; "
+              "a slot can be gone by the time you get there.")
+
+
+def slot_feed(today: date) -> dict[str, list[Slot]]:
+    """Open appointment slots per questionnaire (CMPS271-85), from APPOINTMENT_SLOTS_FILE or the packaged demo feed.
+
+    Each entry gives a centre and either a `day` (ISO date) or `in_days` from today. Unreadable entries are skipped.
+    """
+    path = Path(os.environ.get("APPOINTMENT_SLOTS_FILE") or SLOTS_FILE)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    feed: dict[str, list[Slot]] = {}
+    for questionnaire_id, entries in (data.get("slots") or {}).items():
+        for entry in entries if isinstance(entries, list) else []:
+            try:
+                day = date.fromisoformat(entry["day"]) if "day" in entry else today + timedelta(days=int(entry["in_days"]))
+                feed.setdefault(questionnaire_id, []).append(Slot(centre=str(entry["centre"])[:100], day=day))
+            except (KeyError, TypeError, ValueError):
+                continue
+    return feed
+
+
+def earliest_slot(questionnaire: flow.Questionnaire, answers: flow.Answers, today: date) -> Slot | None:
+    """The first open slot from tomorrow that still comes before the trip, when the arrival date is known."""
+    arrival = None
+    try:
+        arrival = date.fromisoformat(answers["arrival_date"]) if isinstance(answers.get("arrival_date"), str) else None
+    except ValueError:
+        pass
+    open_slots = [slot for slot in slot_feed(today).get(questionnaire.id, [])
+                  if slot.day > today and (arrival is None or slot.day < arrival)]
+    return min(open_slots, key=lambda slot: slot.day, default=None)
+
+
+def slots_view(questionnaire: flow.Questionnaire, answers: flow.Answers, tracking: ApplicationTracking | None,
+               guide: "GuideSource | None", today: date) -> Slots:
+    available = bool(guide and guide.appointment and questionnaire.id in slot_feed(today))
+    return Slots(available=available, watching=bool(tracking and tracking.watch_slots),
+                 earliest=earliest_slot(questionnaire, answers, today) if available else None, note=SLOTS_NOTE)
+
+
+def check_appointment_slots(engine, *, now: datetime | None = None) -> int:
+    """Tell travelers watching for slots when one opens that they haven't been told about. Returns how many."""
+    from .router import _owned_answers, current_answers
+
+    now = now or datetime.now(timezone.utc)
+    today = now.date()
+    added = 0
+    with Session(engine) as session:
+        rows = session.exec(select(ApplicationTracking).where(ApplicationTracking.watch_slots.is_(True),
+                                                              ApplicationTracking.appointment_at.is_(None))).all()
+        for row in rows:
+            owned = _owned_answers(session, row.traveler_id, row.application_id)
+            owner = session.get(Traveler, row.traveler_id)
+            if owned is None or owner is None or owner.status != "active":
+                continue
+            application, questionnaire, stored = owned
+            if application.archived_at is not None or application.status in RECORDED:
+                continue
+            answers, _ = current_answers(questionnaire, application, stored, today)
+            slot = earliest_slot(questionnaire, answers, today)
+            key = f"{slot.centre}|{slot.day.isoformat()}"[:120] if slot else None
+            if slot is None or key == row.slot_notified:
+                continue
+            notice = notify(session, row.traveler_id, "appointment_slot",
+                            f"An appointment slot opened for your {application_name(application)} application. "
+                            "Book it on the official site, then record it here.",
+                            application_id=application.id, link=f"/dashboard/{application.id}#submit-yourself")
+            notice.created_at = now
+            row.slot_notified = key
+            session.add(row)
+            session.commit()
+            added += 1
+    return added
 
 
 def checklist(questionnaire: flow.Questionnaire, answers: flow.Answers, uploaded: set[str],
@@ -324,6 +425,27 @@ def add_tracking_routes(router: APIRouter, get_session, current_traveler, *, tod
         if _utc(row.appointment_at) != data.at:
             row.appointment_reminded_days = None
         row.appointment_at, row.appointment_location = data.at, data.location
+        session.add(row)
+        session.commit()
+        return build_submission(session, application, questionnaire, answers, complete)
+
+    @router.put("/{application_id}/slot-watch", response_model=Submission,
+                dependencies=[Depends(check_origin), Depends(require_feature("submission_tracking"))])
+    def watch_slots(application_id: str, data: WatchRequest, traveler: TravelerDep, session: SessionDep,
+                    response: Response):
+        """Start or stop hearing about open appointment slots for this application (CMPS271-85)."""
+        response.headers.update(PRIVATE)
+        application, questionnaire, answers, complete = load(session, traveler, application_id)
+        guide = submission_guides().get(questionnaire.id)
+        if not slots_view(questionnaire, answers, None, guide, today()).available:
+            raise HTTPException(status_code=409, detail="There's no appointment feed for this visa.")
+        if application.archived_at is not None or application.status in RECORDED:
+            raise HTTPException(status_code=409, detail="This application can't change any more.")
+        row = tracking_row(session, application) or ApplicationTracking(application_id=application.id,
+                                                                        traveler_id=traveler.id)
+        row.watch_slots = data.watch
+        if not data.watch:
+            row.slot_notified = None
         session.add(row)
         session.commit()
         return build_submission(session, application, questionnaire, answers, complete)

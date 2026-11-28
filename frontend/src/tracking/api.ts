@@ -9,6 +9,7 @@ export type Submission = {
   current: string | null
   appointment: { needed: boolean; at: string | null; location: string | null }
   checklist: ChecklistItem[]
+  slots: { available: boolean; watching: boolean; earliest: { centre: string; day: string } | null; note: string }
   read_only: boolean
 }
 
@@ -29,6 +30,15 @@ export async function saveAppointment(applicationId: string, at: Date, location:
     body: JSON.stringify({ at: at.toISOString(), location: location.trim() || null }),
   })
   if (!response.ok) throw new Error(await detail(response, 'Could not save the appointment.'))
+  return response.json()
+}
+
+export async function watchSlots(applicationId: string, watch: boolean): Promise<Submission> {
+  const response = await protectedFetch(`/applications/${applicationId}/slot-watch`, {
+    method: 'PUT', cache: 'no-store', silent: true, headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ watch }),
+  })
+  if (!response.ok) throw new Error(await detail(response, 'Could not change the slot alerts.'))
   return response.json()
 }
 

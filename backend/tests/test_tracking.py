@@ -142,3 +142,49 @@ def test_deleting_the_application_removes_its_tracking(api):
     with Session(app.state.engine) as session:
         assert session.exec(select(ApplicationTracking)).all() == []
     assert START
+
+
+def test_watching_for_slots_notifies_once_per_new_slot(api, tmp_path, monkeypatch):
+    import json
+    from app.applications.tracking import check_appointment_slots
+
+    feed = tmp_path / "slots.json"
+    feed.write_text(json.dumps({"slots": {"schengen-short-stay": [{"centre": "Centre A", "in_days": 9}]}}), encoding="utf-8")
+    monkeypatch.setenv("APPOINTMENT_SLOTS_FILE", str(feed))
+    client, app, headers, _ = api
+    application_id = ready(client, headers[0])
+    state = submission(client, headers[0], application_id)
+    assert state["slots"]["available"] is True and state["slots"]["watching"] is False
+    assert state["slots"]["earliest"]["centre"] == "Centre A"
+
+    watched = client.put(f"/applications/{application_id}/slot-watch", headers=headers[0], json={"watch": True})
+    assert watched.status_code == 200 and watched.json()["slots"]["watching"] is True
+    engine = app.state.engine
+    assert check_appointment_slots(engine) == 1
+    assert check_appointment_slots(engine) == 0  # the same slot isn't announced twice
+    feed.write_text(json.dumps({"slots": {"schengen-short-stay": [{"centre": "Centre B", "in_days": 5}]}}), encoding="utf-8")
+    assert check_appointment_slots(engine) == 1
+    with Session(engine) as session:
+        messages = [n.message for n in session.exec(select(Notification).where(Notification.kind == "appointment_slot"))]
+    assert len(messages) == 2 and "Centre" not in messages[0]
+
+    # Booking the appointment stops the watch from notifying.
+    book(client, headers[0], application_id, datetime.now(timezone.utc) + timedelta(days=5))
+    feed.write_text(json.dumps({"slots": {"schengen-short-stay": [{"centre": "Centre C", "in_days": 3}]}}), encoding="utf-8")
+    assert check_appointment_slots(engine) == 0
+    assert client.put(f"/applications/{application_id}/slot-watch", headers=headers[1], json={"watch": False}).status_code == 404
+
+
+def test_slots_after_the_trip_or_for_e_visas_are_not_offered(api, tmp_path, monkeypatch):
+    import json
+
+    feed = tmp_path / "slots.json"
+    feed.write_text(json.dumps({"slots": {"schengen-short-stay": [{"centre": "Late", "in_days": 400}],
+                                          "turkiye-evisa": [{"centre": "None", "in_days": 3}]}}), encoding="utf-8")
+    monkeypatch.setenv("APPOINTMENT_SLOTS_FILE", str(feed))
+    client, _, headers, _ = api
+    application_id = ready(client, headers[0])
+    assert submission(client, headers[0], application_id)["slots"]["earliest"] is None
+    turkey = client.post("/applications", headers=headers[0], json={"destination": "TUR", "visa_type": "e_visa"}).json()["id"]
+    assert submission(client, headers[0], turkey)["slots"]["available"] is False
+    assert client.put(f"/applications/{turkey}/slot-watch", headers=headers[0], json={"watch": True}).status_code == 409

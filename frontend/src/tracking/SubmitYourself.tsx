@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { getSubmission, removeAppointment, saveAppointment, type Submission } from './api'
+import { getSubmission, removeAppointment, saveAppointment, watchSlots, type Submission } from './api'
 import './tracking.css'
 
 // For "local" <input type="datetime-local"> values: the traveler's own time zone, to the minute.
@@ -79,7 +79,19 @@ export default function SubmitYourself({ applicationId, version, onChange }:
     }
   }
 
-  const { appointment } = data
+  async function toggleWatch(watch: boolean) {
+    setBusy(true)
+    try {
+      setData(await watchSlots(applicationId, watch))
+      toast.success(watch ? "We'll tell you when an appointment slot opens." : 'Slot alerts are off.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not change the slot alerts.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const { appointment, slots } = data
   return <section id="submit-yourself" className="track" aria-labelledby="track-title">
     <div className="track-head">
       <div>
@@ -107,6 +119,16 @@ export default function SubmitYourself({ applicationId, version, onChange }:
       {appointment.at
         ? <p>{formatWhen(appointment.at)}{appointment.location && <> · {appointment.location}</>}</p>
         : <p className="track-note">Record it once you've booked, and we'll remind you a week and a day before.</p>}
+      {!appointment.at && slots.available && <div className="track-slots">
+        <p>{slots.earliest
+          ? <>Earliest open slot: <strong>{new Date(`${slots.earliest.day}T00:00:00`).toLocaleDateString(undefined, {
+              weekday: 'long', day: 'numeric', month: 'long' })}</strong> · {slots.earliest.centre}</>
+          : 'No open slot before your trip right now.'}</p>
+        {!data.read_only && <button type="button" className="button button-secondary dash-small" disabled={busy}
+          aria-pressed={slots.watching} data-activity-id="slot-watch" onClick={() => void toggleWatch(!slots.watching)}>
+          {slots.watching ? 'Stop slot alerts' : 'Tell me when a slot opens'}</button>}
+        <p className="track-note">{slots.note}</p>
+      </div>}
       {!data.read_only && <form className="track-form" onSubmit={event => void save(event)}>
         <label>
           <span>Date and time</span>

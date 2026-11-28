@@ -304,3 +304,7 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     purpose) are copied from the lead with source `group` on creation and on "Copy trip answers to everyone"; members
     never get the owner's passport/profile suggestions. Deleting the lead leaves members standalone; deleting a member
     lowers the lead's `group_size` (the multi-traveler discount reads it). Released flag `group_applications`.
+62. **Appointment slots (CMPS271-85).** No embassy publishes readable slots (booking sites need a sign-in and a
+    CAPTCHA), so `tracking.slot_feed` reads `APPOINTMENT_SLOTS_FILE` (operator-maintained JSON) or the packaged demo
+    `appointment_slots.json` (`in_days` from today). A traveler watches per application (`PUT /slot-watch`); the
+    notification timer sends `appointment_slot` once per new earliest slot before the trip, until an appointment is booked.

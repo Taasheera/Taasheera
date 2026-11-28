@@ -1,4 +1,4 @@
-"""The embassy appointment, its reminders and the first packet download (CMPS271-72/73/77/79)."""
+"""The embassy appointment, its reminders, the first packet download and slot watching (CMPS271-72/73/77/79/85)."""
 
 from alembic import op
 import sqlalchemy as sa
@@ -20,6 +20,8 @@ def upgrade():
         sa.Column("appointment_location", sqlmodel.sql.sqltypes.AutoString(length=200), nullable=True),
         sa.Column("appointment_reminded_days", sa.Integer(), nullable=True),
         sa.Column("packet_downloaded_at", sa.DateTime(), nullable=True),
+        sa.Column("watch_slots", sa.Boolean(), server_default="0", nullable=False),
+        sa.Column("slot_notified", sqlmodel.sql.sqltypes.AutoString(length=120), nullable=True),
         sa.ForeignKeyConstraint(["application_id"], ["application.id"]),
         sa.ForeignKeyConstraint(["traveler_id"], ["traveler.id"]),
         sa.PrimaryKeyConstraint("application_id"),

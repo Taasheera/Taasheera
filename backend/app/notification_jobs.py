@@ -186,8 +186,9 @@ def run_notification_jobs(engine, sender: NotificationSender | None, site_url: s
     """One run of every notification job: first add the reminders that are due, then email."""
     remind_stalled_applications(engine, now=now)
     remind_expiring_passports(engine, now=now)
-    from .applications.tracking import remind_appointments
+    from .applications.tracking import check_appointment_slots, remind_appointments
     remind_appointments(engine, now=now)
+    check_appointment_slots(engine, now=now)
     return send_pending_emails(engine, sender, site_url, now=now)
 
 
