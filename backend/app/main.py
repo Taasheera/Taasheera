@@ -4,7 +4,9 @@ import shutil
 from pathlib import Path
 from typing import Annotated
 
+import anyio.to_thread
 import bcrypt
+from filelock import FileLock, Timeout
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,7 +16,8 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
-from .database import build_engine
+from .database import api_threads, build_engine
+from .file_encryption import cipher_from_environment
 from .applications.form_review import create_form_review_router
 from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
@@ -29,7 +32,7 @@ from .google_auth import create_google_auth_router
 from .config import AuthSettings, RuntimeSettings
 from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
-from .observability import install_private_no_store, install_request_logging
+from .observability import install_private_no_store, install_query_timing, install_request_logging
 from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
 from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
                                 record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
@@ -44,20 +47,34 @@ from .consent import create_consent_requirement, create_consent_router
 from .notification_preferences import create_notification_preferences_router
 from .applications.visa_guides import create_visa_guides_router
 from .document_audit import create_document_audit_router, record_document_access
-from .monitoring import configure_monitoring
+from .load_testing import fake_assistant_from_environment
+from .monitoring import configure_monitoring, install_tracing, monitored_job
 from .privacy import create_privacy_router, retry_erasures
+from .system_health import create_system_health_router
 from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
-from .documents.review import booking_documents as booking_texts, completeness_issues
+from .documents.review import booking_documents as booking_texts, completeness_issues, missing_document_issues
 from .documents.storage import DocumentStorage
+from .documents.translation import gemini_translate
+from .documents.vault import create_vault_router, vault_issues
 from .personal_data import create_data_export_router
+from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_upload_check
+from .payments.router import create_payments_router
+from .requirements import RequirementStore, create_requirements_router
+from .kpis import create_kpi_router
+from .support import create_staff_support_router, create_support_router
+from .help_content import create_help_content_admin_router, create_help_content_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
                notification_sender: NotificationSender | None = None) -> FastAPI:
     engine = build_engine(database_url)
+    install_query_timing(engine)
+    # Before the engine is used, so database spans are recorded from the first request.
+    monitoring = configure_monitoring()
+    requirements = RequirementStore(engine)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -76,15 +93,18 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         else:
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
+        set_api_threads()
+        requirements.install()
         notification_jobs = start_notification_jobs(app)
-        monitoring = configure_monitoring()
         try:
             yield
         finally:
+            requirements.uninstall()
             if notification_jobs is not None:
                 notification_jobs.stop()
+                notification_jobs.leader.release()
             if monitoring is not None:
-                monitoring.close()
+                monitoring.flush(timeout=2)
             engine.dispose()
 
     def start_notification_jobs(app: FastAPI) -> NotificationJobThread | None:
@@ -99,18 +119,38 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                       if app.state.runtime_settings.environment == "development" else None)
         if not interval or sender is None:
             return None
+        # With several API worker processes (WEB_CONCURRENCY), exactly one runs the timer: whichever
+        # takes this lock on the shared storage volume first. The others serve requests only.
+        app.state.account_lock_directory.parent.mkdir(parents=True, exist_ok=True)
+        leader = FileLock(str(app.state.account_lock_directory.parent / ".notification-jobs.lock"))
+        try:
+            leader.acquire(timeout=0)
+        except Timeout:
+            return None
         # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
         site_url = app.state.auth_settings.allowed_origins[0]
         show_notification_logs()
-        jobs = NotificationJobThread(lambda: run_notification_jobs(engine, sender, site_url), interval)
+
+        def run_jobs():
+            # A Sentry cron monitor alerts when a run fails or stops arriving.
+            with monitored_job("notification-jobs", interval_seconds=interval):
+                run_notification_jobs(engine, sender, site_url)
+
+        jobs = NotificationJobThread(run_jobs, interval)
+        jobs.leader = leader
         jobs.start()
         return jobs
+
+    def set_api_threads() -> None:
+        """Match the endpoint thread pool to API_THREADS, the size build_engine gave the SQLite pool."""
+        anyio.to_thread.current_default_thread_limiter().total_tokens = api_threads()
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine
     install_request_logging(app)
     install_admin_no_store(app)
     install_private_no_store(app)
+    install_tracing(app, monitoring)
 
     @app.get("/health/live", include_in_schema=False)
     def liveness():
@@ -138,6 +178,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parents[1] / "storage" / "passports")),
         on_access=lambda owner, upload, purpose: record_document_access(
             engine, app.state.activity_directory, owner, upload, purpose),
+        cipher=cipher_from_environment(),
     )
     app.state.passport_storage = passport_storage
     app.include_router(create_features_router())
@@ -147,6 +188,9 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_data_export_router(get_session, current_traveler, passport_storage))
     app.include_router(create_auth_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
+    app.include_router(create_system_health_router(get_session, current_traveler, passport_storage.root))
+    app.include_router(create_requirements_router(get_session, current_traveler, requirements))
+    app.include_router(create_kpi_router(get_session, current_traveler))
     app.include_router(create_sessions_router(get_session, current_traveler))
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))
@@ -170,6 +214,17 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     if uploads_setting not in {"true", "false"}:
         raise RuntimeError("PASSPORT_UPLOADS_ENABLED must be true or false.")
 
+    def record_upload_rejection(traveler_id: int, identifier: str, reason: str):
+        with Session(engine) as session:
+            record_activity(session, app.state.activity_directory, traveler_id, "upload_rejected", identifier, reason)
+
+    upload_scanner = UploadScanner.from_environment()
+
+    def scan_check(source: str, allowed: frozenset[str]):
+        return create_upload_check(upload_scanner, allowed, source=source,
+                                   enabled=lambda: app.state.feature_flags.is_on("malware_scan"),
+                                   record_rejection=record_upload_rejection)
+
     def remember_passport_expiry(traveler_id: int, fields) -> None:
         # Only the expiry date, for reminders (CMPS271-36); kept while email notifications are on.
         if app.state.feature_flags.is_on("email_notifications"):
@@ -181,12 +236,14 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         check_quality=lambda: app.state.feature_flags.is_on("passport_scan_quality"),
         upload_dependencies=[privacy_consent],
         on_confirmed=remember_passport_expiry,
+        scan_upload=scan_check("passport", PASSPORT_TYPES),
     ))
 
     # Supporting documents share the passport folder, so account erasure removes them too (CMPS271-29).
-    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+    document_storage = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
+                                       cipher=passport_storage.cipher)
     # The agent's screenshots show passport details, so they live there too (CMPS271-70).
-    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+    agent_files = AgentFiles(passport_storage.root, on_access=passport_storage.on_access, cipher=passport_storage.cipher)
 
     def remove_document_files(owner: int, document_ids: list[str]):
         for document_id in document_ids:
@@ -197,9 +254,12 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         if not app.state.feature_flags.is_on("supporting_documents"):
             return None
         from .applications.router import saved_profile
+        flags = app.state.feature_flags
         return completeness_issues(session, document_storage, application, answers,
                                    latest_passport=passport_storage.latest_review(application.traveler_id, purpose="consistency_check"),
-                                   profile=saved_profile(session, application.traveler_id))
+                                   profile=saved_profile(session, application.traveler_id)) + vault_issues(
+            session, document_storage, application, answers,
+            photos=flags.is_on("photo_check"), passport=flags.is_on("passport_rules"))
 
     app.state.document_issues = document_issues
 
@@ -218,6 +278,17 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_form_review_router(get_session, current_traveler,
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
     app.include_router(create_portal_guide_router(get_session, current_traveler))
+    app.include_router(create_payments_router(get_session, current_traveler))
+
+    def missing_uploads(session, application, answers):
+        if not app.state.feature_flags.is_on("supporting_documents"):
+            return None
+        return missing_document_issues(session, application, answers)
+
+    app.include_router(create_support_router(get_session, current_traveler))
+    app.include_router(create_staff_support_router(get_session, current_traveler, document_issues=missing_uploads))
+    app.include_router(create_help_content_router(get_session))
+    app.include_router(create_help_content_admin_router(get_session, current_traveler))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:
@@ -226,7 +297,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_documents_router(get_session, current_traveler, document_storage,
                                                record_event=record_document_activity,
                                                load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
-                                               upload_dependencies=[privacy_consent]))
+                                               upload_dependencies=[privacy_consent],
+                                               scan_upload=scan_check("document", DOCUMENT_TYPES)))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):
         with Session(engine) as session:
@@ -242,6 +314,13 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     assistant_model = os.environ.get("ASSISTANT_MODEL", DEFAULT_MODEL)
     assistant_ask = gemini_ask(assistant_client, assistant_model) if assistant_client else None
     assistant_ask_tools = gemini_ask_tools(assistant_client, assistant_model) if assistant_client else None
+    # Staging capacity tests only: a fixed-latency stand-in instead of Gemini (app/load_testing.py).
+    stand_in = fake_assistant_from_environment()
+    if stand_in is not None:
+        assistant_ask, assistant_ask_tools = stand_in
+    app.include_router(create_vault_router(get_session, current_traveler, document_storage,
+                                           record_event=record_document_activity,
+                                           translate=gemini_translate(assistant_client, assistant_model) if assistant_client else None))
 
     def load_application_context(traveler_id: int, application_id: str) -> str | None:
         with Session(engine) as session:

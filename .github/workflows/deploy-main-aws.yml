@@ -47,6 +47,10 @@ jobs:
       - name: Log in to the private image registry
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build and publish immutable API and web images
+        env:
+          # Public browser DSN and sample rate (repository variables); empty means no browser reporting.
+          SENTRY_FRONTEND_DSN: ${{ vars.SENTRY_FRONTEND_DSN }}
+          SENTRY_FRONTEND_TRACES_SAMPLE_RATE: ${{ vars.SENTRY_FRONTEND_TRACES_SAMPLE_RATE }}
         run: python3 deploy/aws/publish_images.py "$TARGET_SHA"
       - name: Recheck main after image builds
         run: python3 deploy/aws/verify_main_release.py "$TARGET_SHA"

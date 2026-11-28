@@ -41,7 +41,8 @@ def test_a_document_that_disagrees_with_the_passport_is_a_warning(api):
     required_uploads(client, headers[0], application_id, "Passenger ANNA ERICSSON passport no L898902C3")
     report = check(client, headers[0], application_id)
     assert report["ready"] is True
-    [warning] = [issue for issue in report["issues"] if issue["severity"] == "warning"]
+    [warning] = [issue for issue in report["issues"] if issue["severity"] == "warning" and issue["document_id"] != "photo"
+                 and not issue["link"]]
     assert "Flight reservation (statement.pdf) spells your surname ERICSSON" in warning["message"]
 
     crosscheck = client.get(f"/applications/{application_id}/documents/crosscheck", headers=headers[0])

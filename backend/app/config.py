@@ -1,6 +1,19 @@
+import ipaddress
 import os
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
+
+
+def deploy_environment() -> str:
+    """development, staging or production: which copy of the site this process is.
+
+    APP_ENV says how strictly to run (staging runs as production); this says where."""
+    value = os.environ.get("DEPLOY_ENVIRONMENT", "").strip().lower()
+    if not value:
+        return "production" if os.environ.get("APP_ENV", "development").lower() == "production" else "development"
+    if value not in {"development", "staging", "production"}:
+        raise RuntimeError("DEPLOY_ENVIRONMENT must be development, staging or production.")
+    return value
 
 
 @dataclass(frozen=True)
@@ -61,6 +74,9 @@ class AuthSettings:
     google_client_id: str | None = None
     trust_cloudfront_proxy: bool = False
     idle_seconds: int = 30 * 60
+    # Load-generator addresses that skip sign-in rate limits, so one machine can play hundreds of
+    # people (Sprint 5 capacity tests). Staging only: startup refuses it anywhere else.
+    throttle_exempt: tuple = ()
 
     @classmethod
     def from_environment(cls):
@@ -92,6 +108,15 @@ class AuthSettings:
             or any(char.isspace() for char in google_client_id)
         ):
             raise RuntimeError("GOOGLE_CLIENT_ID must be a Google web application client ID.")
+        exempt_setting = [value.strip() for value in os.environ.get("THROTTLE_EXEMPT_IPS", "").split(",") if value.strip()]
+        if exempt_setting and deploy_environment() != "staging":
+            raise RuntimeError("THROTTLE_EXEMPT_IPS is allowed only on staging (DEPLOY_ENVIRONMENT=staging).")
+        try:
+            exempt = tuple(ipaddress.ip_network(value, strict=False) for value in exempt_setting)
+        except ValueError:
+            raise RuntimeError("THROTTLE_EXEMPT_IPS must be a comma-separated list of IP addresses or networks.") from None
+        if any(network.num_addresses > 256 for network in exempt):
+            raise RuntimeError("THROTTLE_EXEMPT_IPS networks may cover at most 256 addresses.")
         return cls(
             jwt_secret=secret,
             cookie_secure=secure == "true",
@@ -99,4 +124,5 @@ class AuthSettings:
             google_client_id=google_client_id or None,
             trust_cloudfront_proxy=trusted_proxy == "true",
             idle_seconds=idle_seconds,
+            throttle_exempt=exempt,
         )

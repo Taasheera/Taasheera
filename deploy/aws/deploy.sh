@@ -17,6 +17,10 @@ account=$(aws sts get-caller-identity --query Account --output text)
 test "$account" = "${TAASHEERA_ACCOUNT_ID:-632630731308}"
 umask 077
 state_dir="${TAASHEERA_STATE_DIR:-$task_root/.aws-deploy-state}"
+# A second stack (staging) keeps its own origin token and parameters beside production's.
+if [ "$stack" != taasheera ] && [ -z "${TAASHEERA_STATE_DIR:-}" ]; then
+  state_dir="$state_dir/$stack"
+fi
 mkdir -p "$state_dir"
 if [ ! -f "$state_dir/origin-token" ]; then
   python3 -c 'import secrets; print(secrets.token_hex(32))' > "$state_dir/origin-token"
@@ -37,6 +41,10 @@ parameters = {'OwnerEmail': 'mhs86@mail.aub.edu', 'VpcId': os.environ['TAASHEERA
               'SubnetId': os.environ['TAASHEERA_SUBNET_ID'],
               'CloudFrontPrefixListId': os.environ['TAASHEERA_PREFIX_ID'],
               'OriginToken': os.environ['TAASHEERA_ORIGIN_TOKEN']}
+if os.environ.get('TAASHEERA_INSTANCE_TYPE'):
+    parameters['InstanceType'] = os.environ['TAASHEERA_INSTANCE_TYPE']
+if os.environ.get('TAASHEERA_CPU_CREDITS'):
+    parameters['CpuCredits'] = os.environ['TAASHEERA_CPU_CREDITS']
 with open(os.environ['TAASHEERA_PARAMETER_FILE'], 'w') as f:
     json.dump([{'ParameterKey':k, 'ParameterValue':v} for k,v in parameters.items()], f)
 PY
@@ -53,6 +61,17 @@ aws cloudformation create-change-set --stack-name "$stack" --change-set-name "$c
 if aws cloudformation wait change-set-create-complete --stack-name "$stack" --change-set-name "$change_set"; then
   # Show only resource changes; NoEcho parameters are not printed.
   aws cloudformation describe-change-set --stack-name "$stack" --change-set-name "$change_set" --query Changes
+  # AmiId resolves the latest Amazon Linux on every update, so a newer AMI means a new host. The new host
+  # cannot take the data volume while the old one holds it, and the update rolls back. Refuse it instead.
+  replaced=$(aws cloudformation describe-change-set --stack-name "$stack" --change-set-name "$change_set" \
+    --query "length(Changes[?ResourceChange.LogicalResourceId=='Host' && ResourceChange.Replacement=='True'])" --output text)
+  if [ "$change_type" = UPDATE ] && [ "$replaced" != 0 ]; then
+    aws cloudformation delete-change-set --stack-name "$stack" --change-set-name "$change_set"
+    printf 'This update would replace the EC2 host (usually a newer Amazon Linux AMI); it would roll back\n'
+    printf 'because the data volume stays attached to the old host. To resize, stop the instance and use\n'
+    printf 'aws ec2 modify-instance-attribute (deploy/aws/README.md); use redeploy.sh for application changes.\n'
+    exit 1
+  fi
   if [ "${TAASHEERA_EXECUTE_CHANGE_SET:-no}" != yes ]; then
     printf 'Prepared change set %s. Review resources and costs, then execute it and run this script again.\n' "$change_set"
     exit 0
@@ -87,6 +106,10 @@ python3 - <<'PY'
 import base64, json, os, shlex
 script = base64.b64encode(open('deploy/aws/bootstrap.sh','rb').read()).decode()
 names = ['TAASHEERA_SITE_URL','TAASHEERA_VOLUME_ID','TAASHEERA_REVISION','TAASHEERA_ORIGIN_TOKEN']
+# Optional monitoring settings; bootstrap.sh validates them before writing the private env file.
+names += [n for n in ('TAASHEERA_SENTRY_DSN', 'TAASHEERA_SENTRY_FRONTEND_DSN', 'TAASHEERA_SENTRY_TRACES_SAMPLE_RATE',
+                      'TAASHEERA_SENTRY_FRONTEND_TRACES_SAMPLE_RATE', 'TAASHEERA_DEPLOY_ENVIRONMENT')
+          if os.environ.get(n)]
 prefix = ' '.join(f'{n}={shlex.quote(os.environ[n])}' for n in names)
 command = f"echo {shlex.quote(script)} | base64 -d > /tmp/taasheera-bootstrap.sh && {prefix} bash /tmp/taasheera-bootstrap.sh"
 with open(os.environ['TAASHEERA_SSM_FILE'],'w') as f:

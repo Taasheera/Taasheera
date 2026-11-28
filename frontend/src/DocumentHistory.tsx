@@ -6,7 +6,9 @@ const purposes: Record<string, string> = { image_view: 'Viewed passport image', 
   application_prefill: 'Read for application prefill', data_export: 'Included in your data download',
   consistency_check: 'Read to cross-check your documents',
   document_view: 'Opened a supporting document', document_packet: 'Added a supporting document to your printable packet', document_prefill: 'Read a booking to suggest an answer', document_check: 'Read a supporting document for the cross-check',
-  agent_screenshot: 'Viewed a screenshot of the filled embassy form' }
+  agent_screenshot: 'Viewed a screenshot of the filled embassy form',
+  document_translation: 'Read a supporting document to translate it', document_delete: 'Deleted a supporting document',
+  support_view: 'Read an application you shared with support' }
 
 export default function DocumentHistory() {
   const [opened, setOpened] = useState(false)
@@ -33,7 +35,7 @@ export default function DocumentHistory() {
         {history.items.map(item => <li key={item.id}>
           <strong>{item.accessor}</strong> · {purposes[item.purpose] ?? 'Passport access'}
           <br /><time dateTime={item.occurred_at}>{new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(item.occurred_at) ? item.occurred_at : `${item.occurred_at}Z`).toLocaleString()}</time>
-          <br /><small>Passport {item.upload_id.slice(0, 8)}</small>
+          <br /><small>{item.purpose === 'support_view' ? 'Application' : 'Passport'} {item.upload_id.slice(0, 8)}</small>
         </li>)}
       </ul>}
       <p>{history.total} recorded access{history.total === 1 ? '' : 'es'}</p>

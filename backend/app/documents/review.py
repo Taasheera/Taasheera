@@ -28,7 +28,7 @@ def document_cross_check(session: Session, storage: DocumentStorage, application
     skipped = {document.id for document in questionnaire.documents if not document.crosscheck}
     texts = [DocumentText(id=document.id, requirement=document.requirement,
                           label=labels.get(document.requirement, "Document"), filename=document.filename,
-                          text=storage.load_text(application.traveler_id, document.id, purpose="document_check"))
+                          text=storage.load_text(application.traveler_id, document.file_key, purpose="document_check"))
              for document in _documents(session, application) if document.requirement not in skipped]
     passport = answers.get("passport") if isinstance(answers.get("passport"), dict) else None
     report = cross_check(passport, latest_passport=latest_passport, profile=profile, documents=texts)
@@ -46,8 +46,18 @@ def booking_documents(session: Session, storage: DocumentStorage, application: A
     wanted = {requirement for requirements in BOOKED_FROM.values() for requirement in requirements}
     return [DocumentText(id=document.id, requirement=document.requirement,
                          label=labels.get(document.requirement, "Document"), filename=document.filename,
-                         text=storage.load_text(application.traveler_id, document.id, purpose="document_prefill"))
+                         text=storage.load_text(application.traveler_id, document.file_key, purpose="document_prefill"))
             for document in _documents(session, application) if document.requirement in wanted]
+
+
+def missing_document_issues(session: Session, application: Application, answers: flow.Answers) -> list[completeness.Issue]:
+    """Required documents not uploaded yet, from the upload records alone: no file is read."""
+    questionnaire = flow.load_questionnaire(application.questionnaire_id)
+    uploaded = {document.requirement for document in _documents(session, application)}
+    return [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}",
+                               document_id=requirement.id)
+            for requirement in flow.required_documents(questionnaire, answers)
+            if requirement.required and requirement.id not in uploaded]
 
 
 def completeness_issues(session: Session, storage: DocumentStorage, application: Application, answers: flow.Answers,
@@ -56,12 +66,7 @@ def completeness_issues(session: Session, storage: DocumentStorage, application:
 
     Passport-versus-profile differences are left out: the completeness check reports those itself.
     """
-    questionnaire = flow.load_questionnaire(application.questionnaire_id)
-    uploaded = {document.requirement for document in _documents(session, application)}
-    issues = [completeness.Issue(kind="missing", severity="blocking", message=f"Not uploaded yet: {requirement.label}",
-                                 document_id=requirement.id)
-              for requirement in flow.required_documents(questionnaire, answers)
-              if requirement.required and requirement.id not in uploaded]
+    issues = missing_document_issues(session, application, answers)
     report = document_cross_check(session, storage, application, answers,
                                   latest_passport=latest_passport, profile=profile)
     issues += [completeness.Issue(kind="inconsistent", severity="warning", message=finding.message,

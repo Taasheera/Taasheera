@@ -3,7 +3,7 @@
 import io
 import json
 import zipfile
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, SQLModel, select
 
@@ -11,8 +11,10 @@ from app.agent import queue
 from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
-from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
-                        NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile)
+from app.models import (ActivityEvent, Application, DocumentAccess, FaqEntry, SupportAccessGrant, SupportRequest, SupportingDocument,
+                        GoogleIdentity, PasswordResetChallenge, PasswordResetToken, Payment,
+                        NotificationPreference, PassportExpiry, PassportPages, PrivacyConsent, RefreshToken, Traveler, TravelerProfile,
+                        RequirementDraft, RequirementRevision)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
 from test_applications_api import ANSWERS, SPECIMEN, answer_all, api, start  # noqa: F401  (pytest fixture)
@@ -42,12 +44,26 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(PrivacyConsent(traveler_id=traveler_id, policy_version="2026-11-25"))
         session.add(NotificationPreference(traveler_id=traveler_id, reminders=False))
         session.add(PassportExpiry(traveler_id=traveler_id, expiry_date=date(2031, 4, 15)))
+        session.add(PassportPages(traveler_id=traveler_id, blank_pages=3))
         session.add(GoogleIdentity(subject=f"google-subject-{traveler_id}", traveler_id=traveler_id))
         session.add(RefreshToken(token_hash=f"{traveler_id}" * 64, session_id=f"application-session-{traveler_id}"))
         session.add(PasswordResetChallenge(traveler_id=traveler_id, nonce="n" * 64, code_digest="c" * 64, expires_at=2**31))
         session.add(PasswordResetToken(token_hash=f"r{traveler_id}".ljust(64, "0"), traveler_id=traveler_id, expires_at=2**31))
         session.add(ActivityEvent(traveler_id=traveler_id, event_type="sign_in", identifier="email_password", outcome="success"))
         session.add(DocumentAccess(traveler_id=traveler_id, actor_id=traveler_id, upload_id=upload_id, purpose="review_read"))
+        session.add(Payment(id=f"payment{traveler_id}".ljust(32, "0"), traveler_id=traveler_id, application_id=application_id,
+                            amount_minor=11700, currency="EUR", line_items=[], status="paid",
+                            idempotency_key=f"checkout{traveler_id}".ljust(16, "0")))
+        session.add(RequirementRevision(questionnaire_id=f"example-{traveler_id}", revision=1, kind="rollback",
+                                        restored_revision=0, questionnaire_version=1, note="Synthetic", author_id=traveler_id))
+        session.add(RequirementDraft(questionnaire_id=f"example-{traveler_id}", questionnaire={}, guide={},
+                                     base_revision=1, author_id=traveler_id))
+        session.add(SupportAccessGrant(traveler_id=traveler_id, application_id=application_id,
+                                       expires_at=datetime.now(timezone.utc) + timedelta(hours=24)))
+        session.add(SupportRequest(traveler_id=traveler_id, application_id=application_id, source="website",
+                                   message="Can someone check my dates?", assignee_id=3 - traveler_id, notes="Checked."))
+        session.add(FaqEntry(question=f"Question {traveler_id}?", answer="Answer.", category="General", published=True,
+                             updated_by=traveler_id))
         session.commit()
         # One agent run that typed a field and took a screenshot of the page.
         run = queue.enqueue(session, session.get(Application, application_id), "schengen-harmonised")
@@ -73,6 +89,7 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     with Session(app.state.engine) as session:
         # Staff (traveler 2 here) opened traveler 1's passport; traveler 1 opened traveler 2's.
         session.add(DocumentAccess(traveler_id=1, actor_id=2, upload_id=mine["upload_id"], purpose="image_view"))
+        session.add(DocumentAccess(traveler_id=1, actor_id=2, upload_id=mine["application_id"], purpose="support_view"))
         session.add(DocumentAccess(traveler_id=2, actor_id=1, upload_id="b" * 32, purpose="image_view"))
         session.commit()
 
@@ -103,10 +120,16 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     assert data["privacyconsent"][0]["policy_version"] == "2026-11-25" and data["privacyconsent"][0]["accepted_at"]
     assert data["notificationpreference"][0]["reminders"] is False
     assert data["passportexpiry"][0]["expiry_date"] == "2031-04-15"
+    assert data["passportpages"][0]["blank_pages"] == 3
     assert data["notification"][0]["kind"] == "status_changed"
+    assert data["payment"][0]["amount_minor"] == 11700 and data["payment"][0]["status"] == "paid"
     # Who opened my passport: staff are not named, and my staff work on someone else is not mine to download.
-    assert {row["accessed_by"] for row in data["documentaccess"]} >= {"Authorized staff"}
+    assert {row["accessed_by"] for row in data["documentaccess"]} >= {"Authorized staff", "Support"}
     assert all(row["traveler_id"] == 1 and "actor_id" not in row for row in data["documentaccess"])
+    [request] = data["supportrequest"]
+    assert (request["message"], request["notes"]) == ("Can someone check my dates?", "Checked.") and "assignee_id" not in request
+    assert data["supportaccessgrant"][0]["application_id"] == mine["application_id"]
+    assert [entry["question"] for entry in data["faqentry"]] == ["Question 1?"]
     secrets = {"password_hash", "refresh_hash", "token_hash", "code_digest", "nonce"}
     assert not secrets & set(json.dumps(data).replace('"', " ").split())
 
@@ -168,4 +191,7 @@ def test_delete_account_removes_every_listed_table_and_keeps_other_travelers(api
         left = {holding.model.__tablename__: len(owned_rows(session, holding, 1)) for holding in PERSONAL_DATA}
         assert {table: count for table, count in left.items() if count} == {}
         kept = {holding.model.__tablename__ for holding in PERSONAL_DATA if owned_rows(session, holding, 2)}
-        assert kept >= {"traveler", "application", "applicationanswer", "notification", "assistantmessage"}
+        assert kept >= {"traveler", "application", "applicationanswer", "notification", "assistantmessage",
+                        "supportrequest", "supportaccessgrant", "faqentry"}
+        assert [row.assignee_id for row in session.exec(select(SupportRequest))] == [None]
+        assert {row.updated_by for row in session.exec(select(FaqEntry))} == {None, 2}

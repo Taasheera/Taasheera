@@ -188,6 +188,7 @@ PRODUCT_FACTS = """Facts about Ta'asheera. Use these, and don't claim features b
 - Destinations: the Schengen short-stay visa (type C), the UK Standard Visitor visa, the US B-2 tourist visa and the Canada visitor visa. More are planned.
 - How it works: the traveler uploads a photo of their passport's details page. Ta'asheera reads the two machine-readable lines with OCR and checks their check digits, then the traveler checks and confirms every field. Next come the embassy's questions one at a time in a guided chat; answers are saved as they go, and some are suggested from the confirmed passport and profile for the traveler to confirm. "Check my application" lists anything missing or inconsistent. The applications dashboard shows each application's progress and lets them resume, archive, restore or delete it.
 - Supporting document uploads and Schengen PDF preparation are available where enabled. Submission through Ta’asheera and generated cover letters are planned. The traveler can download a reviewed PDF and submit it themselves.
+- Where enabled, the "Your documents" page lists every uploaded document: a file can be added to another application without uploading it again, deleted everywhere, or machine-translated (not a certified translation; its text is sent to Google's Gemini AI service). The completeness check also compares the passport's validity, issue date and declared blank visa pages with each destination's official rule, and checks passport photos' size, shape, colour, background and sharpness (not the face).
 - Your own abilities: inside an application you can propose changing an answer, take the traveler to a question, or run the completeness check. A change is saved only when the traveler presses Confirm. You can't submit anything. On other pages you can't see their applications; suggest opening one from "Your applications" and asking there.
 - Privacy: passport photos and details are private to the traveler's account, and photos are re-encoded to remove location and other metadata. To answer, the traveler's message, their confirmed passport details and, inside an application, its answers are sent to Google's Gemini AI service. The conversation is saved in their account so it is there next time. Deleting the account deletes all of this. Nothing goes to an embassy."""
 
@@ -215,14 +216,15 @@ REFUSAL_REPLY = ("I can't help with that request. I can answer questions about y
 _BLOCKED = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII"}
 
 
-def generate(client, model: str, system: str, messages: list[dict], tools: list[dict] | None = None):
+def generate(client, model: str, system: str, messages: list[dict], tools: list[dict] | None = None, *,
+             max_output_tokens: int = 1024):
     """One Gemini call (`google.genai.Client`), or AssistantUnavailable. Shared by both adapters."""
     # Gemini calls the assistant role "model".
     contents = [{"role": "model" if turn["role"] == "assistant" else "user", "parts": [{"text": turn["content"]}]}
                 for turn in messages]
     config = {
         "system_instruction": system,
-        "max_output_tokens": 1024,  # replies are a few sentences
+        "max_output_tokens": max_output_tokens,  # replies are a few sentences
         "temperature": 0.2,  # factual answers about the traveler's own data, not creative writing
     }
     if tools:

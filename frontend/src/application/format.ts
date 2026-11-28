@@ -14,7 +14,7 @@ export function formatDate(iso: string): string {
     .format(new Date(`${iso}T00:00:00Z`))
 }
 
-export function formatAnswer(question: Question, value: AnswerValue): string {
+export function formatAnswer(question: Pick<Question, 'type' | 'options'>, value: AnswerValue): string {
   switch (question.type) {
     case 'choice':
       return question.options?.find(option => option.value === value)?.label ?? String(value)

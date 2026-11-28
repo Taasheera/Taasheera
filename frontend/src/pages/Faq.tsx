@@ -1,9 +1,12 @@
 import { useEffect } from 'react'
+import { byCategory, useHelpEntries } from '../help/helpContent'
 import { useText } from '../i18n/language'
 import FaqList from './FaqList'
 
 export default function Faq() {
-  const { faqs, faqPage } = useText()
+  const { faqPage } = useText()
+  const items = useHelpEntries()
+  const groups = byCategory(items)
   useEffect(() => {
     document.title = faqPage.title
   }, [faqPage.title])
@@ -16,7 +19,12 @@ export default function Faq() {
           <h1 id="faq-page-heading">{faqPage.heading}</h1>
           <p>{faqPage.intro}</p>
         </header>
-        <FaqList items={faqs} />
+        {groups.length > 1
+          ? groups.map(group => <section key={group.category} aria-label={group.category || 'Other questions'}>
+              {group.category && <h2>{group.category}</h2>}
+              <FaqList items={group.items} />
+            </section>)
+          : <FaqList items={items} />}
       </div>
     </section>
   )

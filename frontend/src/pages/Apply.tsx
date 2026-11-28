@@ -14,6 +14,7 @@ import Feature from '../Feature'
 import StartChat from '../application/StartChat'
 import SuggestedAnswer from '../application/SuggestedAnswer'
 import BookingUpload from '../application/BookingUpload'
+import TalkToPerson from '../support/TalkToPerson'
 import {
   getApplication, isRecorded, listApplications, saveAnswer,
   type AnswerInput as Answer, type ApplicationState, type ApplicationSummary,
@@ -103,6 +104,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
   const [draft, setDraft] = useState('')
   const [asking, setAsking] = useState(false)
   const [askError, setAskError] = useState('')
+  const [talking, setTalking] = useState(false)
   // Counts document uploads/deletions on this page, so the check below can run again.
   const [documentChanges, setDocumentChanges] = useState(0)
   const [documentTarget, setDocumentTarget] = useState<string | null>(null)
@@ -275,6 +277,10 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
           {assistantTurns}
         </ol>
         <p className="guided-assistant-notice">Not legal or immigration advice.</p>
+        {talking ? <TalkToPerson applicationId={application.id} onClose={() => setTalking(false)} /> : <>
+        <Feature name="support_tools">
+          <button type="button" className="assistant-escalate" onClick={() => setTalking(true)}>Talk to a person</button>
+        </Feature>
         <form className="chat-ask" onSubmit={ask}>
           <label htmlFor="chat-ask-input">Not sure about something? Ask the assistant. Your place in the questions is kept.</label>
           <div className="answer-row">
@@ -287,6 +293,7 @@ function ApplicationChat({ applicationId, onChange }: ChatProps) {
           </div>
           {askError && <p className="answer-error" role="alert">{askError}</p>}
         </form>
+        </>}
       </aside>
       <div className="guided-questions">
         {application.current && <section ref={current} className="current-question-card" id="current-question" tabIndex={-1}>

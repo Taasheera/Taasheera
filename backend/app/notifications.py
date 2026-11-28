@@ -7,6 +7,9 @@ the change and its notification are saved together or not at all:
   (the applications router does this; recording an embassy decision, CMPS271-80, is one more call).
 - `notify_agent_run(session, application, stopped_reason=None)` when the form-filling agent
   finishes or stops (CMPS271-67).
+- `notify_payment(session, application)` when a payment completes (CMPS271-108).
+- `notify_support_request(session, support_request, kind)` when support replies to or resolves a
+  help request (CMPS271-92).
 
 Messages are fixed sentences about the traveler's own application. Never put passport fields,
 answer values or other personal data in them. The timer in notification_jobs.py can email a
@@ -21,7 +24,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, func, select, update
 
 from .applications.flow import load_questionnaire
-from .models import Application, Notification, Traveler
+from .models import Application, Notification, SupportRequest, Traveler
 
 MESSAGE_LIMIT = 300
 
@@ -85,6 +88,26 @@ def notify_agent_run(session: Session, application: Application, stopped_reason:
         message = f"The agent stopped filling the embassy form for your {name} application: {stopped_reason}."
     return notify(session, application.traveler_id, kind, message,
                   application_id=application.id, link=f"/dashboard/{application.id}")
+
+
+def notify_payment(session: Session, application: Application) -> Notification:
+    """Tell the owner their payment went through and submission is unlocked (CMPS271-108). No amounts."""
+    return notify(session, application.traveler_id, "payment_completed",
+                  f"Your payment for your {application_name(application)} application went through. "
+                  "The agent can now fill the embassy form, and your receipt is on the application page.",
+                  application_id=application.id, link=f"/dashboard/{application.id}")
+
+
+SUPPORT_MESSAGES = {
+    "support_replied": "Support replied to your help request. Open Help requests on your account page to read it.",
+    "support_resolved": "Support marked your help request as resolved.",
+}
+
+
+def notify_support_request(session: Session, support_request: SupportRequest, kind: str) -> Notification:
+    """Tell the traveler support replied to, or resolved, their help request (CMPS271-92)."""
+    return notify(session, support_request.traveler_id, kind, SUPPORT_MESSAGES[kind],
+                  link="/account#support-requests")
 
 
 class UnreadCount(BaseModel):

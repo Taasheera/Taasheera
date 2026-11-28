@@ -99,7 +99,7 @@ git fetch origin "$TAASHEERA_REVISION"
 git checkout --detach "$TAASHEERA_REVISION"
 test -f deploy/aws/compose.yaml
 
-# Preserve JWT across redeployments and host replacement on the retained data disk.
+# Preserve JWT and the document encryption key across redeployments and host replacement on the retained data disk.
 phase='prepare private application configuration'
 printf 'Setup: %s\n' "$phase"
 mkdir -p /srv/taasheera/private /etc/taasheera
@@ -115,9 +115,10 @@ if [ "${TAASHEERA_PRESERVE_CONFIG:-0}" = 1 ]; then
 else
 if [ ! -f /srv/taasheera/private/app.env ]; then
   python3 - <<'PY'
-import os, secrets
+import base64, os, secrets
 with open('/srv/taasheera/private/app.env', 'x') as f:
     f.write('JWT_SECRET=' + secrets.token_urlsafe(48) + '\n')
+    f.write('DOCUMENT_ENCRYPTION_KEY=' + base64.b64encode(secrets.token_bytes(32)).decode() + '\n')
 PY
 fi
 python3 - <<'PY'
@@ -147,12 +148,25 @@ public = Path('backend/.env.development')
 for line in public.read_text().splitlines():
     if line.startswith('GOOGLE_CLIENT_ID='):
         settings.setdefault('GOOGLE_CLIENT_ID', line.split('=', 1)[1])
+import re
 client_id = os.environ.get('TAASHEERA_GOOGLE_CLIENT_ID', '')
 if client_id:
-    import re
     if not re.fullmatch(r'[A-Za-z0-9._-]+\.apps\.googleusercontent\.com', client_id):
         raise SystemExit('Invalid Google web client ID.')
     settings['GOOGLE_CLIENT_ID'] = client_id
+# Optional monitoring settings (Sprint 5). Only supplied values change; nothing is printed.
+dsn = r'https://[0-9a-f]+@[A-Za-z0-9.-]+/[0-9]+'
+rate = r'0|1|0?\.[0-9]+'
+for source, key, pattern in (('TAASHEERA_SENTRY_DSN', 'SENTRY_DSN', dsn),
+                             ('TAASHEERA_SENTRY_FRONTEND_DSN', 'SENTRY_FRONTEND_DSN', dsn),
+                             ('TAASHEERA_SENTRY_TRACES_SAMPLE_RATE', 'SENTRY_TRACES_SAMPLE_RATE', rate),
+                             ('TAASHEERA_SENTRY_FRONTEND_TRACES_SAMPLE_RATE', 'SENTRY_FRONTEND_TRACES_SAMPLE_RATE', rate),
+                             ('TAASHEERA_DEPLOY_ENVIRONMENT', 'DEPLOY_ENVIRONMENT', r'staging|production')):
+    value = os.environ.get(source, '').strip()
+    if value:
+        if not re.fullmatch(pattern, value):
+            raise SystemExit(f'Invalid {source}.')
+        settings[key] = value
 tmp = path.with_suffix('.tmp')
 tmp.write_text(''.join(f'{k}={v}\n' for k,v in settings.items()))
 tmp.chmod(0o600)
@@ -168,6 +182,14 @@ fi
 # Resolve the image's user rather than relying on a distribution-specific UID.
 phase='build application images'
 printf 'Setup: %s\n' "$phase"
+# Host builds carry the Sentry release and the public browser settings from the private env file.
+private_setting() { sed -n "s/^$1=//p" /srv/taasheera/private/app.env | tail -n 1; }
+export SENTRY_RELEASE="taasheera@$TAASHEERA_REVISION"
+VITE_SENTRY_DSN=$(private_setting SENTRY_FRONTEND_DSN)
+VITE_SENTRY_ENVIRONMENT=$(private_setting DEPLOY_ENVIRONMENT)
+VITE_SENTRY_TRACES_SAMPLE_RATE=$(private_setting SENTRY_FRONTEND_TRACES_SAMPLE_RATE)
+export VITE_SENTRY_DSN VITE_SENTRY_ENVIRONMENT="${VITE_SENTRY_ENVIRONMENT:-production}" \
+  VITE_SENTRY_TRACES_SAMPLE_RATE="${VITE_SENTRY_TRACES_SAMPLE_RATE:-0}"
 if [ -n "${TAASHEERA_API_IMAGE:-}" ] || [ -n "${TAASHEERA_WEB_IMAGE:-}" ]; then
   [[ "${TAASHEERA_API_IMAGE:-}" =~ ^632630731308\.dkr\.ecr\.us-east-1\.amazonaws\.com/taasheera-ec2-api@sha256:[a-f0-9]{64}$ ]]
   [[ "${TAASHEERA_WEB_IMAGE:-}" =~ ^632630731308\.dkr\.ecr\.us-east-1\.amazonaws\.com/taasheera-ec2-web@sha256:[a-f0-9]{64}$ ]]

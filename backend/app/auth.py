@@ -201,9 +201,9 @@ def create_auth_router(get_session, current_traveler=None):
     @router.post("/login", response_model=AccessTokenPublic, dependencies=[Depends(check_origin)])
     def login(data: LoginRequest, request: Request, response: Response, session: SessionDep):
         throttle(request, session, "login", account=data.email)
-        # Serialize login with password reset so an old-password login cannot
-        # create a new session after reset has revoked existing sessions.
-        session.execute(update(Traveler).where(Traveler.email == data.email).values(password_hash=Traveler.password_hash))
+        # bcrypt runs before any lock is taken. Holding the row lock (on SQLite, the whole database's write
+        # lock) through ~0.25 s of hashing queued every other sign-in behind it, and at 25 simultaneous users
+        # sign-ins timed out with "database is locked" (Sprint 5 capacity test).
         traveler = session.exec(select(Traveler).where(Traveler.email == data.email)).first()
         password_enabled = traveler is not None and traveler.password_enabled
         stored_hash = traveler.password_hash.encode("ascii") if password_enabled else DUMMY_HASH
@@ -220,6 +220,18 @@ def create_auth_router(get_session, current_traveler=None):
             if traveler is not None:
                 record_activity(session, request.app.state.activity_directory, traveler.id,
                                 "sign_in", "email_password", "failure")
+            raise HTTPException(
+                status_code=401, detail="Invalid email or password.",
+                headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"},
+            )
+
+        # Serialize with password reset, which changes the hash and revokes sessions under the same lock:
+        # lock the row, then insist the hash just verified is still the current one. A reset that committed
+        # in between is seen here and refused; one that commits later revokes this new session too.
+        session.execute(update(Traveler).where(Traveler.id == traveler.id).values(password_hash=Traveler.password_hash))
+        session.refresh(traveler)
+        if not traveler.password_enabled or traveler.password_hash.encode("ascii") != stored_hash:
+            audit(request, "login", "rejected", traveler.id)
             raise HTTPException(
                 status_code=401, detail="Invalid email or password.",
                 headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"},

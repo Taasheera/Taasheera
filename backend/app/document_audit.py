@@ -13,6 +13,7 @@ PURPOSES = frozenset({"image_view", "extraction", "review_read", "review_update"
                       "application_prefill", "data_export",
                       # Supporting documents (CMPS271-29): opened by the traveler, read by the cross-check.
                       "document_view", "document_check", "document_packet", "document_prefill",
+                      "document_translation", "document_delete",
                       # The passport read by the document cross-check (CMPS271-50).
                       "consistency_check",
                       # A screenshot the form-filling agent took of a filled page (CMPS271-70).
@@ -32,10 +33,17 @@ def record_document_access(engine, directory, owner_id: int, upload_id: str, pur
             raise HTTPException(401, "Passport owner is no longer available.")
 
 
+def accessor(row: DocumentAccess, traveler_id: int) -> str:
+    """Who read it, as the traveler sees it: staff are never named (CMPS271-128)."""
+    if row.actor_id == traveler_id:
+        return "You"
+    return "Support" if row.purpose == "support_view" else "Authorized staff"
+
+
 class AccessPublic(BaseModel):
     id: int
     upload_id: str
-    actor_id: int
+    actor_id: int | None
     accessor: str
     purpose: str
     occurred_at: datetime
@@ -67,7 +75,7 @@ def create_document_audit_router(get_session, current_traveler):
             .offset((search.page - 1) * search.page_size).limit(search.page_size)).all()
         response.headers["Cache-Control"] = "no-store"
         return AccessPage(items=[AccessPublic(id=row.id, upload_id=row.upload_id,
-            actor_id=row.actor_id, accessor="You" if row.actor_id == traveler.id else "Authorized staff",
+            actor_id=row.actor_id if row.actor_id == traveler.id else None, accessor=accessor(row, traveler.id),
             purpose=row.purpose, occurred_at=row.occurred_at) for row in rows],
             total=session.exec(select(func.count()).select_from(DocumentAccess).where(condition)).one(),
             page=search.page, page_size=search.page_size)

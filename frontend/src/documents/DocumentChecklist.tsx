@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Link } from 'react-router'
 import {
-  checkDocumentFile, deleteDocument, DOCUMENT_TYPES, downloadPacket, formatSize, getChecklist, openDocument, replaceDocument,
-  uploadDocument, type Checklist, type Requirement, type UploadedDocument,
+  checkDocumentFile, checkPhoto, deleteDocument, DOCUMENT_TYPES, downloadPacket, formatSize, getChecklist, openDocument, replaceDocument,
+  uploadDocument, type Checklist, type PhotoReport, type Requirement, type UploadedDocument,
 } from './api'
 import CrossCheckPanel from './CrossCheckPanel'
+import Feature from '../Feature'
 import { toast } from 'sonner'
 import './documents.css'
 
@@ -55,6 +57,11 @@ export default function DocumentChecklist({ applicationId, version, onChange, fo
         <h2 id="docs-title">Supporting documents</h2>
         <p className="docs-lede">What the embassy asks for with this visa, based on your answers. PDF, JPEG, PNG or WebP, up to 10 MB each.</p>
       </div>
+      {!checklist.read_only && <Feature name="document_vault">
+        <Link to={`/documents?application=${applicationId}`} className="button button-secondary dash-small">
+          Use a file you've already uploaded
+        </Link>
+      </Feature>}
     </div>
     {checklist.read_only && <p className="docs-note">This application is archived. Restore it to change its documents.</p>}
     <div className="docs-layout">
@@ -129,6 +136,9 @@ function RequirementRow({ applicationId, requirement, readOnly, onChange }:
         {requirement.documents.map(document => <FileRow key={document.id} applicationId={applicationId}
           document={document} readOnly={readOnly} onChange={onChange} />)}
       </ul>}
+      {has && requirement.id === 'photo' && <Feature name="photo_check">
+        {requirement.documents.map(document => <PhotoCheckPanel key={document.id} applicationId={applicationId} document={document} />)}
+      </Feature>}
       {!readOnly && <FilePicker label={busy ? 'Uploading…' : has ? 'Add another file' : 'Upload'} busy={busy}
         primary={!has} onFile={add} onProblem={setProblem} activityId="document-upload" />}
       {problem && <p className="docs-error" role="alert">{problem}</p>}
@@ -181,6 +191,46 @@ function FileRow({ applicationId, document, readOnly, onChange }:
     </span>}
     {problem && <p className="docs-error docs-file-error" role="alert">{problem}</p>}
   </li>
+}
+
+function PhotoCheckPanel({ applicationId, document }: { applicationId: string; document: UploadedDocument }) {
+  const [report, setReport] = useState<PhotoReport | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState('')
+
+  async function run() {
+    setBusy(true)
+    setProblem('')
+    try {
+      setReport(await checkPhoto(applicationId, document.id))
+    } catch (failure) {
+      setReport(null)
+      setProblem(failure instanceof Error ? failure.message : 'Could not check that photo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <div className="docs-photo-check">
+    <button type="button" className="button button-secondary dash-small" onClick={() => void run()} disabled={busy}
+      aria-busy={busy || undefined} data-activity-id="photo-check">
+      {busy ? 'Checking…' : report ? `Check ${document.filename} again` : `Check ${document.filename} against the photo rules`}
+    </button>
+    {problem && <p className="docs-error" role="alert">{problem}</p>}
+    {report && <div role="status">
+      <p className={`docs-photo-result status-dot ${report.passed ? 'status-dot--ok' : 'status-dot--warn'}`}>
+        {report.passed ? `Meets the ${report.spec} checks.` : `May not meet the ${report.spec} rules.`}
+      </p>
+      <ul className="docs-photo-list">
+        {report.checks.map(check => <li key={check.id} className={check.passed ? 'is-passed' : 'is-failed'}>
+          <span className="visually-hidden">{check.passed ? 'Passed: ' : 'Needs attention: '}</span>
+          {check.message}{check.guidance && <> <strong>{check.guidance}</strong></>}
+        </li>)}
+      </ul>
+      <p className="docs-note">{report.notice}{' '}
+        <a href={report.source.url} target="_blank" rel="noopener noreferrer">{report.source.label}</a></p>
+    </div>}
+  </div>
 }
 
 type PickerProps = {

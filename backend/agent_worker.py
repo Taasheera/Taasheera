@@ -14,6 +14,9 @@ from pathlib import Path
 from app.agent.storage import AgentFiles
 from app.agent.worker import serve
 from app.database import build_engine
+from app.monitoring import capture_job_error, configure_monitoring
+from app.file_encryption import cipher_from_environment
+from app.requirements import RequirementStore
 from app.schema import require_current_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -35,6 +38,7 @@ def chromium():
 def main() -> None:
     engine = build_engine(os.environ.get("DATABASE_URL"))
     require_current_schema(engine)
+    RequirementStore(engine).install()
     root = Path(os.environ.get("PASSPORT_STORAGE_DIR", str(Path(__file__).resolve().parent / "storage" / "passports")))
     stopping = False
 
@@ -44,7 +48,16 @@ def main() -> None:
 
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
-    serve(engine, AgentFiles(root), chromium, stop=lambda: stopping)
+    # Same opt-in, allowlisted Sentry as the API, tagged so worker crashes alert separately.
+    monitoring = configure_monitoring(component="worker")
+    try:
+        serve(engine, AgentFiles(root, cipher=cipher_from_environment()), chromium, stop=lambda: stopping)
+    except Exception:
+        capture_job_error("agent-worker")
+        raise
+    finally:
+        if monitoring is not None:
+            monitoring.flush(timeout=2)
 
 
 if __name__ == "__main__":

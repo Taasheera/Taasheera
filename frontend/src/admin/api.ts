@@ -55,7 +55,7 @@ export class AdminRequestError extends Error {
   }
 }
 
-async function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response
   try {
     // silent: each page shows its own message, so the shared error toast would repeat it.
@@ -63,6 +63,7 @@ async function adminRequest<T>(path: string, options: RequestInit = {}): Promise
   } catch (error) {
     throw new AdminRequestError(error instanceof Error ? error.message : 'Could not reach Taasheera.', null)
   }
+  if (response.status === 204) return undefined as T
   if (response.ok) return await response.json() as T
   const payload = await response.json().catch(() => null) as { detail?: unknown } | null
   // The API's own wording for 404 and 409 ("You can't suspend your own account.") is written for people.
@@ -73,7 +74,7 @@ async function adminRequest<T>(path: string, options: RequestInit = {}): Promise
   throw new AdminRequestError(detail ?? fallback, response.status)
 }
 
-function json(method: string, body?: unknown): RequestInit {
+export function json(method: string, body?: unknown): RequestInit {
   return body === undefined ? { method } : {
     method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   }

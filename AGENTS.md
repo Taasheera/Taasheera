@@ -56,7 +56,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
-| Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry/uptime tooling | Sentry/uptime opt in; metadata allowlists omit private data |
+| Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry errors/traces/crons/uptime, `/admin/system-health`, CloudWatch | Sentry opt in by DSN; metadata allowlists omit private data; `docs/MONITORING_RUNBOOK.md` |
 | Backups | Nightly systemd/S3 backup and restore tooling | Provision private bucket/host permissions; see `docs/BACKUPS.md` |
 
 Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires,
@@ -87,10 +87,10 @@ Preview: `python preview.py run --seed-demo` uses ignored isolated storage and d
 See `docs/LOCAL_FEATURE_TESTING.md`. Only use `--free-ports` to intentionally stop those listeners.
 
 API prefixes `/auth`, `/passports`, `/profile`, `/sessions`, `/activity`, `/assistant`, `/applications`,
-`/features`, `/notifications`, `/visa-guides` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
+`/features`, `/notifications`, `/visa-guides`, `/vault`, `/support`, `/help-content` and `/admin-api` proxy through Vite/nginx/Netlify; `/admin-api` rewrites to backend `/admin`.
 A new prefix must be added to `vite.config.ts`, `write-netlify-redirects.mjs`, `deploy/aws/nginx.conf`
 and must not collide with page paths. Pages include `/apply`, `/dashboard`, `/dashboard/:id`,
-`/passport/:uploadId`, `/account`, `/admin` and `/backoffice`.
+`/passport/:uploadId`, `/documents`, `/account`, `/faq`, `/admin` (`/admin/help`), `/admin/support` and `/backoffice`.
 Deployments run `python migrate.py upgrade`, `APP_ENV=production`, `SCHEMA_AUTO_CREATE=false`.
 Operator role assignment: `python manage.py set-role --email <email> --role admin`.
 
@@ -243,8 +243,50 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
     PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).
     `POST /assistant/draft` (Help me write this) drafts one long free-text answer; the traveler edits and saves it.
-50. **Arabic and English (CMPS271-16).** Routes with `handle: arabicPage` (home, FAQ, not found) switch with
+50. **Infrastructure monitoring (Sprint 5).** Images bake the Sentry release `taasheera@<commit>`; `DEPLOY_ENVIRONMENT`
+    (staging/production) is the Sentry environment. Traces are opt in (`SENTRY_TRACES_SAMPLE_RATE`) and keep only route
+    templates, timings and placeholder SQL; jobs use `monitored_job` (cron check-ins). Request logs add `db_ms`, `db_queries`
+    and `trace_id` and accept a safe `X-Request-ID`. Admin `GET /admin/system-health` feeds `/backoffice`;
+    `deploy/aws/monitoring.sh <stack>` creates the CloudWatch dashboard and alarms. Capacity: `loadtest/` (k6 mixed
+    workload, `capacity.py` loop) against the `taasheera-staging` stack; results in `docs/CAPACITY_REPORT.md`.
+    Staging-only switches (`THROTTLE_EXEMPT_IPS`, `ASSISTANT_FAKE_LATENCY_MS`, `seed-load-test`) refuse to start elsewhere.
+51. **Document encryption (CMPS271-114).** Storage classes seal passport images/details, documents/text and agent
+    screenshots with AES-256-GCM under `DOCUMENT_ENCRYPTION_KEY`, the path below the storage root as associated data.
+    No key: plain files and one startup warning; plain files still open with one. `manage.py encrypt-documents`
+    converts in place. Losing the key loses the files: keep it apart from data backups (`docs/BACKUPS.md`).
+52. **Upload malware scan (CMPS271-31).** `app/upload_scan.py` scans uploads before parsing or storage: EICAR,
+    executables, PDF active content, declared-type mismatch, optional clamd (`CLAMD_ADDRESS`, fails closed with 503,
+    off on t3.micro). Fixed 422 message and an `upload_rejected` event. Behind released `malware_scan`.
+53. **Payments (CMPS271-106/108/109).** Preparation and the packet are free; a paid `Payment` unlocks the agent run (402 before).
+    `payments/quote.py`: first visa-guide fee + `SERVICE_FEE` in its currency, minor units, discount hook. Simulated provider only (no card data), idempotent key, audited PDF receipt.
+54. **Requirements without a deploy (CMPS271-123).** `/admin/requirements`: admins edit a destination's questionnaire
+    (JSON) and visa guide facts (form), save a draft, check it with `destination_check` (the loaders' own models,
+    portal and PDF maps, an ordinary-answer walk) and publish or roll back to any revision or the packaged files.
+    Append-only, audited `RequirementRevision` rows; the newest replaces the files in `flow.load_questionnaire` and
+    public guides. Structural changes get a higher version that applications take on their next read (recorded ones
+    stay). `RequirementStore` reloads at once where it publishes, elsewhere within 2 s. Erasure keeps rows, clears
+    the author. Behind `requirements_editor`.
+55. **KPIs (CMPS271-140).** Admin-only `GET /admin/kpis?start&end` (at most 180 days): grouped-query aggregates for
+    traveler accounts (active users, sign-ins, funnel, time to complete, agent and assistant rates, API errors, per
+    destination), never ids, names or answers. `/admin/kpis` shows plain CSS bars and downloads CSV. Behind `kpi_dashboard`.
+56. **Document vault (CMPS271-32/33/34/35/37).** Page `/documents`, API `/vault`. Reusing a file adds a
+    `supportingdocument` row naming the same `file_id`; a file goes only when no row uses it (remove, replace,
+    application delete). Vault delete detaches it everywhere, is audited (`document_delete`), and the UI confirms.
+    Passport validity, issue date and blank pages per destination live in `applications/passport_rules.json` (official
+    sources); blank pages are declared on `/documents` (`PassportPages`). Failures block and advice warns, through
+    `document_issues`, so they need `supporting_documents`. Photo specs: `applications/photo_specs.json`, Pillow checks
+    only (no face recognition), warnings. Translation sends extracted text to Gemini (stored nowhere, 503 without a key),
+    shown as "not a certified translation, not legal advice". Flags `passport_rules`, `photo_check`, `document_vault`,
+    `document_translation`, released.
+57. **Support tools (CMPS271-128/92/129).** A traveler lets support read one application for 24 h, 72 h or 7 days
+    (`/support/access`, revocable, checked on every read). Support and admin staff (`/admin/support`) see answers,
+    the check and timeline, never files; each read is a `support_view` access shown as "Support". Help requests open
+    only through `support_requests.create_support_request` (website and Telegram; no chat copied); replies notify.
+    Admins edit `FaqEntry` at `/admin/help`; public `GET /help-content`, migration-seeded, bundled fallback. `support_tools`.
+58. **Arabic and English (CMPS271-16).** Routes with `handle: arabicPage` (home, FAQ, not found) switch with
     the header button (`arabic` flag); every other page stays English, left to right, until translated.
     Text in `i18n/en.ts` (source) and `i18n/ar.ts` (type `Text`, checked by `arabic.test.mjs`); pages read
     `useText()`. The provider sets `<html lang dir>`; CSS uses logical properties, so RTL needs no copies.
     The choice is a display setting in browser storage, like the theme. Brand stays "Taasheera" in Arabic.
+    FAQ entries come from `/help-content` in the page language; with none published in that language, the
+    bundled `faqs` of that language show (never English entries on an Arabic page).

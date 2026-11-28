@@ -21,6 +21,13 @@ Parameters:
     Type: String
     Default: t3.micro
     AllowedValues: [t3.micro, t3.small]
+  CpuCredits:
+    Type: String
+    Default: standard
+    AllowedValues: [standard, unlimited]
+    Description: >-
+      standard (production) caps spending; unlimited lets a load-test copy burst like a host that has
+      saved credits, for a few cents of surplus credits per test.
   DataVolumeGiB:
     Type: Number
     Default: 8
@@ -67,7 +74,7 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref HostProfile
       CreditSpecification:
-        CPUCredits: standard
+        CPUCredits: !Ref CpuCredits
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
@@ -85,7 +92,8 @@ Resources:
             Encrypted: true
             DeleteOnTermination: true
       Tags:
-        - {Key: Name, Value: taasheera}
+        # "taasheera" for production; a staging stack names its host after itself.
+        - {Key: Name, Value: !Ref 'AWS::StackName'}
         - {Key: OwnerEmail, Value: !Ref OwnerEmail}
       UserData:
         Fn::Base64: |
@@ -103,7 +111,7 @@ Resources:
       VolumeType: gp3
       Encrypted: true
       Tags:
-        - {Key: Name, Value: taasheera-data}
+        - {Key: Name, Value: !Sub '${AWS::StackName}-data'}
         - {Key: OwnerEmail, Value: !Ref OwnerEmail}
   DataAttachment:
     Type: AWS::EC2::VolumeAttachment

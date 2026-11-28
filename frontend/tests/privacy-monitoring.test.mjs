@@ -8,7 +8,22 @@ const { deleteAccount } = await import('../src/privacy.ts')
 const { default: DeleteAccount } = await import('../src/DeleteAccount.tsx')
 const { default: DocumentHistory } = await import('../src/DocumentHistory.tsx')
 const { default: AdminDashboard } = await import('../src/pages/AdminDashboard.tsx')
-const { scrubBrowserEvent } = await import('../src/monitoring.ts')
+const { routeTemplate, safeDescription, scrubBrowserEvent, scrubBrowserSpan, scrubBrowserTransaction } = await import('../src/monitoring.ts')
+
+const trafficWindow = seconds => ({ window_seconds: seconds, requests: 120, requests_per_second: 2, error_rate: 0.0125,
+  throttled: 0, p50_ms: 40, p95_ms: 2400, p99_ms: 3100, db_p95_ms: 12, peak_in_flight: 9 })
+const healthPayload = { status: 'warn', checked_at: '2026-11-27T10:00:00Z', release: 'taasheera@0123456789abcdef', environment: 'staging',
+  process: { pid: 1, uptime_seconds: 3600, rss_mb: 180, workers: 1 },
+  api: { in_flight: 3, last_1m: trafficWindow(60), last_5m: trafficWindow(300), last_15m: trafficWindow(900) },
+  host: { cpu_count: 2, cpu_percent: 71.5, load_average: [1.2, 0.9, 0.5],
+    memory: { total_mb: 950, available_mb: 210, used_percent: 77.9, swap_used_mb: 0 },
+    root_disk: { total_gb: 8, free_gb: 2.5, used_percent: 68.8 } },
+  database: { reachable: true, probe_ms: 1.4, backend: 'sqlite', size_mb: 3.2, schema_revision: 'abc' },
+  queue: { queued: 1, running: 0, oldest_queued_seconds: 45, finished_last_hour: {} },
+  notifications: { email_pending: 2, email_failed_last_day: 0, oldest_pending_seconds: 30 },
+  payments: null, storage: { writable: true, total_gb: 8, free_gb: 7, used_percent: 12.5 },
+  checks: [{ component: 'api', status: 'warn', detail: 'Errors above 1% or p95 latency above 2 s in the last 5 minutes.' },
+    { component: 'database', status: 'ok', detail: 'The database answered quickly.' }] }
 
 const traveler = { id: 7, name: 'Synthetic Traveler', email: 'test@example.com', password_enabled: true }
 let root
@@ -145,9 +160,16 @@ test('admin sees genuine empty status counts, safe errors, and must confirm sele
       applications_by_status: { DRAFT: 0, FAILED: 0 }, recent_errors: [], agent_failures_available: false, pending_erasures: 0 })
     if (url.startsWith('/admin-api/users?')) return Response.json({ items: users, total: users.length, page: 1, page_size: 20 })
     if (url === '/admin-api/users/9' && options.method === 'DELETE') { users = []; return new Response(null, { status: 204 }) }
+    if (url === '/admin-api/system-health') return Response.json(healthPayload)
     assert.fail(`Unexpected request ${url}`)
   })
   await mount(AdminDashboard)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  assert.match(document.body.textContent, /System health/)
+  assert.match(document.querySelector('.health-overall').textContent, /Warning · staging · release 0123456789ab/)
+  assert.match(document.body.textContent, /71.5%/)
+  assert.match(document.querySelector('.health-checks').textContent, /p95 latency above 2 s/)
+  assert.match(document.body.textContent, /1 waiting/)
   assert.match(document.body.textContent, /No applications have been started/)
   assert.match(document.body.textContent, /No errors recorded/)
   await act(async () => button('Delete user').click())
@@ -169,4 +191,26 @@ test('browser Sentry payload drops credentials, URLs, forms and exception messag
   assert.equal(output.event_id, 'safe-id')
   assert.equal(output.message, 'Taasheera page error')
   assert.equal(/private|secret|password/.test(JSON.stringify(output)), false)
+})
+
+test('browser traces keep route templates and timings but no IDs, queries or user data', () => {
+  assert.equal(routeTemplate('/dashboard/0123456789abcdef0123456789abcdef?tab=documents#x'), '/dashboard/:id')
+  assert.equal(routeTemplate('https://example.com/admin/users/42'), '/admin/users/:id')
+  assert.equal(routeTemplate('/passport/3fa85f64-5717-4562-b3fc-2c963f66afa6/review'), '/passport/:id/review')
+  assert.equal(routeTemplate('/visas'), '/visas')
+  assert.equal(safeDescription('GET https://site.example/applications/0123456789abcdef0123456789abcdef?token=secret'),
+    'GET /applications/:id')
+  const output = scrubBrowserTransaction({ event_id: 'e', type: 'transaction', transaction: '/reset-password/abcdef0123456789abcdef?token=secret',
+    measurements: { lcp: { value: 1200, unit: 'millisecond' } }, user: { email: 'private@example.com' },
+    request: { url: 'https://site/reset?token=secret' }, breadcrumbs: [{ message: 'private' }],
+    contexts: { trace: { trace_id: 't', span_id: 's', op: 'pageload', data: { url: 'secret' } } },
+    spans: [{ span_id: 'a', op: 'http.client', description: 'POST https://site/passports/0123456789abcdef0123456789abcdef', data: { 'http.url': 'secret' } }] })
+  assert.equal(output.transaction, '/reset-password/:id')
+  assert.deepEqual(output.measurements, { lcp: { value: 1200, unit: 'millisecond' } })
+  assert.deepEqual(output.contexts.trace, { trace_id: 't', span_id: 's', op: 'pageload' })
+  assert.equal(output.spans[0].description, 'POST /passports/:id')
+  assert.equal(/private|secret|token/.test(JSON.stringify(output)), false)
+  const span = scrubBrowserSpan({ span_id: 'b', op: 'ui.interaction.click', description: 'body > button.primary',
+    data: { 'sentry.op': 'ui.interaction.click', transaction: '/dashboard/0123456789abcdef0123456789abcdef', 'user_agent.original': 'private', 'sentry.replay_id': 'x' } })
+  assert.deepEqual(span.data, { 'sentry.op': 'ui.interaction.click', transaction: '/dashboard/:id' })
 })

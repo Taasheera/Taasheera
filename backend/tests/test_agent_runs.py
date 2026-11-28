@@ -17,6 +17,12 @@ from app.models import AgentFieldEntry, AgentRun, AgentScreenshot, DocumentAcces
 from test_applications_api import answer_all, api, start  # noqa: F401 (api is a fixture)
 
 
+@pytest.fixture(autouse=True)
+def free_submission(monkeypatch):
+    """These tests are about the agent; paying before it fills the form is tested in test_payments.py."""
+    monkeypatch.setenv("FEATURE_PAYMENTS", "false")
+
+
 @pytest.fixture(scope="module")
 def browser():
     sync_api = pytest.importorskip("playwright.sync_api")

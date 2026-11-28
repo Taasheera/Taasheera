@@ -5,6 +5,7 @@ import { destinations } from '../content'
 import { useText } from '../i18n/language'
 import { ArrowIcon, CheckIcon } from '../icons'
 import Feature from '../Feature'
+import { useHelpEntries } from '../help/helpContent'
 import { createAccountPath } from '../paths'
 import FaqList from './FaqList'
 
@@ -27,6 +28,7 @@ function MainButton() {
 export default function Home() {
   const text = useText()
   const { home } = text
+  const faqs = useHelpEntries()
   useEffect(() => {
     document.title = home.title
   }, [home.title])
@@ -191,7 +193,7 @@ export default function Home() {
             <p className="badge">{home.faqBadge}</p>
             <h2 id="faq-heading">{home.faqHeading}</h2>
           </header>
-          <FaqList items={text.faqs.slice(0, 5)} />
+          <FaqList items={faqs.slice(0, 5)} />
           <p className="more-link"><Link to="/faq" data-activity-id="faq-link">{home.allQuestions}</Link></p>
         </div>
       </section>

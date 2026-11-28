@@ -1,6 +1,6 @@
 import { protectedFetch, deleteAccountSession } from './auth'
 
-export type AccessEntry = { id: number; upload_id: string; actor_id: number; accessor: string; purpose: string; occurred_at: string }
+export type AccessEntry = { id: number; upload_id: string; actor_id: number | null; accessor: string; purpose: string; occurred_at: string }
 export type AccessPage = { items: AccessEntry[]; total: number; page: number; page_size: number }
 
 export async function loadDocumentAccess(page = 1): Promise<AccessPage> {

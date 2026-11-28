@@ -355,6 +355,11 @@ class SupportingDocument(SQLModel, table=True):
     content_type: str = Field(max_length=40)
     size_bytes: int
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    file_id: str | None = Field(default=None, max_length=32, index=True)
+
+    @property
+    def file_key(self) -> str:
+        return self.file_id or self.id
 
 
 class AgentRun(SQLModel, table=True):
@@ -417,3 +422,143 @@ class AccountErasure(SQLModel, table=True):
     # Durable work item: failed file/database cleanup is retried, never reported as complete.
     traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+PAYMENT_STATUSES = ("pending", "paid", "failed")
+
+
+class Payment(SQLModel, table=True):
+    """One payment for an application's submission (CMPS271-106, 108, 109). Never holds card details.
+
+    Provider-neutral: `provider` collected it ("simulated" charges nothing) under `provider_reference`.
+    Amounts are integers in the currency's minor unit; `line_items` are the quote's lines as paid.
+    The browser sends one `idempotency_key` per checkout, so a double click can't pay twice.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("application_id", "idempotency_key", name="uq_payment_application_idempotency"),
+        CheckConstraint("status IN ('pending', 'paid', 'failed')", name="ck_payment_status"),
+    )
+    id: str = Field(primary_key=True, max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    amount_minor: int
+    currency: str = Field(max_length=3)
+    line_items: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))
+    status: str = Field(default="pending", max_length=10, index=True)
+    provider: str = Field(default="simulated", max_length=20)
+    provider_reference: str | None = Field(default=None, max_length=64)
+    idempotency_key: str = Field(max_length=64)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    paid_at: datetime | None = None
+
+
+class RequirementRevision(SQLModel, table=True):
+    """One published version of a destination's requirements, from the back-office (CMPS271-123).
+
+    Append-only: a publish or a rollback (`kind`) adds a row, and the newest row per questionnaire is what
+    travelers see. `restored_revision` is the revision a rollback returned to, 0 for the packaged files.
+    `questionnaire` and `guide` are the whole published files, both None for a return to the packaged files.
+    Erasing the author's account keeps the row (it is the service's data) and clears `author_id`.
+    """
+
+    __table_args__ = (UniqueConstraint("questionnaire_id", "revision", name="uq_requirementrevision_revision"),)
+    id: int | None = Field(default=None, primary_key=True)
+    questionnaire_id: str = Field(max_length=60, index=True)
+    revision: int
+    kind: str = Field(max_length=20)
+    restored_revision: int | None = None
+    questionnaire: Any = Field(default=None, sa_column=Column(JSON, nullable=True), repr=False)
+    guide: Any = Field(default=None, sa_column=Column(JSON, nullable=True), repr=False)
+    questionnaire_version: int
+    note: str = Field(max_length=500)
+    author_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class RequirementDraft(SQLModel, table=True):
+    """Unpublished back-office edits to a destination's requirements (CMPS271-123), one per questionnaire.
+
+    `base_revision` is the revision the edits started from (0: the packaged files), so a publish in between is noticed.
+    """
+
+    questionnaire_id: str = Field(primary_key=True, max_length=60)
+    questionnaire: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
+    guide: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
+    base_revision: int
+    author_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PassportPages(SQLModel, table=True):
+    traveler_id: int = Field(primary_key=True, foreign_key="traveler.id")
+    blank_pages: int
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SupportAccessGrant(SQLModel, table=True):
+    """A traveler's time-limited permission for support staff to read one application (CMPS271-128).
+
+    Read only: the answers as shown, the completeness check and the timeline; never passport images or
+    files. Checked on every staff read, so expiry or revoking ends it at once. Each read is audited.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str = Field(foreign_key="application.id", max_length=32, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = Field(index=True)
+    revoked_at: datetime | None = None
+
+
+SUPPORT_REQUEST_STATUSES = ("open", "in_progress", "resolved")
+SUPPORT_REQUEST_SOURCES = ("website", "telegram")
+
+
+class SupportRequest(SQLModel, table=True):
+    """A traveler asking a person for help (CMPS271-92), from the website's assistant or Telegram.
+
+    Holds only what the traveler typed; the assistant chat is never copied in. The reply is shown to
+    the traveler; notes are for staff (and in the traveler's data download).
+    """
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'in_progress', 'resolved')", name="ck_supportrequest_status"),
+        CheckConstraint("source IN ('website', 'telegram')", name="ck_supportrequest_source"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    application_id: str | None = Field(default=None, foreign_key="application.id", max_length=32, index=True)
+    source: str = Field(max_length=10)
+    message: str = Field(sa_type=Text, repr=False)
+    status: str = Field(default="open", max_length=20, index=True)
+    assignee_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    reply: str | None = Field(default=None, sa_type=Text, repr=False)
+    notes: str | None = Field(default=None, sa_type=Text, repr=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    replied_at: datetime | None = None
+    resolved_at: datetime | None = None
+
+
+HELP_LANGUAGES = ("en", "ar")
+
+
+class FaqEntry(SQLModel, table=True):
+    """One FAQ or help entry that admins edit without a deploy (CMPS271-129).
+
+    The answer is plain text with minimal formatting, rendered as text (never as HTML). `updated_by`
+    is the staff account that last changed it; account erasure clears it and keeps the entry.
+    """
+
+    __table_args__ = (CheckConstraint("language IN ('en', 'ar')", name="ck_faqentry_language"),)
+    id: int | None = Field(default=None, primary_key=True)
+    question: str = Field(max_length=300)
+    answer: str = Field(sa_type=Text)
+    category: str = Field(max_length=60)
+    position: int = 0
+    published: bool = False
+    language: str = Field(default="en", max_length=2, index=True)
+    updated_by: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

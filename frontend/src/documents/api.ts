@@ -95,6 +95,15 @@ export async function downloadPacket(applicationId: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
+export type PhotoCheck = { id: string; passed: boolean; message: string; guidance: string | null }
+export type PhotoReport = { spec: string; passed: boolean; checks: PhotoCheck[]; source: { label: string; url: string }; notice: string }
+
+export async function checkPhoto(applicationId: string, documentId: string): Promise<PhotoReport> {
+  const response = await protectedFetch(`${base(applicationId)}/${documentId}/photo-check`, { cache: 'no-store', silent: true })
+  if (!response.ok) throw new DocumentError(await detail(response, 'Could not check that photo. Please try again.'))
+  return response.json()
+}
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`

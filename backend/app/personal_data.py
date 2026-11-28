@@ -25,9 +25,12 @@ from sqlmodel import Session, SQLModel, select
 
 from .activity import record_activity
 from .agent.storage import AgentFiles
+from .document_audit import accessor
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
-                     DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
-                     PasswordResetChallenge, PasswordResetToken, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
+                     DocumentAccess, FaqEntry, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
+                     PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, RequirementDraft, RequirementRevision,
+                     SupportAccessGrant, SupportRequest, SupportingDocument, Traveler, TravelerProfile)
+from .models import PassportPages
 from .documents.storage import DocumentStorage
 from .security import throttle
 
@@ -36,7 +39,7 @@ from .security import throttle
 class Holding:
     model: type[SQLModel]
     # How this traveler's rows are found: by traveler id, through their applications, or their sessions.
-    owner: str  # "traveler", "application", "session" or "run" (the form-filling agent's runs)
+    owner: str  # "traveler", "application", "session", "run" (the form-filling agent's runs), "author" or "editor"
     exported: bool
     # Columns never exported because they are secrets, not information about the traveler.
     omit: tuple[str, ...] = ()
@@ -62,10 +65,20 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(AgentRun, "traveler", True),
     Holding(AgentFieldEntry, "run", True),
     Holding(AgentScreenshot, "run", True),
+    Holding(Payment, "traveler", True),
+    Holding(PassportPages, "traveler", True),
+    Holding(SupportAccessGrant, "traveler", True),
+    Holding(SupportRequest, "traveler", True, omit=("assignee_id",)),
+    Holding(FaqEntry, "editor", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
     Holding(AccountErasure, "traveler", False, reason="Exists only while an account is being deleted."),
+    Holding(RequirementRevision, "author", False,
+            reason="Destination requirements an admin published (the audit events are exported); "
+                   "deletion keeps them and removes the author."),
+    Holding(RequirementDraft, "author", False,
+            reason="Unpublished destination requirements; deletion keeps them and removes the author."),
 )
 
 
@@ -79,9 +92,13 @@ def owned_rows(session: Session, holding: Holding, traveler_id: int) -> list[SQL
     elif holding.owner == "run":
         query = select(model).where(model.run_id.in_(
             select(AgentRun.id).where(AgentRun.traveler_id == traveler_id)))
+    elif holding.owner == "author":
+        query = select(model).where(model.author_id == traveler_id)
     elif holding.owner == "session":
         query = select(model).where(model.session_id.in_(
             select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)))
+    elif holding.owner == "editor":
+        query = select(model).where(model.updated_by == traveler_id)
     else:
         # DocumentAccess: rows about this traveler's own passport only, never their staff work on others.
         query = select(model).where(model.traveler_id == traveler_id)
@@ -105,7 +122,7 @@ STAFF_ID = re.compile(r"^admin:\d+:")
 def _row(holding: Holding, row: SQLModel, traveler_id: int) -> dict:
     data = {column: _value(getattr(row, column)) for column in holding.model.model_fields if column not in holding.omit}
     if holding.model is DocumentAccess:
-        data["accessed_by"] = "You" if row.actor_id == traveler_id else "Authorized staff"
+        data["accessed_by"] = accessor(row, traveler_id)
     if holding.model is ActivityEvent:
         data["identifier"] = STAFF_ID.sub("admin:", data["identifier"])
     return data
@@ -118,17 +135,22 @@ Downloaded {when} (UTC) for the account {email}.
 
 data.json        Everything we hold about you, one section per kind of record:
                  your account, profile, linked Google account, sign-in sessions,
-                 applications and their answers, supporting documents, what the
+                 applications and their answers, payments, supporting documents, what the
                  form-filling agent typed, assistant conversations, notifications
                  and your email settings, account activity, who opened your
                  passport files, and
                  which privacy policy versions you accepted, and when, and your
-                 passport's expiry date if you saved one, for reminders.
+                 passport's expiry date if you saved one, for reminders, and how
+                 many blank visa pages you said your passport has. Also
+                 your help requests with support's replies and notes, the
+                 applications you let support read, and, for staff accounts,
+                 the help entries you last edited.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
 agent/           Each screenshot the form-filling agent took (.png), by application.
-documents/       Each supporting document you uploaded (.pdf or .jpg), named by
-                 its id in data.json's supportingdocument section.
+documents/       Each supporting document you uploaded (.pdf or .jpg), once, named
+                 by its file_id in data.json's supportingdocument section. A file
+                 you reused for several applications has a row for each.
 
 Left out on purpose: your password (we only keep a hash of it), and the hashed
 sign-in and reset tokens that keep your account secure. Nothing here belongs to
@@ -157,13 +179,17 @@ def build_archive(session: Session, traveler: Traveler, passport_storage) -> byt
             review = passport_storage.load_review(traveler.id, upload_id, purpose="data_export")
             if review is not None:
                 archive.writestr(f"passport/{upload_id}.json", json.dumps(review, indent=2, ensure_ascii=False))
-        documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access)
+        documents = DocumentStorage(passport_storage.root, on_access=passport_storage.on_access,
+                                    cipher=passport_storage.cipher)
+        stored = {}
         for document in session.exec(select(SupportingDocument).where(SupportingDocument.traveler_id == traveler.id)):
-            extension = "pdf" if document.content_type == "application/pdf" else "jpg"
-            content = documents.load(traveler.id, document.id, extension, purpose="data_export")
+            stored.setdefault(document.file_key, "pdf" if document.content_type == "application/pdf" else "jpg")
+        for file_key, extension in stored.items():
+            content = documents.load(traveler.id, file_key, extension, purpose="data_export")
             if content is not None:
-                archive.writestr(f"documents/{document.id}.{extension}", content)
-        screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access)
+                archive.writestr(f"documents/{file_key}.{extension}", content)
+        screenshots = AgentFiles(passport_storage.root, on_access=passport_storage.on_access,
+                                 cipher=passport_storage.cipher)
         shots = session.exec(select(AgentScreenshot, AgentRun.application_id).join(AgentRun)
                              .where(AgentRun.traveler_id == traveler.id))
         for shot, application_id in shots:

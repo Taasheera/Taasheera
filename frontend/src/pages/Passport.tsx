@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { protectedFetch, restoreSession, type Traveler } from '../auth'
 import { safeReturnPath } from '../application/format'
 import AssistantPanel from '../assistant/AssistantPanel'
+import Feature from '../Feature'
 import Dropzone from '../passport/Dropzone'
 import ReviewForm from '../passport/ReviewForm'
 import {
@@ -142,6 +143,7 @@ function PassportPage({ uploadId }: { uploadId?: string }) {
       <p className="badge">Step {current + 1} of {steps.length} · Passport</p>
       <h1 id="passport-heading">{uploadId ? 'Check what we read.' : 'Upload and review your passport'}</h1>
       <p>We read the two machine-readable lines on your passport's photo page, check them, and show you what we found. Nothing is saved until you confirm it.</p>
+      <Feature name="document_vault"><p><Link to="/documents">Your uploaded documents and blank passport pages</Link></p></Feature>
     </header>
 
     {traveler === undefined && !message && <p className="passport-status" role="status">Checking your session…</p>}

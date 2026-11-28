@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GlobalAssistant from '../assistant/GlobalAssistant'
 import { AdminAccessError, adminRequest, deleteUser, type AdminUser, type Monitoring, type Staff, type UserPage } from '../admin'
+import SystemHealthPanel from './SystemHealthPanel'
 import '../App.css'
 import './dashboard.css'
 
@@ -56,6 +57,7 @@ export default function AdminDashboard() {
       {error && <p role="alert" className="auth-error">{error}</p>}
       {!denied && <button type="button" disabled={loading || busy} onClick={() => refresh()}>Refresh dashboard</button>}
       {message && <p role="status">{message}</p>}
+      {staff && <SystemHealthPanel />}
       {monitoring && <>
         <section aria-labelledby="application-monitor-heading"><h2 id="application-monitor-heading">Applications by status</h2>
           <p>{monitoring.total_applications} total applications</p>

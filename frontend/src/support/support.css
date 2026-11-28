@@ -1,0 +1,102 @@
+.assistant-escalate {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.talk-to-person {
+  display: grid;
+  gap: 10px;
+}
+
+.talk-to-person h3,
+.talk-to-person p {
+  margin: 0;
+}
+
+.talk-to-person textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--field-border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  resize: vertical;
+}
+
+.talk-share {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.talk-share input {
+  margin-top: 3px;
+}
+
+.talk-actions,
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.support-items {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.support-items li {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.support-items p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.support-access {
+  margin-top: 28px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.support-access h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.support-access p {
+  margin: 0 0 12px;
+}
+
+.support-access select {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--fg);
+}
+
+.support-reply {
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid var(--border);
+}

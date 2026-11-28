@@ -16,6 +16,7 @@ import DocumentHistory from './DocumentHistory'
 import DeleteAccount from './DeleteAccount'
 import DownloadData from './DownloadData'
 import EmailSettings from './EmailSettings'
+import SupportCenter from './support/SupportCenter'
 import Feature from './Feature'
 import GlobalAssistant from './assistant/GlobalAssistant'
 import SectionNav from './SectionNav'
@@ -117,6 +118,7 @@ function App({ initialNavigation, accountPage = false, googleClientId = import.m
             <Feature name="email_notifications"><EmailSettings /></Feature>
             <Sessions />
             <DocumentHistory />
+            <Feature name="support_tools"><SupportCenter /></Feature>
             <DownloadData />
             <DeleteAccount traveler={traveler} clientId={googleClientId} onDeleted={complete => {
               setTraveler(null)

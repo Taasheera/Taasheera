@@ -102,8 +102,8 @@ as 55 security-group rules, so its quota must accommodate it.
 
 The script mounts only the stack's data volume, builds images sequentially,
 migrates the database before starting the API, and checks the public readiness
-URL. JWT signing material is generated privately on the data volume and retained
-across redeployments. No secret is committed or printed.
+URL. JWT signing material and the document encryption key are generated privately on the data
+volume and retained across redeployments. No secret is committed or printed.
 Setup reports its current step. On failure the scripts retrieve the SSM exit
 code and error output, excluding the private command parameters.
 Amazon Linux's Docker package does not guarantee a compatible Buildx plugin.
@@ -193,6 +193,38 @@ image releases supply both again. Local `taasheera-api`/`taasheera-web` tags als
 images so existing operator/backup commands keep using the current release after setup exits.
 See [AWS's repository-scoped push permissions](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-push-iam.html).
 
+## Staging copy for load tests (Sprint 5)
+
+`taasheera-staging` is a second stack from the same template: its own EC2 host, data volume and
+CloudFront URL (https://d3125pr28zp4zv.cloudfront.net), synthetic data only. Created with:
+
+```bash
+export AWS_FREE_ELIGIBILITY_CONFIRMED=yes TAASHEERA_STACK=taasheera-staging TAASHEERA_INSTANCE_TYPE=t3.micro \
+  TAASHEERA_CPU_CREDITS=unlimited TAASHEERA_DEPLOY_ENVIRONMENT=staging \
+  TAASHEERA_SENTRY_DSN=<api dsn> TAASHEERA_SENTRY_FRONTEND_DSN=<browser dsn> TAASHEERA_SENTRY_TRACES_SAMPLE_RATE=1
+bash deploy/aws/deploy.sh            # prepares the change set; execute it, then run again
+bash deploy/aws/monitoring.sh taasheera-staging
+```
+
+Its state lives in `.aws-deploy-state/taasheera-staging/`, apart from production's. `unlimited` CPU credits
+let a new t3 host burst like the long-idle production host (a new t3 starts with no saved credits);
+production stays `standard`. `bash loadtest/staging.sh stop` stops it between test sessions (disks and
+the address still cost a little); `start` brings it back. Delete the stack, then its retained data volume,
+when it is no longer needed. From Windows Git Bash, give the AWS CLI native paths: set
+`TAASHEERA_STATE_DIR` and `TMPDIR` to `C:/...` folders.
+
+**Resizing a host.** Do not change `InstanceType` through `deploy.sh`: the template resolves the latest
+Amazon Linux AMI on every update, so an update after a new AMI release replaces the host, the new host
+cannot attach the data volume the old one still holds, and the update rolls back (found on staging on
+November 27; `deploy.sh` now refuses such a change set). Stop the instance, then
+`aws ec2 modify-instance-attribute --instance-id <id> --instance-type '{"Value":"t3.small"}'` and start it;
+the Elastic IP and CloudFront origin stay the same. The stack parameter then lags the real size until a
+planned host replacement (back up, detach and reattach the data volume by hand).
+
+**After changing `app.env`, recreate api and restart web.** nginx resolves the api container's address
+when it starts; a recreated api container gets a new address and nginx answers 502 until restarted:
+`docker compose -f /opt/taasheera/deploy/aws/compose.yaml up -d --no-build --force-recreate api && docker compose -f /opt/taasheera/deploy/aws/compose.yaml restart web`.
+
 ## Form-filling agent worker (CMPS271-236)
 
 `compose.yaml` runs a `worker` container from the API image with `python agent_worker.py`. It shares the
@@ -222,7 +254,8 @@ Gemini remains an external dependency. Enter its key privately in
 `/srv/taasheera/private/app.env` if needed; use specimen data with the free tier.
 
 After a private settings change, run `docker compose -f
-/opt/taasheera/deploy/aws/compose.yaml up -d --force-recreate api` on the host.
+/opt/taasheera/deploy/aws/compose.yaml up -d --force-recreate api` on the host, then
+`docker compose -f /opt/taasheera/deploy/aws/compose.yaml restart web` (nginx keeps the old api address otherwise).
 Check HTTPS home page, `/health/ready`, register/login/refresh/logout, upload a
 specimen passport, review/save/read it, and confirm data survives a container
 restart. Verify assistant and reset-email delivery separately when configured.
@@ -238,6 +271,71 @@ claimed. Migration rollback is manual; daily backups and restore follow
 `docs/BACKUPS.md`.
 Keep a backup before deploying schema changes. Container updates rerun migrations
 and keep the same database, JWT, images, and reviews.
+
+## Document encryption key (CMPS271-114)
+
+Passport images and confirmed details, supporting documents and the text read from them, and the
+agent's screenshots are encrypted by the application (AES-256-GCM) on top of the encrypted EBS volume.
+The key is `DOCUMENT_ENCRYPTION_KEY` in `/srv/taasheera/private/app.env`: 32 random bytes, base64.
+`bootstrap.sh` writes one when it first creates `app.env` on a new host and never regenerates it.
+Releases (`TAASHEERA_PRESERVE_CONFIG=1`) keep `app.env` exactly as it is, so a host set up before this
+change has no key until an operator adds one. Without a key the API logs `DOCUMENT_ENCRYPTION_KEY is not
+set` once at startup and stores files as before; with one, new files are encrypted and older plain files
+still open.
+
+**Losing the key loses every encrypted document.** Nightly backups leave `private/` out on purpose, so a
+backup can't bring the key back. Keep a copy apart from the data and its backups (the team password
+manager, or a SecureString parameter only operators can read), and never commit it, print it in Run
+Command output, or paste it into chat or tickets. Changing the key isn't supported: files encrypted with
+the old key would stop opening.
+
+Add the key to an existing host from an interactive Session Manager shell:
+
+1. Back up first: `sudo systemctl start taasheera-backup.service`.
+2. Add a key only if none is set. This prints nothing secret and refuses to replace a key:
+
+   ```bash
+   sudo python3 - <<'PY'
+   import base64, secrets
+   from pathlib import Path
+   path = Path('/srv/taasheera/private/app.env')
+   text = path.read_text()
+   if any(line.startswith('DOCUMENT_ENCRYPTION_KEY=') for line in text.splitlines()):
+       raise SystemExit('A document key is already set. Never replace it.')
+   with path.open('a') as env:
+       env.write(('' if text.endswith('\n') else '\n') + 'DOCUMENT_ENCRYPTION_KEY='
+                 + base64.b64encode(secrets.token_bytes(32)).decode() + '\n')
+   print('Document key added.')
+   PY
+   ```
+
+3. Store the copy now: `sudo grep '^DOCUMENT_ENCRYPTION_KEY=' /srv/taasheera/private/app.env` shows
+   it in that interactive session only.
+4. Restart the API and the agent worker, which both read files:
+   `sudo docker compose -f /opt/taasheera/deploy/aws/compose.yaml up -d --no-build --force-recreate api worker`.
+   Upload a specimen passport and open it to check.
+5. Encrypt the files stored before the key:
+   `sudo docker compose -f /opt/taasheera/deploy/aws/compose.yaml run --rm api python manage.py encrypt-documents`.
+   It takes each traveler's account lock, replaces each file atomically, keeps file times and prints
+   counts only. Run it again if it reports busy accounts; a second run reports 0 encrypted. It exits
+   with an error if an already encrypted file doesn't open with the key in `app.env`.
+
+To restore onto a replacement host, put the same key in its `app.env` before starting the API.
+
+## Upload malware scanning (CMPS271-31)
+
+Every passport and supporting-document upload is scanned before anything parses or stores it
+(`backend/app/upload_scan.py`, flag `malware_scan`, released; `FEATURE_MALWARE_SCAN=false` switches it
+off). The built-in scanner always runs: the EICAR test signature, Windows/Linux/macOS executables, PDFs
+with JavaScript, launch actions, embedded files or additional actions, and content that isn't the type
+the upload declared. A rejected file gets a fixed 422 message, nothing is written, and an
+`upload_rejected` activity event records only the reason code.
+
+ClamAV is optional: set `CLAMD_ADDRESS=host:port` in `app.env` for a clamd that accepts TCP `INSTREAM`
+(for example a `clamav/clamav` container on the compose network as `clamav:3310`). clamd needs about
+1 GB of memory for its signatures, so it is **off on the t3.micro host** and the built-in scanner is the
+default; run it only after moving to a larger instance. Once it is set, an unreachable or failing clamd
+makes uploads answer 503 ("Upload scanner unavailable") rather than store a file nobody scanned.
 
 ## Release the production sign-in/admin fixes
 
