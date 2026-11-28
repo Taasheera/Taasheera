@@ -182,3 +182,26 @@ def test_deleting_the_application_removes_its_edits(api):
     assert client.delete(f"/applications/{application_id}", headers=headers[0]).status_code == 204
     with Session(app.state.engine) as session:
         assert session.exec(select(GeneratedDocument)).all() == []
+
+
+def test_unfinished_documents_stay_out_of_the_packet(api):
+    client, _, headers, _ = api
+    application_id = start(client, headers[0])["id"]
+    # No passport or dates yet: the letter would print "[Your full name]", so nothing generated is added.
+    packet = client.get(f"/applications/{application_id}/documents/packet", headers=headers[0])
+    assert len(PdfReader(io.BytesIO(packet.content)).pages) == 1
+
+
+def test_recorded_applications_keep_their_documents(api):
+    client, _, headers, _ = api
+    application_id = ready(client, headers[0])
+    assert client.post(f"/applications/{application_id}/decision", headers=headers[0],
+                       json={"record": "SUBMITTED"}).status_code == 200
+    assert client.get(url(application_id), headers=headers[0]).json()["read_only"] is True
+    assert client.put(url(application_id, "/cover_letter"), headers=headers[0], json={"body": "x"}).status_code == 409
+    assert client.delete(url(application_id, "/cover_letter"), headers=headers[0]).status_code == 409
+
+
+def test_the_home_address_includes_the_postal_code():
+    f, _ = schengen(home_address={"line1": "1 Example Street", "city": "Beirut", "postal_code": "1100", "country": "LBN"})
+    assert "1 Example Street, Beirut, 1100" in generate("cover_letter", "en", f, TODAY).body

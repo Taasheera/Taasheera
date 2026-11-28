@@ -12,12 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
 from ..applications import flow
-from ..applications.router import _owned_answers, current_answers
+from ..applications.router import _owned_answers, current_answers, is_recorded
 from ..auth import check_origin
 from ..features import require_feature
 from ..models import Application, GeneratedDocument, Traveler
 from .pdf import render_pdf
-from .templates import KINDS, LANGUAGES, TRANSLATED, available_kinds, embassy_languages, facts, generate
+from .templates import KINDS, LANGUAGES, TRANSLATED, available_kinds, embassy_languages, facts, generate, ready_for_packet
 
 NOTICE = ("Written from your own answers. Read it, correct anything that isn't right, and sign it yourself. "
           "Ta'asheera doesn't give legal or immigration advice.")
@@ -85,10 +85,21 @@ def generated_text(session: Session, application: Application, questionnaire: fl
 
 def generated_packet_files(session: Session, application: Application, questionnaire: flow.Questionnaire,
                            answers: flow.Answers, email: str) -> dict[str, tuple[str, str, bytes]]:
-    """PDFs of the cover letter and itinerary, keyed by the checklist item they stand in for in the packet."""
+    """PDFs of the cover letter and itinerary, keyed by the checklist item they stand in for in the packet.
+
+    Only documents finished enough to hand in (see `ready_for_packet`). The traveler's edited version is used,
+    the English one first, then an edit in the embassy's language; otherwise the English text from the answers.
+    """
     files = {}
+    written_facts = facts(questionnaire, answers, email)
+    edited = {(row.kind, row.language) for row in session.exec(
+        select(GeneratedDocument).where(GeneratedDocument.application_id == application.id))}
     for kind in ("cover_letter", "itinerary"):
-        title, body = generated_text(session, application, questionnaire, answers, email, kind)
+        if not ready_for_packet(kind, written_facts):
+            continue
+        language = next((language for language in embassy_languages(questionnaire, answers)
+                         if (kind, language) in edited), "en")
+        title, body = generated_text(session, application, questionnaire, answers, email, kind, language)
         files[kind] = (f"{title} (prepared with Ta'asheera).pdf", "application/pdf", render_pdf(title, body))
     return files
 
@@ -122,11 +133,14 @@ def create_generated_documents_router(get_session, current_traveler) -> APIRoute
             edited=saved is not None,
             outdated=saved is not None and _utc(application.updated_at) > _utc(saved.updated_at),
             saved_at=_utc(saved.updated_at) if saved else None,
-            read_only=application.archived_at is not None, notice=NOTICE)
+            read_only=application.archived_at is not None or is_recorded(application), notice=NOTICE)
 
     def writable(application: Application) -> None:
         if application.archived_at is not None:
             raise HTTPException(status_code=409, detail="This application is archived. Restore it to edit its documents.")
+        if is_recorded(application):
+            raise HTTPException(status_code=409, detail="This application is recorded as submitted, so its documents "
+                                                        "are kept as they were. Undo the submission to edit them.")
 
     LanguageQuery = Annotated[str, Query(pattern=r"^[a-z]{2}$")]
 
@@ -139,7 +153,8 @@ def create_generated_documents_router(get_session, current_traveler) -> APIRoute
         documents = [KindOption(kind=kind, label=KINDS[kind], languages=[
             LanguageOption(language=language, label=LANGUAGES[language], edited=(kind, language) in edited)
             for language in _languages(kind, questionnaire, answers)]) for kind in available_kinds(questionnaire, answers)]
-        return Overview(documents=documents, read_only=application.archived_at is not None, notice=NOTICE)
+        return Overview(documents=documents, read_only=application.archived_at is not None or is_recorded(application),
+                        notice=NOTICE)
 
     @router.get("/{kind}", response_model=DocumentView)
     def read(application_id: str, kind: str, traveler: TravelerDep, session: SessionDep, response: Response,

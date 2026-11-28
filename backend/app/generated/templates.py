@@ -328,7 +328,7 @@ def facts(questionnaire: flow.Questionnaire, answers: flow.Answers, email: str) 
         passport_number=str(passport.get("document_number") or "[passport number]"),
         email=email, visa=questionnaire.visa_label, destination=destination, place_code=code,
         phone=_text(answers, "phone"),
-        address=", ".join(str(address[key]) for key in ("line1", "line2", "city", "postcode") if address.get(key)) or None,
+        address=", ".join(str(address[key]) for key in ("line1", "line2", "city", "postal_code") if address.get(key)) or None,
         home_city=str(address.get("city") or "").strip() or None,
         purpose=answers.get("purpose"),
         arrival=_date(answers, "arrival_date"), departure=_date(answers, "departure_date"),
@@ -338,6 +338,14 @@ def facts(questionnaire: flow.Questionnaire, answers: flow.Answers, email: str) 
         funding=funding, sponsor=_text(answers, "sponsor_details", "payer_details"),
         extra={"host_details": _text(answers, "host_details")},
     )
+
+
+def ready_for_packet(kind: str, f: Facts) -> bool:
+    """Whether a document is finished enough to print for the embassy: no blanks where the traveler's own
+    name or passport number goes, and an itinerary only once the trip has dates."""
+    if not f.name or f.name.startswith("[") or f.passport_number.startswith("["):
+        return False
+    return kind != "itinerary" or bool(f.arrival and f.departure and f.departure >= f.arrival)
 
 
 def embassy_languages(questionnaire: flow.Questionnaire, answers: flow.Answers) -> list[str]:

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { downloadDocument, getDocument, getOverview, regenerateDocument, saveDocument, type GeneratedDocument,
   type Overview } from './api'
@@ -11,6 +11,11 @@ export default function GeneratedDocuments({ applicationId, version }: { applica
   const [overview, setOverview] = useState<Overview | null | Error>(null)
   const [kind, setKind] = useState('cover_letter')
   const [language, setLanguage] = useState('en')
+  // The open editor has changes it hasn't saved: switching document or language asks first.
+  const unsaved = useRef(false)
+  const leave = () => !unsaved.current || window.confirm('Leave this document? Your unsaved changes will be lost.')
+  const chooseKind = (next: string) => { if (next !== kind && leave()) { unsaved.current = false; setKind(next) } }
+  const chooseLanguage = (next: string) => { if (next !== language && leave()) { unsaved.current = false; setLanguage(next) } }
 
   useEffect(() => {
     let active = true
@@ -44,13 +49,14 @@ export default function GeneratedDocuments({ applicationId, version }: { applica
       {overview.documents.map(item => <button key={item.kind} type="button" role="tab" id={`gen-tab-${item.kind}`}
         aria-selected={item.kind === current?.kind} aria-controls="gen-panel"
         className={`gen-tab${item.kind === current?.kind ? ' gen-tab-active' : ''}`}
-        data-activity-id="generated-document-tab" onClick={() => setKind(item.kind)}>
+        data-activity-id="generated-document-tab" onClick={() => chooseKind(item.kind)}>
         {item.label}
         {item.languages.some(option => option.edited) && <span className="gen-badge">Edited</span>}
       </button>)}
     </div>
     {current && <Editor key={`${current.kind}-${chosenLanguage}-${version}`} applicationId={applicationId}
-      kind={current.kind} language={chosenLanguage} languages={languages} onLanguage={setLanguage}
+      kind={current.kind} language={chosenLanguage} languages={languages} onLanguage={chooseLanguage}
+      onDirty={dirty => { unsaved.current = dirty }}
       readOnly={overview.read_only}
       onSaved={edited => setOverview(previous => previous instanceof Error || previous === null ? previous : {
         ...previous, documents: previous.documents.map(item => item.kind !== current.kind ? item : {
@@ -69,9 +75,10 @@ type EditorProps = {
   onLanguage: (language: string) => void
   readOnly: boolean
   onSaved: (edited: boolean) => void
+  onDirty: (dirty: boolean) => void
 }
 
-function Editor({ applicationId, kind, language, languages, onLanguage, readOnly, onSaved }: EditorProps) {
+function Editor({ applicationId, kind, language, languages, onLanguage, readOnly, onSaved, onDirty }: EditorProps) {
   const [document_, setDocument] = useState<GeneratedDocument | null | Error>(null)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState<'save' | 'regenerate' | 'download' | null>(null)
@@ -83,6 +90,9 @@ function Editor({ applicationId, kind, language, languages, onLanguage, readOnly
       .catch(problem => { if (active) setDocument(problem instanceof Error ? problem : new Error('Could not load this document.')) })
     return () => { active = false }
   }, [applicationId, kind, language])
+
+  const dirtyNow = document_ !== null && !(document_ instanceof Error) && draft !== document_.body
+  useEffect(() => { onDirty(dirtyNow) }, [dirtyNow, onDirty])
 
   if (document_ === null) return <div id="gen-panel" role="tabpanel" className="gen-panel"><p className="gen-note" role="status">Writing your document…</p></div>
   if (document_ instanceof Error) return <div id="gen-panel" role="tabpanel" className="gen-panel"><p className="gen-note" role="alert">{document_.message}</p></div>
