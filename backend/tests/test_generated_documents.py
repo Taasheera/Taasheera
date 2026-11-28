@@ -48,7 +48,7 @@ def test_an_employed_sponsored_traveler_gets_those_sentences():
                     sponsor_details="My aunt, Rana Example", accommodation="hotel",
                     accommodation_details="Hotel Exemple, Lyon")
     letter = generate("cover_letter", "en", f, TODAY).body
-    assert "I work as Accountant at Example Ltd" in letter
+    assert "I am employed by Example Ltd, where my job title is Accountant" in letter
     assert "paid for by my sponsor: My aunt, Rana Example" in letter
     assert "I will stay at Hotel Exemple, Lyon." in letter
 

@@ -97,15 +97,16 @@ _PURPOSES = {
 # fact is missing is left out rather than written with a gap.
 _COVER = {
     "en": {
-        "to": "To the {addressee}", "subject": "Subject: Application for a {visa}, {name}, passport {passport}",
+        "to": "To the {addressee}", "subject": "Subject: Application for the {visa}, {name}, passport {passport}",
         "dear": "Dear Sir or Madam,",
-        "trip": "I am applying for a {visa} to visit {destination} for {purpose}, arriving on {arrival} and "
+        "trip": "I am applying for the {visa} to visit {destination} for {purpose}, arriving on {arrival} and "
                 "leaving on {departure} ({nights}).",
-        "trip_no_dates": "I am applying for a {visa} to visit {destination} for {purpose}.",
+        "trip_no_dates": "I am applying for the {visa} to visit {destination} for {purpose}.",
         "cities": "During the trip I plan to visit {cities}.",
         "hotel": "I will stay at {stay}.", "host": "I will stay with my host: {stay}.",
-        "employed": "I work as {job} at {employer}, and my employer has approved my leave for these dates.",
-        "employed_no_employer": "I work as {job}.",
+        "employed": "I am employed by {employer}, where my job title is {job}, and my employer has approved my "
+                    "leave for these dates.",
+        "employed_no_employer": "I am employed; my job title is {job}.",
         "self_employed": "I am self-employed ({job}{at_employer}).",
         "student": "I am a student{at_school}.", "retired": "I am retired.",
         "self_funded": "I will pay for the trip myself, and my bank statements are enclosed.",
@@ -326,7 +327,7 @@ def facts(questionnaire: flow.Questionnaire, answers: flow.Answers, email: str) 
     return Facts(
         name=_name(passport) or "[Your full name]",
         passport_number=str(passport.get("document_number") or "[passport number]"),
-        email=email, visa=questionnaire.visa_label, destination=destination, place_code=code,
+        email=email, visa=questionnaire.title, destination=destination, place_code=code,
         phone=_text(answers, "phone"),
         address=", ".join(str(address[key]) for key in ("line1", "line2", "city", "postal_code") if address.get(key)) or None,
         home_city=str(address.get("city") or "").strip() or None,
