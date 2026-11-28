@@ -9,6 +9,7 @@ import DecisionActions from './DecisionActions'
 import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
+import GeneratedDocuments from '../generated/GeneratedDocuments'
 import AgentPanel from '../agent/AgentPanel'
 import PaymentStep from '../payments/PaymentStep'
 import FormReview from '../submission/FormReview'
@@ -122,6 +123,10 @@ function Detail({ applicationId }: { applicationId: string }) {
     <Feature name="supporting_documents">
       <DocumentChecklist applicationId={application.id} version={application.updated_at}
         onChange={() => setDocumentChanges(count => count + 1)} />
+    </Feature>
+
+    <Feature name="generated_documents">
+      <GeneratedDocuments applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
     </Feature>
 
     {!archived && !isRecorded(application.status) && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">

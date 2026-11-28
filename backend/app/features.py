@@ -33,6 +33,7 @@ FLAGS = {
     "document_vault": "Document vault: reuse and delete uploaded documents (CMPS271-34/35)",
     "document_translation": "Machine translation of a supporting document's text (CMPS271-37)",
     "support_tools": "Support access with consent, talking to a person and editable FAQ (CMPS271-128/92/129)",
+    "generated_documents": "Cover letter, itinerary and letter templates written from the answers (CMPS271-57 to 62)",
 }
 
 
@@ -41,7 +42,7 @@ FLAGS = {
 RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_documents", "privacy_consent", "visa_guide",
                       "malware_scan", "payments", "requirements_editor", "kpi_dashboard",
                       "passport_rules", "photo_check", "document_vault", "document_translation",
-                      "support_tools"})
+                      "support_tools", "generated_documents"})
 
 
 def _variable(name: str) -> str:

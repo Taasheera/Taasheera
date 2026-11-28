@@ -93,6 +93,8 @@ def create_documents_router(
     load_latest_passport: Callable[[int], dict | None] = lambda traveler_id: None,
     upload_dependencies: list | None = None,
     scan_upload: Callable[[int, str, bytes, str | None], None] | None = None,
+    # Generated documents (cover letter, itinerary) that stand in for a checklist item with no upload in the packet.
+    generated_files: Callable | None = None,
 ) -> APIRouter:
     from ..applications.router import saved_profile
     from ..auth import check_origin
@@ -171,6 +173,7 @@ def create_documents_router(
         given = answers(session, application)
         requirements = flow.required_documents(questionnaire, given)
         documents = owned_documents(session, application.id)
+        written = generated_files(session, application, questionnaire, given, traveler.email) if generated_files else {}
         items = []
         for requirement in requirements:
             files = []
@@ -179,6 +182,8 @@ def create_documents_router(
                 content = storage.load(traveler.id, document.file_key, extension, purpose="document_packet")
                 if content is not None:
                     files.append((document.filename, document.content_type, content))
+            if not files and requirement.id in written:
+                files.append(written[requirement.id])
             items.append(PacketItem(label=requirement.label, required=requirement.required, files=files))
         passport = given.get("passport") if isinstance(given.get("passport"), dict) else {}
         name = " ".join(part for part in (passport.get("given_names"), passport.get("surname")) if part)

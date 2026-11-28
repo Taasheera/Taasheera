@@ -283,3 +283,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     the check and timeline, never files; each read is a `support_view` access shown as "Support". Help requests open
     only through `support_requests.create_support_request` (website and Telegram; no chat copied); replies notify.
     Admins edit `FaqEntry` at `/admin/help`; public `GET /help-content`, migration-seeded, bundled fallback. `support_tools`.
+58. **Generated documents (CMPS271-57 to 62).** `app/generated/`: cover letter, day-by-day itinerary and invitation,
+    sponsor and employment letter templates written deterministically from reconciled answers (no AI, nothing
+    leaves the server); a missing fact is left out, or a [blank] in letters others sign. Cover letter and itinerary
+    also come in the embassy's language (fr/de/es/it for those Schengen countries, fr for Canada) as fixed wording.
+    `GeneratedDocument` stores only the traveler's edit per kind and language; DELETE regenerates, `outdated` when
+    answers changed after it. `/applications/{id}/generated`; the packet uses the letter/itinerary PDF for a
+    checklist item with no upload. Released flag `generated_documents`.

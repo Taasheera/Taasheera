@@ -132,7 +132,10 @@ def upgrade() -> None:
                                      ("add_index", "ix_supportrequest_created_at"),
                                      ("add_table", "faqentry"),
                                      ("add_index", "ix_faqentry_language"),
-                                     ("add_index", "ix_faqentry_updated_by")}
+                                     ("add_index", "ix_faqentry_updated_by"),
+                                     ("add_table", "generateddocument"),
+                                     ("add_index", "ix_generateddocument_traveler_id"),
+                                     ("add_index", "ix_generateddocument_application_id")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,
