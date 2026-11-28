@@ -22,7 +22,9 @@ registerHooks({
 
 const { routes } = await import('../src/routes.tsx')
 const { resetFeatureFlags } = await import('../src/features.ts')
-const { faqs } = await import('../src/content.ts')
+const { en: { faqs } } = await import('../src/i18n/en.ts')
+const { ar } = await import('../src/i18n/ar.ts')
+const { savedChoice } = await import('../src/i18n/language.ts')
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 const ADMIN = { id: 1, name: 'Adam Admin', email: 'adam@example.com', role: 'admin' }
@@ -120,18 +122,20 @@ test('entries in more than one category are grouped under headings', async () =>
   assert.deepEqual(questions(), ['Question 1?', 'Question 3?', 'Question 2?'])
 })
 
-test('an Arabic page asks for Arabic entries and falls back to English when there are none', async () => {
-  document.documentElement.lang = 'ar'
+test('an Arabic page asks for Arabic entries and shows the bundled Arabic questions when there are none', async (t) => {
+  t.mock.method(savedChoice, 'read', () => 'ar')
+  handlers['GET /features'] = () => json({ support_tools: true, arabic: true })
   handlers['GET /help-content?language=ar'] = () => json([])
   handlers['GET /help-content?language=en'] = () => json([entry(1)])
   await render('/faq')
-  assert.deepEqual(calls.filter(call => call.key.startsWith('GET /help-content')).map(call => call.key),
-    ['GET /help-content?language=ar', 'GET /help-content?language=en'])
-  assert.deepEqual(questions(), ['Question 1?'])
+  assert.deepEqual(sent('GET /help-content?language=en'), [], 'an Arabic page never lists English entries')
+  assert.ok(sent('GET /help-content?language=ar').length)
+  assert.deepEqual(questions(), ar.faqs.map(item => item.question))
   await act(async () => root.unmount())
   container.remove()
   handlers['GET /help-content?language=ar'] = () => json([entry(7, { question: 'هل تحفظ جوازي؟', answer: 'نعم.', language: 'ar' })])
   await render('/faq')
+  assert.deepEqual(questions(), ['هل تحفظ جوازي؟'])
   const item = container.querySelector('details.faq-item')
   assert.equal(item.getAttribute('lang'), 'ar')
   assert.equal(item.getAttribute('dir'), 'auto')

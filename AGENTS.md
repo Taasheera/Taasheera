@@ -314,3 +314,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     CAPTCHA), so `tracking.slot_feed` reads `APPOINTMENT_SLOTS_FILE` (operator-maintained JSON) or the packaged demo
     `appointment_slots.json` (`in_days` from today). A traveler watches per application (`PUT /slot-watch`); the
     notification timer sends `appointment_slot` once per new earliest slot before the trip, until an appointment is booked.
+63. **Arabic and English (CMPS271-16).** Routes with `handle: arabicPage` (home, FAQ, not found) switch with
+    the header button (`arabic` flag); every other page stays English, left to right, until translated.
+    Text in `i18n/en.ts` (source) and `i18n/ar.ts` (type `Text`, checked by `arabic.test.mjs`); pages read
+    `useText()`. The provider sets `<html lang dir>`; CSS uses logical properties, so RTL needs no copies.
+    The choice is a display setting in browser storage, like the theme. Brand stays "Taasheera" in Arabic.
+    FAQ entries come from `/help-content` in the page language; with none published in that language, the
+    bundled `faqs` of that language show (never English entries on an Arabic page).

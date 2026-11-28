@@ -4,7 +4,7 @@ import { apiFetch } from './api'
 // The same names as FLAGS in backend/app/features.py. The server decides which are on:
 // every flag in development, none on the live site until FEATURE_<NAME>=true is set there.
 export type FeatureName = 'agent_form_filling' | 'supporting_documents' | 'embassy_pdf' | 'passport_scan_quality'
-  | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'malware_scan' | 'payments'
+  | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'arabic' | 'malware_scan' | 'payments'
   | 'requirements_editor' | 'kpi_dashboard' | 'passport_rules' | 'photo_check' | 'document_vault' | 'document_translation'
   | 'support_tools' | 'generated_documents' | 'submission_tracking'
   | 'group_applications'

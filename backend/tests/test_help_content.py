@@ -138,7 +138,7 @@ def test_the_migration_publishes_the_faq_the_site_showed_before(tmp_path, monkey
     engine = build_engine(url)
     with Session(engine) as session:
         entries = session.exec(select(FaqEntry).order_by(FaqEntry.position)).all()
-    content = (ROOT / "frontend/src/content.ts").read_text(encoding="utf-8").replace("\\'", "'")
+    content = (ROOT / "frontend/src/i18n/en.ts").read_text(encoding="utf-8").replace("\\'", "'")
     assert len(entries) == 10
     assert all(entry.published and entry.language == "en" and entry.updated_by is None for entry in entries)
     assert [entry.position for entry in entries] == list(range(1, 11))

@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
-import { faqs } from '../content'
+import { useLanguage } from '../i18n/language'
 
 export type HelpLanguage = 'en' | 'ar'
 export type HelpItem = { id?: number; question: string; answer: string; category?: string; language?: HelpLanguage }
-
-function pageLanguage(): HelpLanguage {
-  return document.documentElement.lang.toLowerCase().startsWith('ar') ? 'ar' : 'en'
-}
 
 function isItem(value: unknown): value is HelpItem {
   const item = value as HelpItem | null
@@ -21,20 +17,21 @@ async function published(language: HelpLanguage): Promise<HelpItem[]> {
   return Array.isArray(items) ? items.filter(isItem) : []
 }
 
-export async function loadHelpEntries(language = pageLanguage()): Promise<HelpItem[]> {
-  const found = await published(language).catch(() => [])
-  if (found.length || language === 'en') return found
-  return published('en').catch(() => [])
+export async function loadHelpEntries(language: HelpLanguage = 'en'): Promise<HelpItem[]> {
+  return published(language).catch(() => [])
 }
 
+// The published entries in the page's language (CMPS271-16). With none published in it, or the API
+// down, the bundled questions of that language show, so an Arabic page never lists English entries.
 export function useHelpEntries(): HelpItem[] {
-  const [items, setItems] = useState<HelpItem[]>(faqs)
+  const { language, text } = useLanguage()
+  const [found, setFound] = useState<{ language: HelpLanguage; items: HelpItem[] } | null>(null)
   useEffect(() => {
     let active = true
-    void loadHelpEntries().then(found => { if (active && found.length) setItems(found) })
+    void loadHelpEntries(language).then(items => { if (active) setFound({ language, items }) })
     return () => { active = false }
-  }, [])
-  return items
+  }, [language])
+  return found?.language === language && found.items.length ? found.items : text.faqs
 }
 
 export function byCategory(items: HelpItem[]): { category: string; items: HelpItem[] }[] {

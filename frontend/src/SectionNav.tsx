@@ -4,6 +4,7 @@ import { openAssistant } from './assistant/openAssistant'
 import { MenuIcon } from './icons'
 import NotificationBell from './notifications/NotificationBell'
 import { currentSection, sections } from './sections'
+import { useText } from './i18n/language'
 import './sectionNav.css'
 
 type SectionNavProps = {
@@ -16,6 +17,7 @@ type SectionNavProps = {
 // The navigation panel on every signed-in page (US 15). It shows where the traveler is and,
 // below 700px, collapses into one button that opens the list.
 export default function SectionNav({ pathname, routed = false }: SectionNavProps) {
+  const text = useText().sections
   const [open, setOpen] = useState(false)
   const current = currentSection(pathname)
   // Starting an application (/apply) has no assistant yet: the side panel stays off the application
@@ -27,11 +29,11 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
   }
 
   return (
-    <nav className={`section-nav${open ? ' is-open' : ''}`} aria-label="Your sections" onKeyDown={closeOnEscape}>
+    <nav className={`section-nav${open ? ' is-open' : ''}`} aria-label={text.nav} onKeyDown={closeOnEscape}>
       <button type="button" className="section-nav-toggle" aria-expanded={open} aria-controls="section-nav-list"
         data-activity-id="menu-toggle" onClick={() => setOpen(value => !value)}>
         <MenuIcon open={open} />
-        <span>{current ? current.label : 'Your sections'}</span>
+        <span>{current ? text[current.id] : text.nav}</span>
       </button>
       <ul id="section-nav-list" className="section-nav-list">
         {sections.map(section => {
@@ -43,8 +45,8 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
             onClick: close,
           }
           return <li key={section.id}>
-            {routed ? <Link to={section.href} {...props}>{section.label}</Link>
-              : <a href={section.href} {...props}>{section.label}</a>}
+            {routed ? <Link to={section.href} {...props}>{text[section.id]}</Link>
+              : <a href={section.href} {...props}>{text[section.id]}</a>}
           </li>
         })}
       </ul>
@@ -52,7 +54,7 @@ export default function SectionNav({ pathname, routed = false }: SectionNavProps
         onClick={() => { close(); openAssistant() }}>
         <svg className="icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
-        <span className="visually-hidden">Assistant</span><span aria-hidden="true" className="section-nav-ask" />
+        <span className="visually-hidden">{text.assistant}</span><span aria-hidden="true" className="section-nav-ask" />
       </button>}
       <NotificationBell pathname={pathname} routed={routed} />
     </nav>
