@@ -11,7 +11,7 @@ in. The router stores answers and calls these functions.
 """
 
 from calendar import monthrange
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import date, timedelta
 from functools import cache
 from pathlib import Path
@@ -189,13 +189,27 @@ def _check_values(question_id: str, source: Question, values: list) -> None:
 
 
 @cache
-def load_questionnaire(questionnaire_id: str) -> Questionnaire:
+def packaged_questionnaire(questionnaire_id: str) -> Questionnaire:
     if not re.fullmatch(r"[a-z0-9-]+", questionnaire_id):
         raise KeyError(questionnaire_id)
     path = QUESTIONNAIRE_DIR / f"{questionnaire_id}.json"
     if not path.is_file():
         raise KeyError(questionnaire_id)
     return Questionnaire.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+PUBLISHED: dict[str, Questionnaire] = {}
+check_published: Callable[[], None] = lambda: None
+
+
+def load_questionnaire(questionnaire_id: str) -> Questionnaire:
+    """The version published in the back-office (CMPS271-123) if there is one, else the packaged file.
+
+    app.requirements installs `check_published`, which re-reads the database every few seconds and
+    replaces `PUBLISHED` when a publish or rollback changed it.
+    """
+    check_published()
+    return PUBLISHED.get(questionnaire_id) or packaged_questionnaire(questionnaire_id)
 
 
 def available_questionnaires() -> list[Questionnaire]:

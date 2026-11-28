@@ -446,3 +446,40 @@ class Payment(SQLModel, table=True):
     idempotency_key: str = Field(max_length=64)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     paid_at: datetime | None = None
+
+
+class RequirementRevision(SQLModel, table=True):
+    """One published version of a destination's requirements, from the back-office (CMPS271-123).
+
+    Append-only: a publish or a rollback (`kind`) adds a row, and the newest row per questionnaire is what
+    travelers see. `restored_revision` is the revision a rollback returned to, 0 for the packaged files.
+    `questionnaire` and `guide` are the whole published files, both None for a return to the packaged files.
+    Erasing the author's account keeps the row (it is the service's data) and clears `author_id`.
+    """
+
+    __table_args__ = (UniqueConstraint("questionnaire_id", "revision", name="uq_requirementrevision_revision"),)
+    id: int | None = Field(default=None, primary_key=True)
+    questionnaire_id: str = Field(max_length=60, index=True)
+    revision: int
+    kind: str = Field(max_length=20)
+    restored_revision: int | None = None
+    questionnaire: Any = Field(default=None, sa_column=Column(JSON, nullable=True), repr=False)
+    guide: Any = Field(default=None, sa_column=Column(JSON, nullable=True), repr=False)
+    questionnaire_version: int
+    note: str = Field(max_length=500)
+    author_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class RequirementDraft(SQLModel, table=True):
+    """Unpublished back-office edits to a destination's requirements (CMPS271-123), one per questionnaire.
+
+    `base_revision` is the revision the edits started from (0: the packaged files), so a publish in between is noticed.
+    """
+
+    questionnaire_id: str = Field(primary_key=True, max_length=60)
+    questionnaire: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
+    guide: Any = Field(sa_column=Column(JSON, nullable=False), repr=False)
+    base_revision: int
+    author_id: int | None = Field(default=None, foreign_key="traveler.id", index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

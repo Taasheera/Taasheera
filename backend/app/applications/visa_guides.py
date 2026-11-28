@@ -155,14 +155,29 @@ def build_guide(questionnaire: flow.Questionnaire, data: GuideData, checked_on: 
 
 @lru_cache(maxsize=1)
 def load_guides() -> tuple[VisaGuide, ...]:
-    """Every guide, in the questionnaires' order. Fails loudly if the data and questionnaires disagree."""
+    """Every packaged guide, in the questionnaires' order. Fails loudly if the data and questionnaires disagree."""
     data = GuidesFile.model_validate(json.loads(GUIDES_FILE.read_text(encoding="utf-8")))
     by_id = {guide.questionnaire_id: guide for guide in data.guides}
-    questionnaires = flow.available_questionnaires()
+    questionnaires = [flow.packaged_questionnaire(path.stem) for path in sorted(flow.QUESTIONNAIRE_DIR.glob("*.json"))]
     missing = {q.id for q in questionnaires} ^ set(by_id)
     if missing:
         raise ValueError(f"visa_guides.json and the questionnaires disagree about: {sorted(missing)}")
     return tuple(build_guide(q, by_id[q.id], data.checked_on) for q in questionnaires)
+
+
+PUBLISHED: dict[str, tuple[GuideData, str]] = {}
+
+
+def current_guides() -> tuple[VisaGuide, ...]:
+    """The guides travelers see: a version published in the back-office (CMPS271-123) in place of the packaged one.
+
+    `PUBLISHED` holds those facts and their `checked_on` date by questionnaire id; app.requirements replaces it
+    together with flow.PUBLISHED.
+    """
+    questionnaires = {q.id: q for q in flow.available_questionnaires()}
+    published = PUBLISHED
+    return tuple(build_guide(questionnaires[guide.id], *published[guide.id]) if guide.id in published else guide
+                 for guide in load_guides())
 
 
 def create_visa_guides_router() -> APIRouter:
@@ -173,11 +188,11 @@ def create_visa_guides_router() -> APIRouter:
     def list_guides(response: Response):
         """Every supported visa's guide. Public: no sign-in needed."""
         response.headers["Cache-Control"] = CACHE
-        return load_guides()
+        return current_guides()
 
     @router.get("/{guide_id}", response_model=VisaGuide)
     def get_guide(guide_id: str, response: Response):
-        guide = next((guide for guide in load_guides() if guide.id == guide_id), None)
+        guide = next((guide for guide in current_guides() if guide.id == guide_id), None)
         if guide is None:
             raise HTTPException(status_code=404, detail="We don't have a guide for that visa.")
         response.headers["Cache-Control"] = CACHE

@@ -12,7 +12,8 @@ from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
 from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken, Payment,
-                        NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile)
+                        NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile,
+                        RequirementDraft, RequirementRevision)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
 from test_applications_api import ANSWERS, SPECIMEN, answer_all, api, start  # noqa: F401  (pytest fixture)
@@ -51,6 +52,10 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(Payment(id=f"payment{traveler_id}".ljust(32, "0"), traveler_id=traveler_id, application_id=application_id,
                             amount_minor=11700, currency="EUR", line_items=[], status="paid",
                             idempotency_key=f"checkout{traveler_id}".ljust(16, "0")))
+        session.add(RequirementRevision(questionnaire_id=f"example-{traveler_id}", revision=1, kind="rollback",
+                                        restored_revision=0, questionnaire_version=1, note="Synthetic", author_id=traveler_id))
+        session.add(RequirementDraft(questionnaire_id=f"example-{traveler_id}", questionnaire={}, guide={},
+                                     base_revision=1, author_id=traveler_id))
         session.commit()
         # One agent run that typed a field and took a screenshot of the page.
         run = queue.enqueue(session, session.get(Application, application_id), "schengen-harmonised")

@@ -27,7 +27,8 @@ from .activity import record_activity
 from .agent.storage import AgentFiles
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
                      DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
-                     PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, SupportingDocument, Traveler, TravelerProfile)
+                     PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, RequirementDraft, RequirementRevision,
+                     SupportingDocument, Traveler, TravelerProfile)
 from .documents.storage import DocumentStorage
 from .security import throttle
 
@@ -36,7 +37,7 @@ from .security import throttle
 class Holding:
     model: type[SQLModel]
     # How this traveler's rows are found: by traveler id, through their applications, or their sessions.
-    owner: str  # "traveler", "application", "session" or "run" (the form-filling agent's runs)
+    owner: str  # "traveler", "application", "session", "run" (the form-filling agent's runs) or "author"
     exported: bool
     # Columns never exported because they are secrets, not information about the traveler.
     omit: tuple[str, ...] = ()
@@ -67,6 +68,11 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
     Holding(AccountErasure, "traveler", False, reason="Exists only while an account is being deleted."),
+    Holding(RequirementRevision, "author", False,
+            reason="Destination requirements an admin published (the audit events are exported); "
+                   "deletion keeps them and removes the author."),
+    Holding(RequirementDraft, "author", False,
+            reason="Unpublished destination requirements; deletion keeps them and removes the author."),
 )
 
 
@@ -80,6 +86,8 @@ def owned_rows(session: Session, holding: Holding, traveler_id: int) -> list[SQL
     elif holding.owner == "run":
         query = select(model).where(model.run_id.in_(
             select(AgentRun.id).where(AgentRun.traveler_id == traveler_id)))
+    elif holding.owner == "author":
+        query = select(model).where(model.author_id == traveler_id)
     elif holding.owner == "session":
         query = select(model).where(model.session_id.in_(
             select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)))

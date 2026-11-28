@@ -88,21 +88,30 @@ class GuideView(BaseModel):
     total: int
 
 
-@lru_cache(maxsize=None)
-def load_guide(questionnaire_id: str) -> PortalGuide | None:
+def read_guide(questionnaire_id: str) -> PortalGuide | None:
     path = DIRECTORY / f"{questionnaire_id}.json"
     if not path.is_file():
         return None
-    guide = PortalGuide.model_validate_json(path.read_bytes())
-    questionnaire = flow.load_questionnaire(questionnaire_id)
+    return PortalGuide.model_validate_json(path.read_bytes())
+
+
+def check_guide(guide: PortalGuide, questionnaire: flow.Questionnaire) -> None:
+    """Every field's questions exist; also run on a questionnaire edited in the back-office (CMPS271-123)."""
     for section in guide.sections:
         for field in section.fields:
             for source in field.sources:
                 if source != "account_email" and not questionnaire.question(source.split(".")[0]):
-                    raise ValueError(f"Unknown question {source} in portal guide {questionnaire_id}.")
+                    raise ValueError(f"Unknown question {source} in portal guide {questionnaire.id}.")
             if (field.formatter == "fixed") != (field.fixed is not None):
-                raise ValueError(f"Invalid fixed field in portal guide {questionnaire_id}.")
+                raise ValueError(f"Invalid fixed field in portal guide {questionnaire.id}.")
     date.today().strftime(guide.date_format)
+
+
+@lru_cache(maxsize=None)
+def load_guide(questionnaire_id: str) -> PortalGuide | None:
+    guide = read_guide(questionnaire_id)
+    if guide is not None:
+        check_guide(guide, flow.load_questionnaire(questionnaire_id))
     return guide
 
 

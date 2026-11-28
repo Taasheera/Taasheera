@@ -22,7 +22,7 @@ from .auth import COOKIE_NAME, check_origin, clear_refresh_cookie, revoke_all_se
 from .google_auth import verify_google_token
 from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, GoogleIdentity,
                      Notification, NotificationPreference, PassportExpiry, PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, ResetRateLimit, SupportingDocument,
-                     Traveler, TravelerProfile, Application, ApplicationAnswer)
+                     Traveler, TravelerProfile, Application, ApplicationAnswer, RequirementDraft, RequirementRevision)
 from .agent.queue import delete_traveler_runs
 from .security import throttle
 
@@ -76,6 +76,8 @@ def complete_erasure(session: Session, traveler_id: int, storage, directory: Pat
         session.execute(delete(model).where(model.traveler_id == traveler_id))
     session.execute(delete(DocumentAccess).where(or_(DocumentAccess.traveler_id == traveler_id,
                                                    DocumentAccess.actor_id == traveler_id)))
+    for model in (RequirementRevision, RequirementDraft):
+        session.execute(update(model).where(model.author_id == traveler_id).values(author_id=None))
     # Remove account-specific admission keys. Shared IP limits expire after 15 minutes.
     if traveler is not None:
         digests = [hmac.new(secret.encode(), value.encode(), hashlib.sha256).hexdigest()

@@ -57,6 +57,8 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, lazy: later(() => import('./admin/AdminUsers')) },
       { path: 'users/:userId', lazy: later(() => import('./admin/AdminUser')) },
+      { path: 'requirements', lazy: later(() => import('./admin/Requirements')) },
+      { path: 'kpis', lazy: later(() => import('./admin/Kpis')) },
       { path: '*', element: <NotFound /> },
     ],
   },

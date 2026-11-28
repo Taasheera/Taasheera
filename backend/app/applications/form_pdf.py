@@ -46,26 +46,37 @@ class FormValue(BaseModel):
     manual: bool = False
 
 
-@lru_cache(maxsize=None)
-def load_form(questionnaire_id: str) -> tuple[FormMap, bytes] | None:
+def read_form(questionnaire_id: str) -> tuple[FormMap, bytes] | None:
     path = DIRECTORY / f"{questionnaire_id}.json"
     if not path.is_file():
         return None
-    form = FormMap.model_validate_json(path.read_bytes())
-    pdf = path.with_suffix(".pdf").read_bytes()
+    return FormMap.model_validate_json(path.read_bytes()), path.with_suffix(".pdf").read_bytes()
+
+
+def check_form(form: FormMap, pdf: bytes, questionnaire: flow.Questionnaire) -> None:
+    """The map fits the PDF and its questions exist; also run on a back-office questionnaire (CMPS271-123)."""
     if sha256(pdf).hexdigest() != form.sha256:
         raise ValueError("The embassy PDF does not match its field map.")
     keys = set()
-    questionnaire = flow.load_questionnaire(questionnaire_id)
     pages = PdfReader(BytesIO(pdf)).pages
     for field in form.fields:
         if field.key in keys or not 1 <= field.page <= len(pages) or bool(field.box) == bool(field.marks):
             raise ValueError("Invalid embassy PDF field map.")
         keys.add(field.key)
-        if not field.sources or any(source != "account_email" and not questionnaire.question(source.split(".")[0])
-                                    for source in field.sources):
-            raise ValueError("Unknown question in embassy PDF field map.")
-    return form, pdf
+        if not field.sources:
+            raise ValueError(f"Field {field.key} in embassy PDF field map has no question.")
+        missing = [source for source in field.sources
+                   if source != "account_email" and not questionnaire.question(source.split(".")[0])]
+        if missing:
+            raise ValueError(f"Unknown question {missing[0]} in embassy PDF field map.")
+
+
+@lru_cache(maxsize=None)
+def load_form(questionnaire_id: str) -> tuple[FormMap, bytes] | None:
+    form = read_form(questionnaire_id)
+    if form is not None:
+        check_form(*form, flow.load_questionnaire(questionnaire_id))
+    return form
 
 
 def build_values(form: FormMap, questionnaire: flow.Questionnaire, answers: flow.Answers,

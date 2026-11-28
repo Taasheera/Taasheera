@@ -335,6 +335,9 @@ def create_applications_router(
             return answers, cleared
         for question_id in cleared:
             session.delete(rows.pop(question_id))
+        if application.questionnaire_version != questionnaire.version:
+            application.questionnaire_version = questionnaire.version
+            session.add(application)
         status = _status(questionnaire, answers)
         if cleared or status != application.status:
             previous, application.status = application.status, status

@@ -259,3 +259,13 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     off on t3.micro). Fixed 422 message and an `upload_rejected` event. Behind released `malware_scan`.
 53. **Payments (CMPS271-106/108/109).** Preparation and the packet are free; a paid `Payment` unlocks the agent run (402 before).
     `payments/quote.py`: first visa-guide fee + `SERVICE_FEE` in its currency, minor units, discount hook. Simulated provider only (no card data), idempotent key, audited PDF receipt.
+54. **Requirements without a deploy (CMPS271-123).** `/admin/requirements`: admins edit a destination's questionnaire
+    (JSON) and visa guide facts (form), save a draft, check it with `destination_check` (the loaders' own models,
+    portal and PDF maps, an ordinary-answer walk) and publish or roll back to any revision or the packaged files.
+    Append-only, audited `RequirementRevision` rows; the newest replaces the files in `flow.load_questionnaire` and
+    public guides. Structural changes get a higher version that applications take on their next read (recorded ones
+    stay). `RequirementStore` reloads at once where it publishes, elsewhere within 2 s. Erasure keeps rows, clears
+    the author. Behind `requirements_editor`.
+55. **KPIs (CMPS271-140).** Admin-only `GET /admin/kpis?start&end` (at most 180 days): grouped-query aggregates for
+    traveler accounts (active users, sign-ins, funnel, time to complete, agent and assistant rates, API errors, per
+    destination), never ids, names or answers. `/admin/kpis` shows plain CSS bars and downloads CSV. Behind `kpi_dashboard`.
