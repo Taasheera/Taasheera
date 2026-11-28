@@ -20,7 +20,7 @@ def upgrade():
         sa.Column("kind", sqlmodel.sql.sqltypes.AutoString(length=30), nullable=False),
         sa.Column("language", sqlmodel.sql.sqltypes.AutoString(length=5), nullable=False),
         sa.Column("body", sa.Text(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=False),
+        sa.Column("updated_at", sqlmodel.sql.sqltypes.UTCDateTime(), nullable=False),
         sa.ForeignKeyConstraint(["application_id"], ["application.id"]),
         sa.ForeignKeyConstraint(["traveler_id"], ["traveler.id"]),
         sa.PrimaryKeyConstraint("id"),
