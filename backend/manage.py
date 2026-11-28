@@ -1,21 +1,69 @@
 """Operator commands that need database access, never an HTTP endpoint.
 
 Usage: python manage.py set-role --email someone@example.com --role admin
+       python manage.py seed-load-test --users 300   (staging only; see loadtest/README.md)
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+import bcrypt
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import update
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.activity import activity_directory_from_environment, record_activity
+from app.config import deploy_environment
+from app.consent import PRIVACY_POLICY_VERSION
 from app.database import build_engine
-from app.models import ROLES, AccountErasure, Traveler
+from app.models import ROLES, AccountErasure, PrivacyConsent, Traveler
 from app.schema import require_current_schema
+
+LOAD_TEST_DOMAIN = "example.com"  # Reserved for documentation: never a real person's address.
+
+
+def seed_load_test(users: int, prefix: str) -> str:
+    """Synthetic accounts for the capacity tests: `<prefix>-0001@example.com`..., each with the current
+    privacy policy accepted, plus `<prefix>-admin@example.com` (admin) for health sampling.
+
+    Staging only. Passwords come from LOADTEST_PASSWORD / LOADTEST_ADMIN_PASSWORD, never arguments,
+    so they stay out of shell history and logs. Existing accounts are left as they are.
+    """
+    if deploy_environment() != "staging":
+        raise SystemExit("seed-load-test runs only on staging (DEPLOY_ENVIRONMENT=staging).")
+    password = os.environ.get("LOADTEST_PASSWORD", "")
+    admin_password = os.environ.get("LOADTEST_ADMIN_PASSWORD", "")
+    if len(password) < 12 or len(admin_password) < 12:
+        raise SystemExit("Set LOADTEST_PASSWORD and LOADTEST_ADMIN_PASSWORD (12 characters or more).")
+    if not 1 <= users <= 5000:
+        raise SystemExit("Choose between 1 and 5000 users.")
+    # One hash for every traveler (same cost as sign-up, so signing in costs what it does for real).
+    traveler_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode("ascii")
+    admin_hash = bcrypt.hashpw(admin_password.encode(), bcrypt.gensalt(rounds=12)).decode("ascii")
+    engine = build_engine()
+    created = 0
+    try:
+        require_current_schema(engine)
+        with Session(engine) as session:
+            existing = set(session.exec(select(Traveler.email).where(Traveler.email.startswith(f"{prefix}-"))).all())
+            accounts = [(f"{prefix}-{index:04d}@{LOAD_TEST_DOMAIN}", f"Load Test {index:04d}", "traveler", traveler_hash)
+                        for index in range(1, users + 1)]
+            accounts.append((f"{prefix}-admin@{LOAD_TEST_DOMAIN}", "Load Test Admin", "admin", admin_hash))
+            for email, name, role, password_hash in accounts:
+                if email in existing:
+                    continue
+                traveler = Traveler(name=name, email=email, password_hash=password_hash, role=role)
+                session.add(traveler)
+                session.flush()
+                session.add(PrivacyConsent(traveler_id=traveler.id, policy_version=PRIVACY_POLICY_VERSION))
+                created += 1
+            session.commit()
+    finally:
+        engine.dispose()
+    return f"{created} synthetic accounts created; {users + 1 - created} already existed."
 
 
 def set_role(email: str, role: str) -> str:
@@ -78,6 +126,10 @@ def main(argv: list[str] | None = None) -> None:
         "set-role", help="Give an existing account the traveler, support or admin role.", allow_abbrev=False)
     set_role_parser.add_argument("--email", required=True)
     set_role_parser.add_argument("--role", required=True, choices=ROLES)
+    seed_parser = commands.add_parser(
+        "seed-load-test", help="Create synthetic load-test accounts on staging.", allow_abbrev=False)
+    seed_parser.add_argument("--users", type=int, default=300)
+    seed_parser.add_argument("--prefix", default="loadtest", choices=["loadtest"])
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] not in commands.choices and argv[0] not in ("-h", "--help"):
         # Anything before the command would be echoed as an invalid choice.
@@ -86,6 +138,9 @@ def main(argv: list[str] | None = None) -> None:
     if unknown:
         # argparse would echo them, and a mistaken '--password ...' must not reach shared logs.
         parser.error("unrecognized arguments (not shown)")
+    if args.command == "seed-load-test":
+        print(seed_load_test(args.users, args.prefix))
+        return
     print(set_role(args.email, args.role))
 
 

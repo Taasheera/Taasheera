@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Taasheera host and edge monitoring (Sprint 5): one CloudWatch dashboard and four alarms that email
+  the owner. Uses only free AWS metrics (EC2, EBS, CloudFront); application, database, queue and
+  storage health are on /backoffice and in Sentry. Within the free tier (3 dashboards, 10 alarms).
+Parameters:
+  AppStackName:
+    Type: String
+    Description: The application stack this watches (taasheera or taasheera-staging); used in names.
+  InstanceId:
+    Type: AWS::EC2::Instance::Id
+  DataVolumeId:
+    Type: String
+    AllowedPattern: 'vol-[a-f0-9]+'
+  DistributionId:
+    Type: String
+    AllowedPattern: '[A-Z0-9]+'
+  AlertEmail:
+    Type: String
+    Default: mhs86@mail.aub.edu
+    AllowedValues: [mhs86@mail.aub.edu]
+Resources:
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${AppStackName} alerts'
+      Subscription:
+        # AWS emails a confirmation link first; alerts arrive only after it is confirmed.
+        - Endpoint: !Ref AlertEmail
+          Protocol: email
+  HostCpuHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppStackName}-host-cpu-high'
+      AlarmDescription: Host CPU above 80% for 15 minutes; the API is likely saturated.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Dimensions: [{Name: InstanceId, Value: !Ref InstanceId}]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+  HostCpuCreditsLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppStackName}-cpu-credits-low'
+      AlarmDescription: >-
+        Burstable CPU credits nearly spent. With standard credits the host then drops to its
+        baseline share of a CPU, and every request slows down.
+      Namespace: AWS/EC2
+      MetricName: CPUCreditBalance
+      Dimensions: [{Name: InstanceId, Value: !Ref InstanceId}]
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 20
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: missing
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+  HostStatusCheckFailed:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppStackName}-status-check-failed'
+      AlarmDescription: The EC2 instance or system status check is failing.
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions: [{Name: InstanceId, Value: !Ref InstanceId}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+  EdgeServerErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppStackName}-edge-5xx'
+      AlarmDescription: More than 5% of CloudFront responses were 5xx for 10 minutes.
+      Namespace: AWS/CloudFront
+      MetricName: 5xxErrorRate
+      Dimensions: [{Name: DistributionId, Value: !Ref DistributionId}, {Name: Region, Value: Global}]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${AppStackName}-health'
+      DashboardBody: !Sub |
+        {
+          "periodOverride": "inherit",
+          "widgets": [
+            {"type": "text", "x": 0, "y": 0, "width": 24, "height": 2, "properties": {"markdown":
+              "## ${AppStackName}\nHost, disk and edge metrics. API latency, database, queue, email, payments and storage: **/backoffice** (System health). Errors and traces: **Sentry**."}},
+            {"type": "metric", "x": 0, "y": 2, "width": 8, "height": 6, "properties": {
+              "title": "Host CPU %", "region": "${AWS::Region}", "stat": "Average", "period": 60,
+              "metrics": [["AWS/EC2", "CPUUtilization", "InstanceId", "${InstanceId}"]],
+              "yAxis": {"left": {"min": 0, "max": 100}}}},
+            {"type": "metric", "x": 8, "y": 2, "width": 8, "height": 6, "properties": {
+              "title": "CPU credits (balance, used)", "region": "${AWS::Region}", "stat": "Average", "period": 300,
+              "metrics": [["AWS/EC2", "CPUCreditBalance", "InstanceId", "${InstanceId}"],
+                          [".", "CPUCreditUsage", ".", "."]]}},
+            {"type": "metric", "x": 16, "y": 2, "width": 8, "height": 6, "properties": {
+              "title": "Host network bytes", "region": "${AWS::Region}", "stat": "Sum", "period": 60,
+              "metrics": [["AWS/EC2", "NetworkIn", "InstanceId", "${InstanceId}"],
+                          [".", "NetworkOut", ".", "."]]}},
+            {"type": "metric", "x": 0, "y": 8, "width": 8, "height": 6, "properties": {
+              "title": "Edge requests", "region": "us-east-1", "stat": "Sum", "period": 60,
+              "metrics": [["AWS/CloudFront", "Requests", "DistributionId", "${DistributionId}", "Region", "Global"]]}},
+            {"type": "metric", "x": 8, "y": 8, "width": 8, "height": 6, "properties": {
+              "title": "Edge error rate %", "region": "us-east-1", "stat": "Average", "period": 60,
+              "metrics": [["AWS/CloudFront", "5xxErrorRate", "DistributionId", "${DistributionId}", "Region", "Global"],
+                          [".", "4xxErrorRate", ".", ".", ".", "."]]}},
+            {"type": "metric", "x": 16, "y": 8, "width": 8, "height": 6, "properties": {
+              "title": "Data disk operations", "region": "${AWS::Region}", "stat": "Sum", "period": 60,
+              "metrics": [["AWS/EBS", "VolumeReadOps", "VolumeId", "${DataVolumeId}"],
+                          [".", "VolumeWriteOps", ".", "."]]}},
+            {"type": "alarm", "x": 0, "y": 14, "width": 24, "height": 3, "properties": {
+              "title": "Alarms", "alarms": [
+                "${HostCpuHigh.Arn}", "${HostCpuCreditsLow.Arn}", "${HostStatusCheckFailed.Arn}", "${EdgeServerErrors.Arn}"]}}
+          ]
+        }
+Outputs:
+  DashboardName:
+    Value: !Ref Dashboard
+  AlertTopicArn:
+    Value: !Ref AlertTopic

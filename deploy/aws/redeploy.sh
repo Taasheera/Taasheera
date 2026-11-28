@@ -43,6 +43,10 @@ if os.environ.get('TAASHEERA_PRESERVE_CONFIG') == '1':
     names.append('TAASHEERA_PRESERVE_CONFIG')
 if os.environ.get('TAASHEERA_GOOGLE_CLIENT_ID'):
     names.append('TAASHEERA_GOOGLE_CLIENT_ID')
+# Optional monitoring settings; bootstrap.sh validates them and ignores them when preserving config.
+names += [n for n in ('TAASHEERA_SENTRY_DSN', 'TAASHEERA_SENTRY_FRONTEND_DSN', 'TAASHEERA_SENTRY_TRACES_SAMPLE_RATE',
+                      'TAASHEERA_SENTRY_FRONTEND_TRACES_SAMPLE_RATE', 'TAASHEERA_DEPLOY_ENVIRONMENT')
+          if os.environ.get(n)]
 prefix = ' '.join(f'{n}={shlex.quote(os.environ[n])}' for n in names)
 command = (f"echo {shlex.quote(script)} | base64 -d > /tmp/taasheera-bootstrap.sh && "
            "export TAASHEERA_ORIGIN_TOKEN=$(sed -n 's/^ORIGIN_TOKEN=//p' /srv/taasheera/private/app.env) && "

@@ -13,6 +13,8 @@ services:
     image: ${TAASHEERA_API_IMAGE:-taasheera-api}
     build:
       context: ../../backend
+      args:
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     env_file: ${TAASHEERA_ENV_FILE:-/etc/taasheera/app.env}
     volumes:
       - ${TAASHEERA_DATA_DIR:-/srv/taasheera}:/app/storage
@@ -62,6 +64,11 @@ services:
     build:
       context: ../..
       dockerfile: deploy/aws/Dockerfile.web
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT:-}
+        VITE_SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+        VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-0}
     ports:
       - "80:80"
     depends_on:

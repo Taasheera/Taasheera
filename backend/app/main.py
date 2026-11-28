@@ -4,7 +4,9 @@ import shutil
 from pathlib import Path
 from typing import Annotated
 
+import anyio.to_thread
 import bcrypt
+from filelock import FileLock, Timeout
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,7 +16,7 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, SQLModel, select
 
-from .database import build_engine
+from .database import api_threads, build_engine
 from .applications.form_review import create_form_review_router
 from .applications.portal_guide import create_portal_guide_router
 from .applications.router import application_context, application_proposal, create_applications_router
@@ -29,7 +31,7 @@ from .google_auth import create_google_auth_router
 from .config import AuthSettings, RuntimeSettings
 from .features import FeatureFlags, create_features_router
 from .schema import require_current_schema
-from .observability import install_private_no_store, install_request_logging
+from .observability import install_private_no_store, install_query_timing, install_request_logging
 from .mailer import LogNotificationSender, MailSettings, NotificationSender, ResetSender, SesResetSender, SmtpResetSender
 from .notification_jobs import (NotificationJobThread, job_interval, logger as notification_logger,
                                 record_passport_expiry, run_notification_jobs, show_logs as show_notification_logs)
@@ -44,8 +46,10 @@ from .consent import create_consent_requirement, create_consent_router
 from .notification_preferences import create_notification_preferences_router
 from .applications.visa_guides import create_visa_guides_router
 from .document_audit import create_document_audit_router, record_document_access
-from .monitoring import configure_monitoring
+from .load_testing import fake_assistant_from_environment
+from .monitoring import configure_monitoring, install_tracing, monitored_job
 from .privacy import create_privacy_router, retry_erasures
+from .system_health import create_system_health_router
 from .notifications import create_notifications_router
 from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
@@ -58,6 +62,9 @@ from .personal_data import create_data_export_router
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
                notification_sender: NotificationSender | None = None) -> FastAPI:
     engine = build_engine(database_url)
+    install_query_timing(engine)
+    # Before the engine is used, so database spans are recorded from the first request.
+    monitoring = configure_monitoring()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -76,15 +83,16 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
         else:
             require_current_schema(engine)
         retry_erasures(engine, passport_storage, app.state.activity_directory, app.state.auth_settings.jwt_secret)
+        set_api_threads()
         notification_jobs = start_notification_jobs(app)
-        monitoring = configure_monitoring()
         try:
             yield
         finally:
             if notification_jobs is not None:
                 notification_jobs.stop()
+                notification_jobs.leader.release()
             if monitoring is not None:
-                monitoring.close()
+                monitoring.flush(timeout=2)
             engine.dispose()
 
     def start_notification_jobs(app: FastAPI) -> NotificationJobThread | None:
@@ -99,18 +107,38 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                       if app.state.runtime_settings.environment == "development" else None)
         if not interval or sender is None:
             return None
+        # With several API worker processes (WEB_CONCURRENCY), exactly one runs the timer: whichever
+        # takes this lock on the shared storage volume first. The others serve requests only.
+        app.state.account_lock_directory.parent.mkdir(parents=True, exist_ok=True)
+        leader = FileLock(str(app.state.account_lock_directory.parent / ".notification-jobs.lock"))
+        try:
+            leader.acquire(timeout=0)
+        except Timeout:
+            return None
         # The first allowed origin is the site itself (TAASHEERA_SITE_URL in production).
         site_url = app.state.auth_settings.allowed_origins[0]
         show_notification_logs()
-        jobs = NotificationJobThread(lambda: run_notification_jobs(engine, sender, site_url), interval)
+
+        def run_jobs():
+            # A Sentry cron monitor alerts when a run fails or stops arriving.
+            with monitored_job("notification-jobs", interval_seconds=interval):
+                run_notification_jobs(engine, sender, site_url)
+
+        jobs = NotificationJobThread(run_jobs, interval)
+        jobs.leader = leader
         jobs.start()
         return jobs
+
+    def set_api_threads() -> None:
+        """Match the endpoint thread pool to API_THREADS, the size build_engine gave the SQLite pool."""
+        anyio.to_thread.current_default_thread_limiter().total_tokens = api_threads()
 
     app = FastAPI(title="Taasheera traveler API", lifespan=lifespan)
     app.state.engine = engine
     install_request_logging(app)
     install_admin_no_store(app)
     install_private_no_store(app)
+    install_tracing(app, monitoring)
 
     @app.get("/health/live", include_in_schema=False)
     def liveness():
@@ -147,6 +175,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_data_export_router(get_session, current_traveler, passport_storage))
     app.include_router(create_auth_router(get_session, current_traveler))
     app.include_router(create_admin_router(get_session, current_traveler, passport_storage))
+    app.include_router(create_system_health_router(get_session, current_traveler, passport_storage.root))
     app.include_router(create_sessions_router(get_session, current_traveler))
     app.include_router(create_google_auth_router(get_session, current_traveler))
     app.include_router(create_password_reset_router(get_session))
@@ -242,6 +271,10 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     assistant_model = os.environ.get("ASSISTANT_MODEL", DEFAULT_MODEL)
     assistant_ask = gemini_ask(assistant_client, assistant_model) if assistant_client else None
     assistant_ask_tools = gemini_ask_tools(assistant_client, assistant_model) if assistant_client else None
+    # Staging capacity tests only: a fixed-latency stand-in instead of Gemini (app/load_testing.py).
+    stand_in = fake_assistant_from_environment()
+    if stand_in is not None:
+        assistant_ask, assistant_ask_tools = stand_in
 
     def load_application_context(traveler_id: int, application_id: str) -> str | None:
         with Session(engine) as session:

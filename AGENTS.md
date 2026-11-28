@@ -56,7 +56,7 @@ Coordinate shared interfaces with owners. Track scope in Jira. Ahmad Zeid leads 
 | Agent | Playwright headless Chromium in a separate `worker` container (same image as the API) | Browser starts per run; ~430 MB peak measured, 640 MB cap |
 | Hosting | EC2 in `us-east-1`, Docker Compose API + worker + nginx, CloudFront HTTPS | Live: https://d3vh2ppjrlwxee.cloudfront.net; custom domain not configured |
 | CI/deploy | GitHub Actions tests/builds, OIDC/ECR deploy-from-main workflow | AWS/GitHub setup required; immutable API/web images are pulled by digest; Render/Netlify/Lambda are alternatives |
-| Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry/uptime tooling | Sentry/uptime opt in; metadata allowlists omit private data |
+| Audit/monitoring | `ActivityEvent`, private JSONL, document access log; Sentry errors/traces/crons/uptime, `/admin/system-health`, CloudWatch | Sentry opt in by DSN; metadata allowlists omit private data; `docs/MONITORING_RUNBOOK.md` |
 | Backups | Nightly systemd/S3 backup and restore tooling | Provision private bucket/host permissions; see `docs/BACKUPS.md` |
 
 Layout: `backend/app/` (`applications/` pure engine/router and destination JSON questionnaires,
@@ -243,3 +243,10 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     portal's date format, and what only the traveler answers. Owner-only `GET /applications/{id}/portal-guide`.
     PDF and agent share `form_wording.py` for choice wording. Packet: `GET .../documents/packet` (CMPS271-71).
     `POST /assistant/draft` (Help me write this) drafts one long free-text answer; the traveler edits and saves it.
+50. **Infrastructure monitoring (Sprint 5).** Images bake the Sentry release `taasheera@<commit>`; `DEPLOY_ENVIRONMENT`
+    (staging/production) is the Sentry environment. Traces are opt in (`SENTRY_TRACES_SAMPLE_RATE`) and keep only route
+    templates, timings and placeholder SQL; jobs use `monitored_job` (cron check-ins). Request logs add `db_ms`, `db_queries`
+    and `trace_id` and accept a safe `X-Request-ID`. Admin `GET /admin/system-health` feeds `/backoffice`;
+    `deploy/aws/monitoring.sh <stack>` creates the CloudWatch dashboard and alarms. Capacity: `loadtest/` (k6 mixed
+    workload, `capacity.py` loop) against the `taasheera-staging` stack; results in `docs/CAPACITY_REPORT.md`.
+    Staging-only switches (`THROTTLE_EXEMPT_IPS`, `ASSISTANT_FAKE_LATENCY_MS`, `seed-load-test`) refuse to start elsewhere.

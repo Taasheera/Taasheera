@@ -511,7 +511,8 @@ def test_request_logs_use_route_templates_and_exclude_sensitive_input(tmp_path):
         ("/health/live", 200), ("/auth/register", 201),
         ("/passports/{upload_id}/extract", 401),
     ]
-    assert all(set(record) == {"request_id", "method", "route", "status", "duration_ms"}
+    # Database time and query count per request (Sprint 5); trace_id only appears with Sentry tracing on.
+    assert all(set(record) == {"request_id", "method", "route", "status", "duration_ms", "db_ms", "db_queries"}
                for record in records)
     for secret in ("private-password-123", "private@example.com", "Sensitive Name", "private-upload-id"):
         assert secret not in output.getvalue()
