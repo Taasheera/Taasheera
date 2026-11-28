@@ -177,6 +177,14 @@
           ]
         },
         {
+          "id": "itinerary_cities",
+          "type": "text",
+          "required": false,
+          "max_length": 300,
+          "prompt": "Which cities or places will you visit, in order?",
+          "help": "For example: Paris, Lyon, Nice. It goes into your itinerary and cover letter. Leave it empty if you'll stay in one place."
+        },
+        {
           "id": "uk_address",
           "type": "text",
           "prompt": "Where will you stay in the UK? Give the name and address.",

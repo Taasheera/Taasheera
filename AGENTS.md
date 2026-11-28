@@ -290,3 +290,27 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `GeneratedDocument` stores only the traveler's edit per kind and language; DELETE regenerates, `outdated` when
     answers changed after it. `/applications/{id}/generated`; the packet uses the letter/itinerary PDF for a
     checklist item with no upload. Released flag `generated_documents`.
+59. **Trip questions and refusal risks (CMPS271-42/52/54).** Every questionnaire asks which places the trip visits
+    (`itinerary_cities`, optional; China and India keep their own); Schengen asks `funds_amount` (optional, euros).
+    `applications/risk.py` adds `kind="risk"` warnings to the completeness check, never blocking: funds below the
+    main destination's published minimum (`funds_minimums.json`, EU Annex 18 reference amounts in cents, `checked_on`,
+    only countries whose figures agree), a previous refusal, unemployment with self-funding, and an arrival sooner
+    than the usual decision time. Re-check the amounts before each release.
+60. **Submit it yourself (CMPS271-72/73/77/79).** `applications/tracking.py`, routes under `/applications/{id}`:
+    `GET /submission` gives the stage, the destination's hand-in steps (`submission_guides.json`, official https
+    links; fee and decision time from `visa_guides.json`) ticked from what the application shows, the appointment and
+    the appointment day checklist (required uploads marked). `PUT/DELETE /appointment` records a timezone-aware
+    time within a year; e-Visas have none. `ApplicationTracking` (one row per application) keeps the appointment,
+    reminder level and first packet download. The notification timer reminds a week and a day before
+    (`appointment_reminder`, "reminders" emails); it only runs with `email_notifications` on. The stage, the
+    timeline's "prepared" events and the next step move on by themselves; the status stays the traveler's to record.
+    Released flag `submission_tracking`.
+61. **Group trips (CMPS271-81).** `applications/group.py`: one account adds travelers to a trip; each gets an ordinary
+    application linked by `GroupMember` (`group_id` = the lead's id). Shared trip answers (`SHARED`: where, when, stay,
+    purpose) are copied from the lead with source `group` on creation and on "Copy trip answers to everyone"; members
+    never get the owner's passport/profile suggestions. Deleting the lead leaves members standalone; deleting a member
+    lowers the lead's `group_size` (the multi-traveler discount reads it). Released flag `group_applications`.
+62. **Appointment slots (CMPS271-85).** No embassy publishes readable slots (booking sites need a sign-in and a
+    CAPTCHA), so `tracking.slot_feed` reads `APPOINTMENT_SLOTS_FILE` (operator-maintained JSON) or the packaged demo
+    `appointment_slots.json` (`in_days` from today). A traveler watches per application (`PUT /slot-watch`); the
+    notification timer sends `appointment_slot` once per new earliest slot before the trip, until an appointment is booked.

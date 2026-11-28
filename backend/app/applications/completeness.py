@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from . import flow
 
-Kind = Literal["missing", "ineligible", "inconsistent"]
+Kind = Literal["missing", "ineligible", "inconsistent", "risk"]
 Severity = Literal["blocking", "warning"]
 
 # Passport fields compared with the profile, and how each is named to the traveler.
@@ -96,6 +96,10 @@ def check(questionnaire: flow.Questionnaire, answers: flow.Answers, today: date,
                          question_id=question.id, step_id=questionnaire.step_of(question.id).id)
                    for question in flow.visible_questions(questionnaire, answers) if question.id not in answers]
     issues += _passport_issues(questionnaire, answers, latest_passport, profile)
+    if not stopped:
+        # Funds below the embassy's minimum and other refusal risks (CMPS271-52/54): warnings only.
+        from .risk import risk_issues
+        issues += risk_issues(questionnaire, answers, today)
     issues += document_issues or []
     progress = flow.progress(questionnaire, answers)
     missing_documents = sum(issue.kind == "missing" and issue.severity == "blocking"

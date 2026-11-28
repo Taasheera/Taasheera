@@ -135,7 +135,13 @@ def upgrade() -> None:
                                      ("add_index", "ix_faqentry_updated_by"),
                                      ("add_table", "generateddocument"),
                                      ("add_index", "ix_generateddocument_traveler_id"),
-                                     ("add_index", "ix_generateddocument_application_id")}
+                                     ("add_index", "ix_generateddocument_application_id"),
+                                     ("add_table", "applicationtracking"),
+                                     ("add_index", "ix_applicationtracking_traveler_id"),
+                                     ("add_index", "ix_applicationtracking_appointment_at"),
+                                     ("add_table", "groupmember"),
+                                     ("add_index", "ix_groupmember_traveler_id"),
+                                     ("add_index", "ix_groupmember_group_id")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

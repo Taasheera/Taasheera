@@ -1,0 +1,11 @@
+{
+  "note": "Demo feed. No embassy publishes appointment slots in a form we can read automatically (booking sites need a sign-in and a CAPTCHA), so this file stands in for one. Set APPOINTMENT_SLOTS_FILE to a JSON file in the same shape, kept up to date by an operator, to use real slots. in_days counts from today.",
+  "slots": {
+    "schengen-short-stay": [{"centre": "Visa application centre, Beirut", "in_days": 9}, {"centre": "Visa application centre, Beirut", "in_days": 16}],
+    "uk-standard-visitor": [{"centre": "UK visa application centre, Beirut", "in_days": 6}],
+    "us-b2-tourist": [{"centre": "US Embassy, Beirut", "in_days": 41}],
+    "canada-visitor": [{"centre": "Canada visa application centre, Beirut", "in_days": 12}],
+    "japan-short-stay": [{"centre": "Embassy of Japan, Beirut", "in_days": 8}],
+    "china-tourist-l": [{"centre": "Chinese Visa Application Service Center, Beirut", "in_days": 5}]
+  }
+}

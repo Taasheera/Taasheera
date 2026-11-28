@@ -28,7 +28,7 @@ export type Question = {
 // For a document: what it is and the file name, such as "Flight reservation (booking.pdf)".
 export type Suggestion = { value: AnswerValue; source: 'passport' | 'profile' | 'document'; document?: string | null }
 export type UploadHint = { requirement: string; label: string }
-export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile' | 'document'
+export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile' | 'document' | 'group'
 export type Answer = { question: Question; value: AnswerValue; source: AnswerSource }
 // The last three are recorded by the traveler (US 55); the first three follow from the answers.
 export type Status = 'DRAFT' | 'INELIGIBLE' | 'ANSWERS_COMPLETE' | 'SUBMITTED' | 'APPROVED' | 'REFUSED'
@@ -138,7 +138,7 @@ export async function saveAnswer(id: string, questionId: string, answer: AnswerI
 
 // The completeness check (US 13). Mirrors backend/app/applications/completeness.py.
 export type CheckIssue = {
-  kind: 'missing' | 'ineligible' | 'inconsistent'
+  kind: 'missing' | 'ineligible' | 'inconsistent' | 'risk'
   severity: 'blocking' | 'warning'
   message: string
   question_id: string | null
@@ -156,7 +156,7 @@ export async function checkApplication(id: string): Promise<CheckReport> {
 }
 // Archive, delete and the timeline (US 79, US 20). Mirrors backend/app/applications/lifecycle.py.
 export type TimelineEvent = {
-  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'submitted' | 'approved' | 'refused' | 'archived'
+  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'prepared' | 'appointment' | 'submitted' | 'approved' | 'refused' | 'archived'
   at: string
   text: string
   question_id: string | null

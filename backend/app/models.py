@@ -581,3 +581,39 @@ class GeneratedDocument(SQLModel, table=True):
     language: str = Field(max_length=5)
     body: str = Field(sa_column=Column(Text, nullable=False), repr=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ApplicationTracking(SQLModel, table=True):
+    """What happened to an application after the answers (CMPS271-72/73/77/79), one row per application.
+
+    The embassy appointment the traveler recorded and which of its reminders went out, and when the
+    print-ready packet was first downloaded. Kept apart from `Application`, whose `updated_at` means
+    "the answers last changed".
+    """
+
+    application_id: str = Field(primary_key=True, foreign_key="application.id", max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    appointment_at: datetime | None = Field(default=None, index=True)
+    appointment_location: str | None = Field(default=None, max_length=200)
+    # Reminder levels already sent for this appointment, in days before it (7, then 1); a new time resets it.
+    appointment_reminded_days: int | None = None
+    packet_downloaded_at: datetime | None = None
+    # The traveler asked to hear when an appointment slot opens (CMPS271-85), and the last slot they were told about.
+    watch_slots: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    slot_notified: str | None = Field(default=None, max_length=120)
+
+
+class GroupMember(SQLModel, table=True):
+    """One traveler's application in a group trip (CMPS271-81), all under the account that started it.
+
+    `group_id` is the first (lead) application's id; the lead has a row too. Each member's application
+    is an ordinary application with its own passport and answers; the trip answers are copied from the lead.
+    """
+
+    application_id: str = Field(primary_key=True, foreign_key="application.id", max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    group_id: str = Field(max_length=32, index=True)
+    # How the account owner names this traveler ("Maria", "My son"), shown on the group's list.
+    label: str = Field(max_length=60)
+    lead: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

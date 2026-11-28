@@ -70,6 +70,9 @@ export default function DocumentChecklist({ applicationId, version, onChange, fo
           <h3>Checklist</h3>
           <span>{done} of {required.length} required</span>
         </div>
+        {checklist.requirements.length === 0 && <p className="docs-note">
+          The list depends on your answers, so it fills in as you answer the questions. Your passport is read
+          separately, on the passport step.</p>}
         <ul className="docs-list">
           {checklist.requirements.map(requirement => <RequirementRow key={requirement.id} applicationId={applicationId}
             requirement={requirement} readOnly={checklist.read_only} onChange={reload} />)}

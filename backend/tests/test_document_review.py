@@ -91,4 +91,4 @@ def test_with_the_flag_off_the_completeness_check_is_unchanged(api, monkeypatch)
     answer_all(client, headers[0], application_id)
     report = check(client, headers[0], application_id)
     assert report["ready"] and report["readiness_score"] == 100
-    assert report["answered"] == report["total"] == 19 and not report["issues"]
+    assert report["answered"] == report["total"] == 21 and not report["issues"]

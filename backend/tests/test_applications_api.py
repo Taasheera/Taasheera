@@ -29,9 +29,9 @@ ANSWERS = {
     "surname_at_birth": "", "place_of_birth": "Zenith", "country_of_birth": "UTO", "marital_status": "single",
     "home_address": {"line1": "1 Example Street", "city": "Beirut", "country": "LBN"},
     "phone": "+961 71 123 456", "occupation": "retired",
-    "arrival_date": ARRIVAL.isoformat(), "departure_date": (ARRIVAL + timedelta(days=10)).isoformat(),
+    "arrival_date": ARRIVAL.isoformat(), "departure_date": (ARRIVAL + timedelta(days=10)).isoformat(), "itinerary_cities": "",
     "entries": "single", "accommodation": "host", "host_details": "Lina Example, 2 Rue Exemple, Paris",
-    "funding": "self", "previous_fingerprints": False,
+    "funding": "self", "funds_amount": "€2,500", "previous_fingerprints": False,
 }
 START = {"destination": "SCHENGEN", "visa_type": "short_stay"}
 
@@ -105,7 +105,7 @@ def test_starting_creates_a_draft_that_asks_the_first_question(api):
     assert state["status"] == "DRAFT" and state["answers"] == [] and state["stopped"] is None
     assert state["current"]["id"] == "main_destination" and len(state["current"]["options"]) == 29
     assert state["progress"] == {"step_number": 1, "step_count": 4, "step_title": "Eligibility",
-                                 "answered": 0, "total": 18}
+                                 "answered": 0, "total": 20}
     assert [step["title"] for step in state["steps"]] == ["Eligibility", "Passport", "About you", "Your trip"]
     with Session(app.state.engine) as session:
         stored = session.get(Application, state["id"])
@@ -150,7 +150,7 @@ def test_the_list_names_each_application_by_its_answers(api):
     assert [item["id"] for item in listed] == [first, second]
     assert listed[0]["place"] == "France" and listed[0]["trip_date"] == ARRIVAL.isoformat()
     assert listed[0]["destination_label"] == "Schengen area" and listed[0]["status"] == "DRAFT"
-    assert listed[0]["answered"] == 13 and listed[0]["total"] == 18
+    assert listed[0]["answered"] == 13 and listed[0]["total"] == 20
     assert listed[1]["place"] is None and listed[1]["trip_date"] is None and listed[1]["group_size"] == 2
     assert listed[1]["answered"] == 0
     # Timestamps carry their UTC offset even though SQLite stores them without one.

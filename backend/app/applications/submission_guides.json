@@ -1,0 +1,70 @@
+{
+  "checked_on": "2026-11-28",
+  "note": "How a traveler hands in each visa application themselves (CMPS271-72). Links are official pages only. The fee and decision time come from visa_guides.json.",
+  "guides": {
+    "schengen-short-stay": {
+      "form": "Download the filled Schengen application form from the official form section on this page, check every field, then print it and sign it by hand.",
+      "appointment": true,
+      "booking": "Book an appointment at the consulate of your main destination, or at the visa centre it uses (often VFS Global or TLScontact). Apply at least 15 days, and at most 6 months, before you travel.",
+      "booking_link": {"label": "The EU's guide to applying for a Schengen visa", "url": "https://home-affairs.ec.europa.eu/policies/schengen/visa-policy/applying-schengen-visa_en"},
+      "hand_in": "At the appointment, hand in your signed form and documents, pay the fee, and give your fingerprints and a photo unless they were taken in the last 59 months.",
+      "collect": "The consulate keeps your passport while it decides, then returns it with the visa or a refusal letter."
+    },
+    "uk-standard-visitor": {
+      "form": "Fill in the online application on GOV.UK, copying each value from the official form guide on this page, then pay the fee online.",
+      "appointment": true,
+      "booking": "After paying, book a biometrics appointment at the visa application centre for your country (TLScontact or VFS Global).",
+      "booking_link": {"label": "GOV.UK: apply for a Standard Visitor visa", "url": "https://www.gov.uk/standard-visitor/apply-standard-visitor-visa"},
+      "hand_in": "At the appointment, give your fingerprints and photo and hand in or upload your supporting documents.",
+      "collect": "Your passport is returned with the visa, or a letter explaining a refusal."
+    },
+    "us-b2-tourist": {
+      "form": "Fill in the DS-160 online, copying each value from the official form guide on this page, and print the confirmation page.",
+      "appointment": true,
+      "booking": "Pay the fee and book your visa interview at the US embassy or consulate on the official scheduling site.",
+      "booking_link": {"label": "US Department of State: visitor visa", "url": "https://travel.state.gov/content/travel/en/us-visas/tourism-visit/visitor.html"},
+      "hand_in": "Go to the interview with your passport, the DS-160 confirmation page, the fee receipt and your documents. The officer decides at or after the interview.",
+      "collect": "If approved, the embassy returns your passport with the visa by courier or for collection."
+    },
+    "canada-visitor": {
+      "form": "Apply online with an IRCC account, copying each value from the official form guide on this page, and pay the fee and biometrics fee.",
+      "appointment": true,
+      "booking": "After you get the biometrics instruction letter, book an appointment at a visa application centre.",
+      "booking_link": {"label": "Government of Canada: apply for a visitor visa", "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/apply-visitor-visa.html"},
+      "hand_in": "At the appointment, give your fingerprints and photo with the instruction letter and your passport.",
+      "collect": "If approved, IRCC asks for your passport to place the visa, then returns it."
+    },
+    "japan-short-stay": {
+      "form": "Fill in the visa application form, copying each value from the official form guide on this page, print it and sign it.",
+      "appointment": true,
+      "booking": "Check with the Embassy of Japan in your country, or the agency it designates, how to hand in the application and whether you need an appointment.",
+      "booking_link": {"label": "Ministry of Foreign Affairs of Japan: visa", "url": "https://www.mofa.go.jp/j_info/visit/visa/index.html"},
+      "hand_in": "Hand in the signed form, your passport, a photo and your documents in person.",
+      "collect": "Collect your passport on the date the embassy gives you."
+    },
+    "china-tourist-l": {
+      "form": "Fill in the online visa application form, copying each value from the official form guide on this page, then print and sign it.",
+      "appointment": true,
+      "booking": "Book an appointment at the Chinese Visa Application Service Center, or the embassy, for your country.",
+      "booking_link": {"label": "Chinese Visa Application Service Center", "url": "https://www.visaforchina.cn"},
+      "hand_in": "Hand in the signed form, your passport and documents, give your fingerprints if asked, and pay the fee.",
+      "collect": "Collect your passport with the visa on the date you're given."
+    },
+    "india-tourist": {
+      "form": "Apply for the e-Visa on the official website, copying each value from the official form guide on this page, upload your photo and passport page, and pay online.",
+      "appointment": false,
+      "booking": "The e-Visa needs no appointment. Keep the application ID so you can check its status.",
+      "booking_link": {"label": "Indian Visa Online", "url": "https://indianvisaonline.gov.in/evisa/"},
+      "hand_in": "When it's granted, print the e-Visa and carry it with your passport when you travel.",
+      "collect": "The e-Visa arrives by email; show it with your passport on arrival in India."
+    },
+    "turkiye-evisa": {
+      "form": "Apply on the official e-Visa website, copying each value from the official form guide on this page, and pay online.",
+      "appointment": false,
+      "booking": "The e-Visa needs no appointment. Use only the official website.",
+      "booking_link": {"label": "Republic of Türkiye e-Visa", "url": "https://www.evisa.gov.tr/en/"},
+      "hand_in": "Download and print the e-Visa as soon as it's issued.",
+      "collect": "Carry the printed e-Visa with your passport, and show it when you arrive."
+    }
+  }
+}
