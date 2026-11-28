@@ -18,6 +18,7 @@ def risks(answers, questionnaire=SCHENGEN, today=TODAY):
 
 @pytest.mark.parametrize("text, euros", [
     ("€2,500", 2500), ("2500 EUR", 2500), ("about 3.000 euros", 3000), ("1 200", 1200), ("900.50", 900),
+    ("3k euros", 3000), ("5K", 5000), ("1.5 thousand", 1500), ("2,5k", 2500), ("2.500,50 €", 2500),
     ("$3000", None), ("2000 USD", None), ("150,000,000 LBP", None), ("a lot", None),
 ])
 def test_declared_funds_are_read_in_euros_only(text, euros):
@@ -44,10 +45,10 @@ def test_funds_below_the_minimum_are_flagged_with_the_official_source():
     assert not [i for i in risks(dict(ANSWERS, funds_amount="€2,000")) if i.question_id == "funds_amount"]
 
 
-def test_missing_or_foreign_currency_funds_ask_for_euros():
+def test_missing_funds_are_not_flagged_and_foreign_currency_asks_for_euros():
     without = {key: value for key, value in ANSWERS.items() if key != "funds_amount"}
-    [missing] = [i for i in risks(without) if i.question_id == "funds_amount"]
-    assert "Say how much money" in missing.message
+    assert not [i for i in risks(without) if i.question_id == "funds_amount"]
+    assert not [i for i in risks(dict(ANSWERS, funds_amount="")) if i.question_id == "funds_amount"]
     [dollars] = [i for i in risks(dict(ANSWERS, funds_amount="$5000")) if i.question_id == "funds_amount"]
     assert "in euros" in dollars.message
 
@@ -88,3 +89,17 @@ def test_every_questionnaire_asks_which_places_the_trip_visits():
     assert "funds_amount" in {question.id for question in SCHENGEN.questions()}
     assert SCHENGEN.question("funds_amount").required is False
     assert ARRIVAL > TODAY
+
+
+def test_finished_applications_are_not_reopened_by_the_questions_added_later():
+    from test_application_flow import ANSWERS as FLOW_ANSWERS, TODAY as FLOW_TODAY
+
+    before = {key: value for key, value in FLOW_ANSWERS.items() if key not in flow.ADDED_LATER}
+    kept, _ = flow.reconcile(SCHENGEN, before, FLOW_TODAY)
+    assert kept["itinerary_cities"] == "" and kept["funds_amount"] == ""
+    assert flow.next_question(SCHENGEN, kept) is None
+    report = completeness.check(SCHENGEN, before, FLOW_TODAY)
+    assert report.ready and not [i for i in report.issues if i.kind == "missing"]
+    # A traveler still answering is asked them in the usual order.
+    draft = {key: before[key] for key in list(before)[:18]}
+    assert flow.reconcile(SCHENGEN, draft, FLOW_TODAY)[0].get("itinerary_cities") is None
