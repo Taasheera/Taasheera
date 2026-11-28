@@ -57,7 +57,7 @@ export default function CompletenessCheck({ applicationId, documents = 0, upload
       {report.issues.length > 0 && <ul className="completeness-issues">
         {report.issues.map((issue, index) => <li key={`${issue.question_id}-${index}`}
           className={`completeness-issue is-${issue.severity}`}>
-          <span className="completeness-tag">{issue.severity === 'blocking' ? 'Must fix' : 'Check'}</span> {issue.message}
+          <span className="completeness-tag">{issue.severity === 'blocking' ? 'Must fix' : issue.kind === 'risk' ? 'Refusal risk' : 'Check'}</span> {issue.message}
           {issue.question_id && fixQuestion && <>
             {' '}<button type="button" className="chat-explain" onClick={() => fixQuestion(issue.question_id!)}>Go to question</button></>}
           {issue.document_id && fixDocument && <>

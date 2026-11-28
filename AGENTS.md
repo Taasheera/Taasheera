@@ -283,3 +283,9 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     the check and timeline, never files; each read is a `support_view` access shown as "Support". Help requests open
     only through `support_requests.create_support_request` (website and Telegram; no chat copied); replies notify.
     Admins edit `FaqEntry` at `/admin/help`; public `GET /help-content`, migration-seeded, bundled fallback. `support_tools`.
+59. **Trip questions and refusal risks (CMPS271-42/52/54).** Every questionnaire asks which places the trip visits
+    (`itinerary_cities`, optional; China and India keep their own); Schengen asks `funds_amount` (optional, euros).
+    `applications/risk.py` adds `kind="risk"` warnings to the completeness check, never blocking: funds below the
+    main destination's published minimum (`funds_minimums.json`, EU Annex 18 reference amounts in cents, `checked_on`,
+    only countries whose figures agree), a previous refusal, unemployment with self-funding, and an arrival sooner
+    than the usual decision time. Re-check the amounts before each release.

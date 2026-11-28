@@ -118,8 +118,8 @@ test('passport upload, the application chat and the dashboard work end to end', 
     const answers: Record<string, unknown> = {
       surname_at_birth: '', place_of_birth: 'Zenith', country_of_birth: 'UTO', marital_status: 'single',
       home_address: { line1: '1 Example Street', city: 'Beirut', country: 'LBN' }, phone: '+961 71 123 456',
-      occupation: 'retired', arrival_date: day(30), departure_date: day(40), entries: 'single',
-      accommodation: 'host', host_details: 'Lina Example, 2 Rue Exemple, Paris', funding: 'self', previous_fingerprints: false,
+      occupation: 'retired', arrival_date: day(30), departure_date: day(40), itinerary_cities: '', entries: 'single',
+      accommodation: 'host', host_details: 'Lina Example, 2 Rue Exemple, Paris', funding: 'self', funds_amount: '€2,500', previous_fingerprints: false,
     }
     let state = await (await api.get(`/applications/${applicationId}`, { headers })).json()
     while (state.current) {

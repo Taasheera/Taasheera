@@ -162,6 +162,14 @@
           ]
         },
         {
+          "id": "itinerary_cities",
+          "type": "text",
+          "required": false,
+          "max_length": 300,
+          "prompt": "Which cities or places will you visit, in order?",
+          "help": "For example: Paris, Lyon, Nice. It goes into your itinerary and cover letter. Leave it empty if you'll stay in one place."
+        },
+        {
           "id": "funds",
           "type": "text",
           "prompt": "How much money will you have for the trip, and in which currency?",
