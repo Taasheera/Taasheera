@@ -107,7 +107,12 @@ def upgrade() -> None:
                                      ("add_index", "ix_privacyconsent_traveler_id"),
                                      ("add_index", "ix_notification_email_status"),
                                      ("add_table", "notificationpreference"),
-                                     ("add_table", "passportexpiry")}
+                                     ("add_table", "passportexpiry"),
+                                     ("add_table", "payment"),
+                                     ("add_index", "ix_payment_traveler_id"),
+                                     ("add_index", "ix_payment_application_id"),
+                                     ("add_index", "ix_payment_status"),
+                                     ("add_index", "ix_payment_created_at")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

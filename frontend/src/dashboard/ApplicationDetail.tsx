@@ -10,6 +10,7 @@ import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
 import AgentPanel from '../agent/AgentPanel'
+import PaymentStep from '../payments/PaymentStep'
 import FormReview from '../submission/FormReview'
 import { applicationName, DISCLAIMER, formatDateTime, useTraveler } from './helpers'
 import { Flag, SignedOut, StatusChip } from './shared'
@@ -34,6 +35,7 @@ function Detail({ applicationId }: { applicationId: string }) {
   const [attempt, setAttempt] = useState(0)
   // An upload changes what the PDF review checks, so it reviews again (it is keyed on this).
   const [documentChanges, setDocumentChanges] = useState(0)
+  const [payments, setPayments] = useState(0)
 
   const name = loaded && typeof loaded === 'object' && !(loaded instanceof Error) ? applicationName(loaded.application) : null
   useEffect(() => { document.title = `${name ?? 'Your application'} | Taasheera` }, [name])
@@ -129,7 +131,11 @@ function Detail({ applicationId }: { applicationId: string }) {
       <PortalGuide key={application.updated_at} applicationId={application.id} focused={hash === '#official-form'} />}
 
     <Feature name="agent_form_filling">
-      <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
+      <Feature name="payments">
+        <PaymentStep applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`}
+          onPaid={() => setPayments(count => count + 1)} />
+      </Feature>
+      <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}-${payments}`} />
     </Feature>
 
     <div className="dash-detail-grid">

@@ -11,7 +11,7 @@ from app.agent import queue
 from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
-from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
+from app.models import (ActivityEvent, Application, DocumentAccess, SupportingDocument, GoogleIdentity, PasswordResetChallenge, PasswordResetToken, Payment,
                         NotificationPreference, PassportExpiry, PrivacyConsent, RefreshToken, Traveler, TravelerProfile)
 from app.personal_data import PERSONAL_DATA, owned_rows
 from app.privacy import erase_account
@@ -48,6 +48,9 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
         session.add(PasswordResetToken(token_hash=f"r{traveler_id}".ljust(64, "0"), traveler_id=traveler_id, expires_at=2**31))
         session.add(ActivityEvent(traveler_id=traveler_id, event_type="sign_in", identifier="email_password", outcome="success"))
         session.add(DocumentAccess(traveler_id=traveler_id, actor_id=traveler_id, upload_id=upload_id, purpose="review_read"))
+        session.add(Payment(id=f"payment{traveler_id}".ljust(32, "0"), traveler_id=traveler_id, application_id=application_id,
+                            amount_minor=11700, currency="EUR", line_items=[], status="paid",
+                            idempotency_key=f"checkout{traveler_id}".ljust(16, "0")))
         session.commit()
         # One agent run that typed a field and took a screenshot of the page.
         run = queue.enqueue(session, session.get(Application, application_id), "schengen-harmonised")
@@ -104,6 +107,7 @@ def test_the_download_is_one_zip_with_every_kind_of_data(api):  # noqa: F811
     assert data["notificationpreference"][0]["reminders"] is False
     assert data["passportexpiry"][0]["expiry_date"] == "2031-04-15"
     assert data["notification"][0]["kind"] == "status_changed"
+    assert data["payment"][0]["amount_minor"] == 11700 and data["payment"][0]["status"] == "paid"
     # Who opened my passport: staff are not named, and my staff work on someone else is not mine to download.
     assert {row["accessed_by"] for row in data["documentaccess"]} >= {"Authorized staff"}
     assert all(row["traveler_id"] == 1 and "actor_id" not in row for row in data["documentaccess"])

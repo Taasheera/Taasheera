@@ -59,6 +59,7 @@ from .documents.review import booking_documents as booking_texts, completeness_i
 from .documents.storage import DocumentStorage
 from .personal_data import create_data_export_router
 from .upload_scan import DOCUMENT_TYPES, PASSPORT_TYPES, UploadScanner, create_upload_check
+from .payments.router import create_payments_router
 
 
 def create_app(database_url: str | None = None, *, reset_sender: ResetSender | None = None,
@@ -263,6 +264,7 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
     app.include_router(create_form_review_router(get_session, current_traveler,
         lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"), document_issues))
     app.include_router(create_portal_guide_router(get_session, current_traveler))
+    app.include_router(create_payments_router(get_session, current_traveler))
 
     def record_document_activity(traveler_id: int, event_type: str, requirement: str):
         with Session(engine) as session:

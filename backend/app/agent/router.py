@@ -2,13 +2,14 @@
 
 Under /applications/{application_id}/agent, owner-checked like every application route and hidden
 behind the `agent_form_filling` flag. Starting a run is the traveler's explicit request; the agent
-never submits, so there is no route that could.
+never submits, so there is no route that could. While `payments` is on, a run is the step payment
+unlocks (CMPS271-108): starting one before paying answers 402.
 """
 
 from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -16,6 +17,7 @@ from ..applications import flow
 from ..applications.router import is_recorded
 from ..features import require_feature
 from ..models import AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, Traveler
+from ..payments.gate import PAYMENT_REQUIRED, payment_due
 from . import queue
 from .sites import site_for
 from .storage import AgentFiles
@@ -62,12 +64,30 @@ class AgentState(BaseModel):
     # Whether a new run may start now, and if not, why (for the button's explanation).
     can_start: bool
     reason: str | None
+    payment_required: bool = False
     runs: list[RunPublic]
 
 
 def _public(run: AgentRun) -> RunPublic:
     return RunPublic(id=run.id, site=run.site, status=run.status, message=run.message, created_at=run.created_at,
                      started_at=run.started_at, finished_at=run.finished_at)
+
+
+def blocker(session: Session, application: Application) -> str | None:
+    if site_for(application.questionnaire_id) is None:
+        return "The agent can't fill this destination's online form yet."
+    if application.archived_at is not None:
+        return "This application is archived. Restore it first."
+    if is_recorded(application):
+        return "This application is recorded as submitted."
+    questionnaire = flow.load_questionnaire(application.questionnaire_id)
+    rows = session.exec(select(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
+    answers, _ = flow.reconcile(questionnaire, {row.question_id: row.value for row in rows}, date.today())
+    if flow.stop_message(questionnaire, answers) or flow.next_question(questionnaire, answers) is not None:
+        return "Answer every question first: the agent fills the form only from your confirmed answers."
+    if queue.active_run(session, application.id):
+        return "The agent is already filling this form."
+    return None
 
 
 def create_agent_router(get_session, current_traveler, files: AgentFiles) -> APIRouter:
@@ -90,41 +110,29 @@ def create_agent_router(get_session, current_traveler, files: AgentFiles) -> API
             raise HTTPException(status_code=404, detail="Agent run not found.")
         return run
 
-    def blocker(session: Session, application: Application) -> str | None:
-        if site_for(application.questionnaire_id) is None:
-            return "The agent can't fill this destination's online form yet."
-        if application.archived_at is not None:
-            return "This application is archived. Restore it first."
-        if is_recorded(application):
-            return "This application is recorded as submitted."
-        questionnaire = flow.load_questionnaire(application.questionnaire_id)
-        rows = session.exec(select(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
-        answers, _ = flow.reconcile(questionnaire, {row.question_id: row.value for row in rows}, date.today())
-        if flow.stop_message(questionnaire, answers) or flow.next_question(questionnaire, answers) is not None:
-            return "Answer every question first: the agent fills the form only from your confirmed answers."
-        if queue.active_run(session, application.id):
-            return "The agent is already filling this form."
-        return None
-
     def runs(session: Session, application: Application) -> list[AgentRun]:
         return list(session.exec(select(AgentRun).where(AgentRun.application_id == application.id)
                                  .order_by(AgentRun.created_at.desc(), AgentRun.id)).all())
 
     @router.get("", response_model=AgentState)
-    def state(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
+    def state(application_id: str, traveler: TravelerDep, session: SessionDep, request: Request, response: Response):
         application = owned(session, traveler, application_id)
         site = site_for(application.questionnaire_id)
         reason = blocker(session, application)
+        unpaid = reason is None and payment_due(request.app.state.feature_flags, session, application)
         response.headers["Cache-Control"] = "private, no-store"
-        return AgentState(site=SitePublic(id=site.id, name=site.name, is_demo=site.start_url.startswith("file:")) if site else None, can_start=reason is None,
-                          reason=reason, runs=[_public(run) for run in runs(session, application)])
+        return AgentState(site=SitePublic(id=site.id, name=site.name, is_demo=site.start_url.startswith("file:")) if site else None, can_start=reason is None and not unpaid,
+                          reason=PAYMENT_REQUIRED if unpaid else reason, payment_required=unpaid,
+                          runs=[_public(run) for run in runs(session, application)])
 
     @router.post("/runs", response_model=RunPublic, status_code=201, dependencies=[Depends(check_origin)])
-    def start(application_id: str, traveler: TravelerDep, session: SessionDep, response: Response):
+    def start(application_id: str, traveler: TravelerDep, session: SessionDep, request: Request, response: Response):
         application = owned(session, traveler, application_id)
         reason = blocker(session, application)
         if reason:
             raise HTTPException(status_code=409, detail=reason)
+        if payment_due(request.app.state.feature_flags, session, application):
+            raise HTTPException(status_code=402, detail=PAYMENT_REQUIRED)
         response.headers["Cache-Control"] = "private, no-store"
         return _public(queue.enqueue(session, application, site_for(application.questionnaire_id).id))
 

@@ -4,7 +4,7 @@ import { apiFetch } from './api'
 // The same names as FLAGS in backend/app/features.py. The server decides which are on:
 // every flag in development, none on the live site until FEATURE_<NAME>=true is set there.
 export type FeatureName = 'agent_form_filling' | 'supporting_documents' | 'embassy_pdf' | 'passport_scan_quality'
-  | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'malware_scan'
+  | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'malware_scan' | 'payments'
 export type FeatureFlags = Partial<Record<FeatureName, boolean>>
 
 const HIDDEN: FeatureFlags = {}
