@@ -119,7 +119,20 @@ def upgrade() -> None:
                                      ("add_table", "requirementdraft"),
                                      ("add_index", "ix_requirementdraft_author_id"),
                                      ("add_index", "ix_supportingdocument_file_id"),
-                                     ("add_table", "passportpages")}
+                                     ("add_table", "passportpages"),
+                                     ("add_table", "supportaccessgrant"),
+                                     ("add_index", "ix_supportaccessgrant_traveler_id"),
+                                     ("add_index", "ix_supportaccessgrant_application_id"),
+                                     ("add_index", "ix_supportaccessgrant_expires_at"),
+                                     ("add_table", "supportrequest"),
+                                     ("add_index", "ix_supportrequest_traveler_id"),
+                                     ("add_index", "ix_supportrequest_application_id"),
+                                     ("add_index", "ix_supportrequest_status"),
+                                     ("add_index", "ix_supportrequest_assignee_id"),
+                                     ("add_index", "ix_supportrequest_created_at"),
+                                     ("add_table", "faqentry"),
+                                     ("add_index", "ix_faqentry_language"),
+                                     ("add_index", "ix_faqentry_updated_by")}
                     if len(signatures) != len(differences) or signatures not in (
                         migrated_only | session_details, migrated_only | profile | session_details,
                         migrated_only | otp | profile | session_details,

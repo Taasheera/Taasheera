@@ -25,10 +25,11 @@ from sqlmodel import Session, SQLModel, select
 
 from .activity import record_activity
 from .agent.storage import AgentFiles
+from .document_audit import accessor
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
-                     DocumentAccess, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
+                     DocumentAccess, FaqEntry, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
                      PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, RequirementDraft, RequirementRevision,
-                     SupportingDocument, Traveler, TravelerProfile)
+                     SupportAccessGrant, SupportRequest, SupportingDocument, Traveler, TravelerProfile)
 from .models import PassportPages
 from .documents.storage import DocumentStorage
 from .security import throttle
@@ -38,7 +39,7 @@ from .security import throttle
 class Holding:
     model: type[SQLModel]
     # How this traveler's rows are found: by traveler id, through their applications, or their sessions.
-    owner: str  # "traveler", "application", "session", "run" (the form-filling agent's runs) or "author"
+    owner: str  # "traveler", "application", "session", "run" (the form-filling agent's runs), "author" or "editor"
     exported: bool
     # Columns never exported because they are secrets, not information about the traveler.
     omit: tuple[str, ...] = ()
@@ -66,6 +67,9 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(AgentScreenshot, "run", True),
     Holding(Payment, "traveler", True),
     Holding(PassportPages, "traveler", True),
+    Holding(SupportAccessGrant, "traveler", True),
+    Holding(SupportRequest, "traveler", True, omit=("assignee_id",)),
+    Holding(FaqEntry, "editor", True),
     Holding(RefreshToken, "session", False, reason="Only hashes of sign-in tokens."),
     Holding(PasswordResetChallenge, "traveler", False, reason="Only a short-lived, hashed reset code."),
     Holding(PasswordResetToken, "traveler", False, reason="Only a short-lived, hashed reset token."),
@@ -93,6 +97,8 @@ def owned_rows(session: Session, holding: Holding, traveler_id: int) -> list[SQL
     elif holding.owner == "session":
         query = select(model).where(model.session_id.in_(
             select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)))
+    elif holding.owner == "editor":
+        query = select(model).where(model.updated_by == traveler_id)
     else:
         # DocumentAccess: rows about this traveler's own passport only, never their staff work on others.
         query = select(model).where(model.traveler_id == traveler_id)
@@ -116,7 +122,7 @@ STAFF_ID = re.compile(r"^admin:\d+:")
 def _row(holding: Holding, row: SQLModel, traveler_id: int) -> dict:
     data = {column: _value(getattr(row, column)) for column in holding.model.model_fields if column not in holding.omit}
     if holding.model is DocumentAccess:
-        data["accessed_by"] = "You" if row.actor_id == traveler_id else "Authorized staff"
+        data["accessed_by"] = accessor(row, traveler_id)
     if holding.model is ActivityEvent:
         data["identifier"] = STAFF_ID.sub("admin:", data["identifier"])
     return data
@@ -135,7 +141,10 @@ data.json        Everything we hold about you, one section per kind of record:
                  passport files, and
                  which privacy policy versions you accepted, and when, and your
                  passport's expiry date if you saved one, for reminders, and how
-                 many blank visa pages you said your passport has.
+                 many blank visa pages you said your passport has. Also
+                 your help requests with support's replies and notes, the
+                 applications you let support read, and, for staff accounts,
+                 the help entries you last edited.
 passport/        Each passport photo you uploaded (.jpg) and the details you
                  confirmed from it (.json).
 agent/           Each screenshot the form-filling agent took (.png), by application.

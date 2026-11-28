@@ -1,0 +1,79 @@
+.support-message {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.support-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.support-form textarea,
+.support-form input,
+.support-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+}
+
+.support-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.support-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.support-check input {
+  width: auto;
+  min-height: 0;
+}
+
+.support-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.support-list li {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.support-list p {
+  margin: 4px 0;
+}
+
+.support-issues li.is-blocking {
+  border-color: var(--danger-text);
+}
+
+.support-answers {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.support-answers dt {
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.support-answers dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}

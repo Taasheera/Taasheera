@@ -288,7 +288,7 @@ def test_all_private_endpoints_reject_anonymous_requests_before_body_validation(
               '/auth/forgot-password', '/auth/verify-reset-code', '/auth/reset-password',
               '/health/live', '/health/ready', '/features',
               # Visa guides are meant for everyone, before signing in (Sprint 5).
-              '/visa-guides', '/visa-guides/{guide_id}'}
+              '/visa-guides', '/visa-guides/{guide_id}', '/help-content'}
     for route in iter_route_contexts(api.app.routes):
         if route.path in public or not hasattr(route, 'dependant'):
             continue

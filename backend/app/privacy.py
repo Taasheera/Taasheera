@@ -20,9 +20,9 @@ from sqlmodel import Session, select
 from .account_lock import account_lock
 from .auth import COOKIE_NAME, check_origin, clear_refresh_cookie, revoke_all_sessions, token_hash
 from .google_auth import verify_google_token
-from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, GoogleIdentity,
+from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, FaqEntry, GoogleIdentity,
                      Notification, NotificationPreference, PassportExpiry, PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, ResetRateLimit, SupportingDocument,
-                     Traveler, TravelerProfile, Application, ApplicationAnswer, RequirementDraft, RequirementRevision, PassportPages)
+                     SupportAccessGrant, SupportRequest, Traveler, TravelerProfile, Application, ApplicationAnswer, RequirementDraft, RequirementRevision, PassportPages)
 from .agent.queue import delete_traveler_runs
 from .security import throttle
 
@@ -66,6 +66,10 @@ def complete_erasure(session: Session, traveler_id: int, storage, directory: Pat
     session.execute(delete(Notification).where(Notification.traveler_id == traveler_id))
     # Their files went with the owner folder above.
     session.execute(delete(SupportingDocument).where(SupportingDocument.traveler_id == traveler_id))
+    session.execute(delete(SupportAccessGrant).where(SupportAccessGrant.traveler_id == traveler_id))
+    session.execute(delete(SupportRequest).where(SupportRequest.traveler_id == traveler_id))
+    session.execute(update(SupportRequest).where(SupportRequest.assignee_id == traveler_id).values(assignee_id=None))
+    session.execute(update(FaqEntry).where(FaqEntry.updated_by == traveler_id).values(updated_by=None))
     delete_traveler_runs(session, traveler_id)
     application_ids = select(Application.id).where(Application.traveler_id == traveler_id)
     session.execute(delete(ApplicationAnswer).where(ApplicationAnswer.application_id.in_(application_ids)))
