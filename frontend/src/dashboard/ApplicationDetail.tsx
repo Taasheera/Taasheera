@@ -9,6 +9,9 @@ import DecisionActions from './DecisionActions'
 import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
+import GeneratedDocuments from '../generated/GeneratedDocuments'
+import SubmitYourself from '../tracking/SubmitYourself'
+import GroupPanel from '../group/GroupPanel'
 import AgentPanel from '../agent/AgentPanel'
 import PaymentStep from '../payments/PaymentStep'
 import FormReview from '../submission/FormReview'
@@ -119,9 +122,18 @@ function Detail({ applicationId }: { applicationId: string }) {
       </div>
     </div>
 
+    <Feature name="group_applications">
+      <GroupPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`}
+        onChange={() => setAttempt(count => count + 1)} />
+    </Feature>
+
     <Feature name="supporting_documents">
       <DocumentChecklist applicationId={application.id} version={application.updated_at}
         onChange={() => setDocumentChanges(count => count + 1)} />
+    </Feature>
+
+    <Feature name="generated_documents">
+      <GeneratedDocuments applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}`} />
     </Feature>
 
     {!archived && !isRecorded(application.status) && application.destination === 'SCHENGEN' && <Feature name="embassy_pdf">
@@ -138,6 +150,12 @@ function Detail({ applicationId }: { applicationId: string }) {
       </Feature>
       <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}-${payments}`} />
     </Feature>
+
+    {!archived && <Feature name="submission_tracking">
+      <SubmitYourself applicationId={application.id}
+        version={`${application.updated_at}-${application.status}-${documentChanges}`}
+        onChange={() => setAttempt(count => count + 1)} />
+    </Feature>}
 
     <Feature name="support_tools">
       <SupportAccess applicationId={application.id} />

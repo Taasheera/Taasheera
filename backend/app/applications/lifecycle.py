@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, delete, select, update
 
-from ..models import (Application, ApplicationAnswer, AssistantMessage, Notification, Payment, SupportAccessGrant,
+from ..models import (Application, ApplicationAnswer, ApplicationTracking, AssistantMessage, GeneratedDocument, Notification, Payment, SupportAccessGrant,
                       SupportRequest, SupportingDocument, Traveler)
 from ..notifications import notify_status_change
 from . import flow
@@ -29,7 +29,8 @@ from .router import ApplicationSummary, _status, _summary, _utc, current_answers
 
 
 class TimelineEvent(BaseModel):
-    kind: Literal["started", "answered", "stopped", "complete", "submitted", "approved", "refused", "archived"]
+    kind: Literal["started", "answered", "stopped", "complete", "prepared", "appointment", "submitted", "approved",
+                  "refused", "archived"]
     at: datetime
     text: str
     # For answers: which question, and the step it belongs to, so the page can group them.
@@ -97,6 +98,10 @@ def delete_application(session: Session, application: Application) -> list[str]:
     session.exec(update(SupportRequest).where(SupportRequest.application_id == application.id).values(application_id=None))
     session.exec(delete(ApplicationAnswer).where(ApplicationAnswer.application_id == application.id))
     session.exec(delete(Payment).where(Payment.application_id == application.id))
+    session.exec(delete(GeneratedDocument).where(GeneratedDocument.application_id == application.id))
+    session.exec(delete(ApplicationTracking).where(ApplicationTracking.application_id == application.id))
+    from .group import delete_group_rows
+    delete_group_rows(session, application)
     session.delete(application)
     return document_ids
 
@@ -127,6 +132,8 @@ def build_timeline(session: Session, application: Application, today: date) -> T
         events.append(TimelineEvent(kind="stopped", at=last_answer, text=stopped or "An answer stopped the application."))
     elif status == "ANSWERS_COMPLETE" and last_answer:
         events.append(TimelineEvent(kind="complete", at=last_answer, text="Every question answered"))
+    from .tracking import next_step_text, timeline_events
+    events += [TimelineEvent(kind=kind, at=at, text=text) for kind, at, text in timeline_events(session, application)]
     if recorded and application.submitted_at:
         events.append(TimelineEvent(kind="submitted", at=_utc(application.submitted_at),
                                     text="You recorded submitting it to the embassy"))
@@ -163,9 +170,9 @@ def build_timeline(session: Session, application: Application, today: date) -> T
         next_step = NextStep(kind="answer", text=f"Next question (step {number} of {len(questionnaire.steps)}, "
                                                  f"{step.title}): {current.prompt}")
     else:
-        next_step = NextStep(kind="complete", text="Your answers are complete. Supporting documents and a final "
-                                                   "review come next; nothing is submitted without your confirmation. "
-                                                   "Once you hand it to the embassy yourself, record it here.")
+        next_step = NextStep(kind="complete", text=next_step_text(session, application, today) or (
+            "Your answers are complete. Supporting documents and a final review come next; nothing is submitted "
+            "without your confirmation. Once you hand it to the embassy yourself, record it here."))
     return Timeline(id=application.id, archived_at=_utc(application.archived_at) if application.archived_at else None,
                     events=events, next=next_step)
 
@@ -184,8 +191,12 @@ def add_lifecycle_routes(
 
     SessionDep = Annotated[Session, Depends(get_session)]
     TravelerDep = Annotated[Traveler, Depends(current_traveler)]
-    # Duplicate and export (US 78, US 80) live in their own file.
+    # Duplicate and export (US 78, US 80) live in their own file, and so does what comes after the answers.
     add_record_routes(router, get_session, current_traveler, today=today)
+    from .tracking import add_tracking_routes
+    add_tracking_routes(router, get_session, current_traveler, today=today)
+    from .group import add_group_routes
+    add_group_routes(router, get_session, current_traveler, today=today)
 
     def owned(session: Session, traveler: Traveler, application_id: str) -> Application:
         application = session.get(Application, application_id)

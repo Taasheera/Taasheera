@@ -6,7 +6,8 @@ import { apiFetch } from './api'
 export type FeatureName = 'agent_form_filling' | 'supporting_documents' | 'embassy_pdf' | 'passport_scan_quality'
   | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'arabic' | 'malware_scan' | 'payments'
   | 'requirements_editor' | 'kpi_dashboard' | 'passport_rules' | 'photo_check' | 'document_vault' | 'document_translation'
-  | 'support_tools'
+  | 'support_tools' | 'generated_documents' | 'submission_tracking'
+  | 'group_applications'
 export type FeatureFlags = Partial<Record<FeatureName, boolean>>
 
 const HIDDEN: FeatureFlags = {}
