@@ -20,6 +20,7 @@ CATEGORY_OF_KIND = {
     "agent_finished": "application_updates",
     "agent_stopped": "application_updates",
     "application_stalled": "reminders",
+    "appointment_reminder": "reminders",
     "passport_expiring": "passport_expiry",
 }
 

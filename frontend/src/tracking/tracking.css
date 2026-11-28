@@ -1,0 +1,199 @@
+/* Submit it yourself: steps, appointment and checklist (CMPS271-72/73/77/79). On the application detail page. */
+.track {
+  margin-top: 40px;
+}
+
+.track h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.track h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.track-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.track-note,
+.track-step p,
+.track-item p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.track-stage {
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.track-stage-label {
+  margin-right: 6px;
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.track-steps {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.track-step {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  padding-block: 12px;
+  border-block-end: 1px solid var(--border);
+}
+
+.track-step a {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.track-step-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.track-step-done .track-step-mark {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.track-step-current .track-step-mark {
+  border: 2px solid var(--fg);
+}
+
+.track-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.track-card p {
+  margin: 0 0 8px;
+}
+
+.track-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.track-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.track-form input {
+  padding: 6px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  background: var(--field-bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.track-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.track-checklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.track-checklist ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding-block: 10px;
+  border-block-end: 1px solid var(--border);
+}
+
+.track-box {
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border: 1.5px solid var(--fg-muted);
+  border-radius: 3px;
+}
+
+.track-item-ready .track-box {
+  border-color: var(--fg);
+  background: var(--fg);
+}
+
+.track-status {
+  color: var(--fg-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.track-item-missing .track-status {
+  color: var(--warn-text);
+}
+
+.track-optional {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .track-checklist,
+  .track-checklist * {
+    visibility: visible;
+  }
+
+  .track-checklist {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+  }
+
+  .track-checklist button {
+    display: none;
+  }
+}

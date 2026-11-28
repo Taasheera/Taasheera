@@ -21,7 +21,7 @@ from .account_lock import account_lock
 from .auth import COOKIE_NAME, check_origin, clear_refresh_cookie, revoke_all_sessions, token_hash
 from .google_auth import verify_google_token
 from .models import (AccountErasure, ActivityEvent, AssistantMessage, AuthSession, DocumentAccess, FaqEntry, GoogleIdentity,
-                     Notification, NotificationPreference, PassportExpiry, PasswordResetChallenge, PasswordResetToken, Payment, GeneratedDocument, PrivacyConsent, RefreshToken, ResetRateLimit, SupportingDocument,
+                     Notification, NotificationPreference, PassportExpiry, PasswordResetChallenge, PasswordResetToken, Payment, GeneratedDocument, ApplicationTracking, PrivacyConsent, RefreshToken, ResetRateLimit, SupportingDocument,
                      SupportAccessGrant, SupportRequest, Traveler, TravelerProfile, Application, ApplicationAnswer, RequirementDraft, RequirementRevision, PassportPages)
 from .agent.queue import delete_traveler_runs
 from .security import throttle
@@ -76,7 +76,7 @@ def complete_erasure(session: Session, traveler_id: int, storage, directory: Pat
     session_ids = select(AuthSession.id).where(AuthSession.traveler_id == traveler_id)
     session.execute(delete(RefreshToken).where(RefreshToken.session_id.in_(session_ids)))
     for model in (AuthSession, GoogleIdentity, PasswordResetChallenge, PasswordResetToken,
-                  TravelerProfile, PrivacyConsent, NotificationPreference, PassportExpiry, Payment, GeneratedDocument, PassportPages, Application,
+                  TravelerProfile, PrivacyConsent, NotificationPreference, PassportExpiry, Payment, GeneratedDocument, ApplicationTracking, PassportPages, Application,
                   ActivityEvent):
         session.execute(delete(model).where(model.traveler_id == traveler_id))
     session.execute(delete(DocumentAccess).where(or_(DocumentAccess.traveler_id == traveler_id,

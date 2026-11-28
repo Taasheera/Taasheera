@@ -95,6 +95,8 @@ def create_documents_router(
     scan_upload: Callable[[int, str, bytes, str | None], None] | None = None,
     # Generated documents (cover letter, itinerary) that stand in for a checklist item with no upload in the packet.
     generated_files: Callable | None = None,
+    # Called with (session, application) when the packet is downloaded, before the session commits.
+    on_packet_download: Callable | None = None,
 ) -> APIRouter:
     from ..applications.router import saved_profile
     from ..auth import check_origin
@@ -190,6 +192,9 @@ def create_documents_router(
         dates = [given.get(key) for key in ("arrival_date", "departure_date") if given.get(key)]
         trip = " to ".join(date.fromisoformat(value).strftime("%d %B %Y") for value in dates)
         content = build_packet(questionnaire.title, name, f"Trip: {trip}" if trip else "", items)
+        if on_packet_download:
+            on_packet_download(session, application)
+            session.commit()
         return Response(content, media_type="application/pdf", headers={
             "Cache-Control": "private, no-store",
             "Content-Disposition": 'attachment; filename="application-packet.pdf"',

@@ -581,3 +581,20 @@ class GeneratedDocument(SQLModel, table=True):
     language: str = Field(max_length=5)
     body: str = Field(sa_column=Column(Text, nullable=False), repr=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ApplicationTracking(SQLModel, table=True):
+    """What happened to an application after the answers (CMPS271-72/73/77/79), one row per application.
+
+    The embassy appointment the traveler recorded and which of its reminders went out, and when the
+    print-ready packet was first downloaded. Kept apart from `Application`, whose `updated_at` means
+    "the answers last changed".
+    """
+
+    application_id: str = Field(primary_key=True, foreign_key="application.id", max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    appointment_at: datetime | None = Field(default=None, index=True)
+    appointment_location: str | None = Field(default=None, max_length=200)
+    # Reminder levels already sent for this appointment, in days before it (7, then 1); a new time resets it.
+    appointment_reminded_days: int | None = None
+    packet_downloaded_at: datetime | None = None

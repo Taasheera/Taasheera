@@ -27,7 +27,7 @@ from .activity import record_activity
 from .agent.storage import AgentFiles
 from .document_audit import accessor
 from .models import (AccountErasure, ActivityEvent, AgentFieldEntry, AgentRun, AgentScreenshot, Application, ApplicationAnswer, AssistantMessage, AuthSession,
-                     DocumentAccess, FaqEntry, GeneratedDocument, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
+                     ApplicationTracking, DocumentAccess, FaqEntry, GeneratedDocument, GoogleIdentity, Notification, NotificationPreference, PassportExpiry,
                      PasswordResetChallenge, PasswordResetToken, Payment, PrivacyConsent, RefreshToken, RequirementDraft, RequirementRevision,
                      SupportAccessGrant, SupportRequest, SupportingDocument, Traveler, TravelerProfile)
 from .models import PassportPages
@@ -67,6 +67,7 @@ PERSONAL_DATA: tuple[Holding, ...] = (
     Holding(AgentScreenshot, "run", True),
     Holding(Payment, "traveler", True),
     Holding(GeneratedDocument, "traveler", True),
+    Holding(ApplicationTracking, "traveler", True),
     Holding(PassportPages, "traveler", True),
     Holding(SupportAccessGrant, "traveler", True),
     Holding(SupportRequest, "traveler", True, omit=("assignee_id",)),

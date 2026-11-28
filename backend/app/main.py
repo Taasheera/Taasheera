@@ -56,6 +56,7 @@ from .agent.router import create_agent_router
 from .agent.storage import AgentFiles
 from .documents.router import create_documents_router
 from .generated.router import create_generated_documents_router, generated_packet_files
+from .applications.tracking import record_packet_download
 from .documents.review import booking_documents as booking_texts, completeness_issues, missing_document_issues
 from .documents.storage import DocumentStorage
 from .documents.translation import gemini_translate
@@ -305,7 +306,8 @@ def create_app(database_url: str | None = None, *, reset_sender: ResetSender | N
                                                load_latest_passport=lambda owner: passport_storage.latest_review(owner, purpose="consistency_check"),
                                                upload_dependencies=[privacy_consent],
                                                scan_upload=scan_check("document", DOCUMENT_TYPES),
-                                               generated_files=packet_generated_files))
+                                               generated_files=packet_generated_files,
+                                               on_packet_download=record_packet_download))
     app.include_router(create_generated_documents_router(get_session, current_traveler))
 
     def record_assistant_activity(traveler_id: int, event_type: str, outcome: str):

@@ -156,7 +156,7 @@ export async function checkApplication(id: string): Promise<CheckReport> {
 }
 // Archive, delete and the timeline (US 79, US 20). Mirrors backend/app/applications/lifecycle.py.
 export type TimelineEvent = {
-  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'submitted' | 'approved' | 'refused' | 'archived'
+  kind: 'started' | 'answered' | 'stopped' | 'complete' | 'prepared' | 'appointment' | 'submitted' | 'approved' | 'refused' | 'archived'
   at: string
   text: string
   question_id: string | null

@@ -10,6 +10,7 @@ import ExportRecord from './ExportRecord'
 import Feature from '../Feature'
 import DocumentChecklist from '../documents/DocumentChecklist'
 import GeneratedDocuments from '../generated/GeneratedDocuments'
+import SubmitYourself from '../tracking/SubmitYourself'
 import AgentPanel from '../agent/AgentPanel'
 import PaymentStep from '../payments/PaymentStep'
 import FormReview from '../submission/FormReview'
@@ -143,6 +144,12 @@ function Detail({ applicationId }: { applicationId: string }) {
       </Feature>
       <AgentPanel applicationId={application.id} version={`${application.updated_at}-${application.archived_at ?? ''}-${payments}`} />
     </Feature>
+
+    {!archived && <Feature name="submission_tracking">
+      <SubmitYourself applicationId={application.id}
+        version={`${application.updated_at}-${application.status}-${documentChanges}`}
+        onChange={() => setAttempt(count => count + 1)} />
+    </Feature>}
 
     <Feature name="support_tools">
       <SupportAccess applicationId={application.id} />
