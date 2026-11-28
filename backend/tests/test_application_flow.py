@@ -26,9 +26,10 @@ ANSWERS = {
     "home_address": {"line1": "1 Example Street", "line2": "", "city": "Beirut", "region": "",
                      "postal_code": "", "country": "LBN"},
     "phone": "+96171123456", "occupation": "employed", "job_title": "Accountant",
-    "employer": "Example Company", "arrival_date": "2027-01-10", "departure_date": "2027-01-24", "entries": "single",
+    "employer": "Example Company", "arrival_date": "2027-01-10", "departure_date": "2027-01-24", "itinerary_cities": "",
+    "entries": "single",
     "accommodation": "hotel", "accommodation_details": "Hotel Example, 1 Rue Exemple, Paris",
-    "funding": "self", "previous_fingerprints": False,
+    "funding": "self", "funds_amount": "€3,000", "previous_fingerprints": False,
 }
 
 
@@ -55,7 +56,7 @@ def test_a_complete_walk_asks_each_question_once_in_file_order(schengen):
     assert list(given) == list(ANSWERS)
     assert next_question(schengen, given) is None and stop_message(schengen, given) is None
     assert progress(schengen, given).model_dump() == {
-        "step_number": 4, "step_count": 4, "step_title": "Your trip", "answered": 21, "total": 21}
+        "step_number": 4, "step_count": 4, "step_title": "Your trip", "answered": 23, "total": 23}
 
 
 def test_progress_reports_the_current_step(schengen):
@@ -63,7 +64,7 @@ def test_progress_reports_the_current_step(schengen):
     partial = {key: given[key] for key in ["main_destination", "purpose", "stay_over_90_days"]}
     assert next_question(schengen, partial).id == "passport"
     assert progress(schengen, partial).model_dump() == {
-        "step_number": 2, "step_count": 4, "step_title": "Passport", "answered": 3, "total": 18}
+        "step_number": 2, "step_count": 4, "step_title": "Passport", "answered": 3, "total": 20}
 
 
 @pytest.mark.parametrize("occupation, asked, skipped", [

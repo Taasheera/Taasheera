@@ -290,6 +290,12 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     `GeneratedDocument` stores only the traveler's edit per kind and language; DELETE regenerates, `outdated` when
     answers changed after it. `/applications/{id}/generated`; the packet uses the letter/itinerary PDF for a
     checklist item with no upload. Released flag `generated_documents`.
+59. **Trip questions and refusal risks (CMPS271-42/52/54).** Every questionnaire asks which places the trip visits
+    (`itinerary_cities`, optional; China and India keep their own); Schengen asks `funds_amount` (optional, euros).
+    `applications/risk.py` adds `kind="risk"` warnings to the completeness check, never blocking: funds below the
+    main destination's published minimum (`funds_minimums.json`, EU Annex 18 reference amounts in cents, `checked_on`,
+    only countries whose figures agree), a previous refusal, unemployment with self-funding, and an arrival sooner
+    than the usual decision time. Re-check the amounts before each release.
 60. **Submit it yourself (CMPS271-72/73/77/79).** `applications/tracking.py`, routes under `/applications/{id}`:
     `GET /submission` gives the stage, the destination's hand-in steps (`submission_guides.json`, official https
     links; fee and decision time from `visa_guides.json`) ticked from what the application shows, the appointment and

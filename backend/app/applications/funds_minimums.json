@@ -1,0 +1,19 @@
+{
+  "checked_on": "2026-11-28",
+  "source": "https://eur-lex.europa.eu/eli/C/2025/3952/oj",
+  "currency": "EUR",
+  "note": "Reference amounts each Schengen state published under Article 39 of the Schengen Borders Code (Annex 18 of the visa handbook). Amounts are euro cents. Re-check before each release.",
+  "countries": {
+    "FRA": {"label": "France", "per_day": {"hotel": 6500, "host": 3250, "other": 12000}},
+    "DEU": {"label": "Germany", "per_day": {"other": 4500}},
+    "BEL": {"label": "Belgium", "per_day": {"hotel": 9500, "host": 4500, "other": 9500},
+            "source": "https://dofi.ibz.be/en/themes/border-control/entry-schengen-territory/reference-amounts-short-stay"},
+    "PRT": {"label": "Portugal", "per_entry": 7500, "per_day": {"other": 4000}},
+    "ITA": {"label": "Italy", "bands": [
+      {"max_days": 5, "fixed": 26960, "per_day": 0},
+      {"max_days": 10, "fixed": 0, "per_day": 4493},
+      {"max_days": 20, "fixed": 5164, "per_day": 3667},
+      {"max_days": null, "fixed": 20658, "per_day": 2789}
+    ]}
+  }
+}

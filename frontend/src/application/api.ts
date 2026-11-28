@@ -138,7 +138,7 @@ export async function saveAnswer(id: string, questionId: string, answer: AnswerI
 
 // The completeness check (US 13). Mirrors backend/app/applications/completeness.py.
 export type CheckIssue = {
-  kind: 'missing' | 'ineligible' | 'inconsistent'
+  kind: 'missing' | 'ineligible' | 'inconsistent' | 'risk'
   severity: 'blocking' | 'warning'
   message: string
   question_id: string | null
