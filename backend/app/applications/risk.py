@@ -18,7 +18,7 @@ REFUSAL_QUESTIONS = ("previous_refusal", "refused_visa", "refused_us_visa")
 # How long a decision often takes, in days, from each destination's own guidance (visa_guides.json).
 DECISION_DAYS = {"SCHENGEN": 15, "GBR": 21, "CAN": 30}
 _OTHER_CURRENCY = re.compile(r"\$|£|¥|\b(usd|gbp|cad|lbp|l\.?l\.?|dollars?|pounds?|lira|lire)\b", re.IGNORECASE)
-_NUMBER = re.compile(r"\d[\d,.' ]*")
+_NUMBER = re.compile(r"(\d[\d,.' ]*)\s*(k\b|thousand\b)?", re.IGNORECASE)
 
 
 @cache
@@ -33,11 +33,19 @@ def parse_euros(text: str) -> int | None:
     match = _NUMBER.search(text)
     if match is None:
         return None
-    number = match.group().strip().replace(" ", "").replace("'", "")
-    # "2.500" and "2,500" both mean two and a half thousand; a decimal part ("2500.50") is dropped.
-    number = re.sub(r"[.,](\d{1,2})$", "", number)
-    digits = re.sub(r"[.,]", "", number)
-    return int(digits) if digits.isdigit() else None
+    number = match.group(1).strip().replace(" ", "").replace("'", "").rstrip(".,")
+    # "2.500" and "2,500" are two and a half thousand (three digits after the mark); "2,5" and "1.5" are decimals.
+    whole, fraction = number, ""
+    decimal = re.search(r"[.,](\d{1,2})$", number)
+    if decimal:
+        whole, fraction = number[:decimal.start()], decimal.group(1)
+    digits = re.sub(r"[.,]", "", whole)
+    if not digits.isdigit():
+        return None
+    value = float(f"{digits}.{fraction or 0}")
+    if match.group(2):
+        value *= 1000
+    return int(value)
 
 
 def minimum_cents(country: dict, accommodation: str | None, days: int) -> int:
@@ -73,9 +81,8 @@ def funds_issue(questionnaire: flow.Questionnaire, answers: flow.Answers):
                  source=country.get("source", data["source"]))
     declared = answers.get("funds_amount")
     if not isinstance(declared, str) or not declared.strip():
-        return Issue(kind="risk", severity="warning", **where, message=(
-            f"Say how much money you'll have for the trip. {country['label']} expects at least about "
-            f"{_euros(minimum)} for {days} days."))
+        # The question is optional: no amount, nothing to compare.
+        return None
     euros = parse_euros(declared)
     if euros is None:
         return Issue(kind="risk", severity="warning", **where, message=(

@@ -411,6 +411,10 @@ def check_answer(question: Question, raw: Any, answers: Answers, today: date) ->
     raise AssertionError(question.type)
 
 
+# Optional questions that existing applications never saw. See the end of `reconcile`.
+ADDED_LATER = frozenset({"itinerary_cities", "funds_amount"})
+
+
 def reconcile(questionnaire: Questionnaire, answers: Answers, today: date) -> tuple[Answers, list[str]]:
     """Drop answers that no longer apply after an earlier answer changed.
 
@@ -432,6 +436,14 @@ def reconcile(questionnaire: Questionnaire, answers: Answers, today: date) -> tu
             kept[question.id] = check_answer(question, answers[question.id], kept, today)
         except InvalidAnswer:
             dropped.append(question.id)
+    # Optional questions added after applications already existed (CMPS271-42/52) don't reopen one that is
+    # otherwise finished: once every required question is answered, they count as skipped.
+    if any(question.id in ADDED_LATER for question in questionnaire.questions()):
+        visible = visible_questions(questionnaire, kept)
+        if all(question.id in kept for question in visible if question.required):
+            for question in visible:
+                if question.id in ADDED_LATER and question.id not in kept:
+                    kept[question.id] = ""
     return kept, dropped
 
 
