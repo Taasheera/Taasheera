@@ -7,6 +7,7 @@ export type FeatureName = 'agent_form_filling' | 'supporting_documents' | 'embas
   | 'privacy_consent' | 'email_notifications' | 'visa_guide' | 'malware_scan' | 'payments'
   | 'requirements_editor' | 'kpi_dashboard' | 'passport_rules' | 'photo_check' | 'document_vault' | 'document_translation'
   | 'support_tools' | 'generated_documents' | 'submission_tracking'
+  | 'group_applications'
 export type FeatureFlags = Partial<Record<FeatureName, boolean>>
 
 const HIDDEN: FeatureFlags = {}

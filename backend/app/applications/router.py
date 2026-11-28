@@ -39,7 +39,7 @@ class StartRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination: str = Field(min_length=1, max_length=20)
     visa_type: str = Field(min_length=1, max_length=40)
-    # Counting the traveler. Recorded only: each application is still for one person (US 81 adds groups).
+    # Counting the traveler. Each application is for one person; a group adds an application per traveler (US 81).
     group_size: int = Field(default=1, ge=1, le=10)
 
 
@@ -357,6 +357,11 @@ def create_applications_router(
         """
         if question.prefill is None:
             return None
+        if not question.prefill.startswith("document."):
+            # A group member's passport and profile are their own, never the account owner's (CMPS271-81).
+            from .group import is_member
+            if is_member(session, application.id):
+                return None
         if question.prefill.startswith("document."):
             from ..documents.booking_dates import booked_value
             booked = booked_value(question.prefill.removeprefix("document."),

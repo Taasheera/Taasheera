@@ -100,6 +100,8 @@ def delete_application(session: Session, application: Application) -> list[str]:
     session.exec(delete(Payment).where(Payment.application_id == application.id))
     session.exec(delete(GeneratedDocument).where(GeneratedDocument.application_id == application.id))
     session.exec(delete(ApplicationTracking).where(ApplicationTracking.application_id == application.id))
+    from .group import delete_group_rows
+    delete_group_rows(session, application)
     session.delete(application)
     return document_ids
 
@@ -193,6 +195,8 @@ def add_lifecycle_routes(
     add_record_routes(router, get_session, current_traveler, today=today)
     from .tracking import add_tracking_routes
     add_tracking_routes(router, get_session, current_traveler, today=today)
+    from .group import add_group_routes
+    add_group_routes(router, get_session, current_traveler, today=today)
 
     def owned(session: Session, traveler: Traveler, application_id: str) -> Application:
         application = session.get(Application, application_id)

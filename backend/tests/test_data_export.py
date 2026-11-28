@@ -11,7 +11,7 @@ from app.agent import queue
 from app.agent.storage import AgentFiles
 from app.chat_history import save_turn
 from app.documents.storage import DocumentStorage
-from app.models import (ApplicationTracking, GeneratedDocument, ActivityEvent, Application, DocumentAccess, FaqEntry, SupportAccessGrant, SupportRequest, SupportingDocument,
+from app.models import (ApplicationTracking, GeneratedDocument, GroupMember, ActivityEvent, Application, DocumentAccess, FaqEntry, SupportAccessGrant, SupportRequest, SupportingDocument,
                         GoogleIdentity, PasswordResetChallenge, PasswordResetToken, Payment,
                         NotificationPreference, PassportExpiry, PassportPages, PrivacyConsent, RefreshToken, Traveler, TravelerProfile,
                         RequirementDraft, RequirementRevision)
@@ -58,6 +58,8 @@ def give_everything(app, storage, traveler_id: int, client, headers) -> dict:
                                       language="en", body="Synthetic cover letter."))
         session.add(ApplicationTracking(application_id=application_id, traveler_id=traveler_id,
                                         appointment_location="Synthetic visa centre"))
+        session.add(GroupMember(application_id=application_id, traveler_id=traveler_id, group_id=application_id,
+                                label="Synthetic traveler", lead=True))
         session.add(RequirementRevision(questionnaire_id=f"example-{traveler_id}", revision=1, kind="rollback",
                                         restored_revision=0, questionnaire_version=1, note="Synthetic", author_id=traveler_id))
         session.add(RequirementDraft(questionnaire_id=f"example-{traveler_id}", questionnaire={}, guide={},

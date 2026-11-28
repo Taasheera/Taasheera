@@ -35,6 +35,7 @@ FLAGS = {
     "support_tools": "Support access with consent, talking to a person and editable FAQ (CMPS271-128/92/129)",
     "generated_documents": "Cover letter, itinerary and letter templates written from the answers (CMPS271-57 to 62)",
     "submission_tracking": "Submit it yourself: steps, appointment reminders, checklist and stage (CMPS271-72/73/77/79)",
+    "group_applications": "One account applies for several travelers on the same trip (CMPS271-81)",
 }
 
 
@@ -44,7 +45,7 @@ RELEASED = frozenset({"passport_scan_quality", "embassy_pdf", "supporting_docume
                       "malware_scan", "payments", "requirements_editor", "kpi_dashboard",
                       "passport_rules", "photo_check", "document_vault", "document_translation",
                       "support_tools", "generated_documents",
-                      "submission_tracking"})
+                      "submission_tracking", "group_applications"})
 
 
 def _variable(name: str) -> str:

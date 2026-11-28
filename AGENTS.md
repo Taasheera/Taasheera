@@ -299,3 +299,8 @@ Operator role assignment: `python manage.py set-role --email <email> --role admi
     (`appointment_reminder`, "reminders" emails); it only runs with `email_notifications` on. The stage, the
     timeline's "prepared" events and the next step move on by themselves; the status stays the traveler's to record.
     Released flag `submission_tracking`.
+61. **Group trips (CMPS271-81).** `applications/group.py`: one account adds travelers to a trip; each gets an ordinary
+    application linked by `GroupMember` (`group_id` = the lead's id). Shared trip answers (`SHARED`: where, when, stay,
+    purpose) are copied from the lead with source `group` on creation and on "Copy trip answers to everyone"; members
+    never get the owner's passport/profile suggestions. Deleting the lead leaves members standalone; deleting a member
+    lowers the lead's `group_size` (the multi-traveler discount reads it). Released flag `group_applications`.

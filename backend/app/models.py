@@ -598,3 +598,19 @@ class ApplicationTracking(SQLModel, table=True):
     # Reminder levels already sent for this appointment, in days before it (7, then 1); a new time resets it.
     appointment_reminded_days: int | None = None
     packet_downloaded_at: datetime | None = None
+
+
+class GroupMember(SQLModel, table=True):
+    """One traveler's application in a group trip (CMPS271-81), all under the account that started it.
+
+    `group_id` is the first (lead) application's id; the lead has a row too. Each member's application
+    is an ordinary application with its own passport and answers; the trip answers are copied from the lead.
+    """
+
+    application_id: str = Field(primary_key=True, foreign_key="application.id", max_length=32)
+    traveler_id: int = Field(foreign_key="traveler.id", index=True)
+    group_id: str = Field(max_length=32, index=True)
+    # How the account owner names this traveler ("Maria", "My son"), shown on the group's list.
+    label: str = Field(max_length=60)
+    lead: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

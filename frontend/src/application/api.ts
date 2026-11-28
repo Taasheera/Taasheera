@@ -28,7 +28,7 @@ export type Question = {
 // For a document: what it is and the file name, such as "Flight reservation (booking.pdf)".
 export type Suggestion = { value: AnswerValue; source: 'passport' | 'profile' | 'document'; document?: string | null }
 export type UploadHint = { requirement: string; label: string }
-export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile' | 'document'
+export type AnswerSource = 'traveler' | 'passport_upload' | 'passport' | 'profile' | 'document' | 'group'
 export type Answer = { question: Question; value: AnswerValue; source: AnswerSource }
 // The last three are recorded by the traveler (US 55); the first three follow from the answers.
 export type Status = 'DRAFT' | 'INELIGIBLE' | 'ANSWERS_COMPLETE' | 'SUBMITTED' | 'APPROVED' | 'REFUSED'

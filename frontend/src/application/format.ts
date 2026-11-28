@@ -67,6 +67,7 @@ export function sourceLabel(source: AnswerSource): string | null {
   if (source === 'passport_upload' || source === 'passport') return 'From your confirmed passport'
   if (source === 'profile') return 'From your profile'
   if (source === 'document') return 'From your uploaded booking'
+  if (source === 'group') return 'Shared with your group'
   return null
 }
 

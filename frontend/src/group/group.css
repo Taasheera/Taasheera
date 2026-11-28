@@ -1,0 +1,66 @@
+/* Travelling together (CMPS271-81). On the application detail page. */
+.group {
+  margin-top: 40px;
+}
+
+.group h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 12px;
+}
+
+.group-note {
+  margin: 0 0 8px;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.group-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.group-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding-block: 10px;
+  border-block-end: 1px solid var(--border);
+}
+
+.group-status {
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.group-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.group-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.group-form input {
+  padding: 6px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  background: var(--field-bg);
+  color: var(--fg);
+  font: inherit;
+}
