@@ -118,7 +118,7 @@ def test_reminders_go_out_a_week_and_a_day_before_once_each(api):
     with Session(engine) as session:
         messages = [n.message for n in session.exec(select(Notification).where(
             Notification.kind == "appointment_reminder")).all()]
-    assert len(messages) == 2 and "in a week" in messages[0] and "tomorrow" in messages[1]
+    assert len(messages) == 2 and "less than a week away" in messages[0] and "tomorrow" in messages[1]
     assert all(str(now.year) not in message for message in messages)
 
 
@@ -188,3 +188,34 @@ def test_slots_after_the_trip_or_for_e_visas_are_not_offered(api, tmp_path, monk
     turkey = client.post("/applications", headers=headers[0], json={"destination": "TUR", "visa_type": "e_visa"}).json()["id"]
     assert submission(client, headers[0], turkey)["slots"]["available"] is False
     assert client.put(f"/applications/{turkey}/slot-watch", headers=headers[0], json={"watch": True}).status_code == 409
+
+
+
+def test_a_feed_whose_dates_move_daily_does_not_repeat_the_same_slot(api, tmp_path, monkeypatch):
+    import json
+    from app.applications.tracking import check_appointment_slots
+
+    feed = tmp_path / "slots.json"
+    feed.write_text(json.dumps({"slots": {"schengen-short-stay": [{"centre": "Centre A", "in_days": 9}]}}), encoding="utf-8")
+    monkeypatch.setenv("APPOINTMENT_SLOTS_FILE", str(feed))
+    client, app, headers, _ = api
+    application_id = ready(client, headers[0])
+    client.put(f"/applications/{application_id}/slot-watch", headers=headers[0], json={"watch": True})
+    now = datetime.now(timezone.utc)
+    assert check_appointment_slots(app.state.engine, now=now) == 1
+    assert check_appointment_slots(app.state.engine, now=now + timedelta(days=1)) == 0
+    assert check_appointment_slots(app.state.engine, now=now + timedelta(days=2)) == 0
+
+
+def test_an_appointment_later_today_has_not_passed(api):
+    from app.applications.tracking import next_step_text
+
+    client, app, headers, _ = api
+    application_id = ready(client, headers[0])
+    now = datetime.now(timezone.utc)
+    book(client, headers[0], application_id, now + timedelta(hours=2))
+    with Session(app.state.engine) as session:
+        from app.models import Application
+        application = session.get(Application, application_id)
+        assert "is booked" in next_step_text(session, application, (now + timedelta(days=1)).date(), now=now)
+        assert "has passed" in next_step_text(session, application, now.date(), now=now + timedelta(days=1))

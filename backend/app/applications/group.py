@@ -102,6 +102,18 @@ def copy_shared(session: Session, lead: Application, member: Application) -> int
     return changed
 
 
+def resize(session: Session, group_id: str) -> int:
+    """Set `group_size` on every application in the group to the number of travelers in it."""
+    rows = session.exec(select(GroupMember).where(GroupMember.group_id == group_id)).all()
+    size = max(1, len(rows))
+    for member in rows:
+        application = session.get(Application, member.application_id)
+        if application is not None and application.group_size != size:
+            application.group_size = size
+            session.add(application)
+    return size
+
+
 def delete_group_rows(session: Session, application: Application) -> None:
     """Before an application is deleted: drop its own row, and if it led a group, let the others stand alone."""
     row = membership(session, application.id)
@@ -111,10 +123,8 @@ def delete_group_rows(session: Session, application: Application) -> None:
         session.exec(delete(GroupMember).where(GroupMember.group_id == row.group_id))
     else:
         session.delete(row)
-        lead = session.get(Application, row.group_id)
-        if lead is not None:
-            lead.group_size = max(1, lead.group_size - 1)
-            session.add(lead)
+        session.flush()
+        resize(session, row.group_id)
 
 
 def add_group_routes(router: APIRouter, get_session, current_traveler, *, today) -> None:
@@ -188,8 +198,8 @@ def add_group_routes(router: APIRouter, get_session, current_traveler, *, today)
         session.flush()
         session.add(GroupMember(application_id=member.id, traveler_id=traveler.id, group_id=lead.id, label=data.label))
         copy_shared(session, lead, member)
-        lead.group_size = count + 1
-        session.add(lead)
+        session.flush()
+        resize(session, lead.id)
         session.commit()
         return public(session, traveler, lead)
 

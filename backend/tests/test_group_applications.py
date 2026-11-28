@@ -93,3 +93,13 @@ def test_deleting_a_member_shrinks_the_group(api):
     assert len(client.get(f"/applications/{lead}/group", headers=headers[0]).json()["members"]) == 2
     with Session(app.state.engine) as session:
         assert session.get(Application, lead).group_size == 2
+
+
+
+def test_every_member_knows_the_group_size(api):
+    client, app, headers, _ = api
+    lead = ready(client, headers[0])
+    add(client, headers[0], lead)
+    group = add(client, headers[0], lead, "Omar").json()
+    with Session(app.state.engine) as session:
+        assert {session.get(Application, m["application_id"]).group_size for m in group["members"]} == {3}

@@ -31,7 +31,7 @@ DECIDED = ("APPROVED", "REFUSED")
 RECORDED = ("SUBMITTED", *DECIDED)
 # Reminders before the appointment: (days before, message). Closest last; no dates in the text.
 APPOINTMENT_REMINDERS = {
-    7: "Your {name} appointment is in a week. Check the appointment day checklist on the application page.",
+    7: "Your {name} appointment is less than a week away. Check the appointment day checklist on the application page.",
     1: "Your {name} appointment is tomorrow. Bring everything on the appointment day checklist.",
 }
 
@@ -256,6 +256,20 @@ def slots_view(questionnaire: flow.Questionnaire, answers: flow.Answers, trackin
                  earliest=earliest_slot(questionnaire, answers, today) if available else None, note=SLOTS_NOTE)
 
 
+def _newer_slot(slot: Slot, notified: str | None) -> bool:
+    """Whether a slot is worth telling the traveler about: none told yet, or one earlier than the last.
+
+    Comparing dates, not exact keys, keeps a feed whose dates move every day from announcing the same slot daily.
+    """
+    if not notified:
+        return True
+    try:
+        told = date.fromisoformat(notified.rsplit("|", 1)[1])
+    except (IndexError, ValueError):
+        return True
+    return slot.day < told
+
+
 def check_appointment_slots(engine, *, now: datetime | None = None) -> int:
     """Tell travelers watching for slots when one opens that they haven't been told about. Returns how many."""
     from .router import _owned_answers, current_answers
@@ -276,9 +290,9 @@ def check_appointment_slots(engine, *, now: datetime | None = None) -> int:
                 continue
             answers, _ = current_answers(questionnaire, application, stored, today)
             slot = earliest_slot(questionnaire, answers, today)
-            key = f"{slot.centre}|{slot.day.isoformat()}"[:120] if slot else None
-            if slot is None or key == row.slot_notified:
+            if slot is None or not _newer_slot(slot, row.slot_notified):
                 continue
+            key = f"{slot.centre}|{slot.day.isoformat()}"[:120]
             notice = notify(session, row.traveler_id, "appointment_slot",
                             f"An appointment slot opened for your {application_name(application)} application. "
                             "Book it on the official site, then record it here.",
@@ -340,10 +354,12 @@ def timeline_events(session: Session, application: Application) -> list[tuple[st
     return events
 
 
-def next_step_text(session: Session, application: Application, today: date) -> str | None:
+def next_step_text(session: Session, application: Application, today: date, now: datetime | None = None) -> str | None:
     """What comes next once the answers are complete, from the appointment and packet (CMPS271-77)."""
     tracking = tracking_row(session, application)
-    if tracking and tracking.appointment_at and _utc(tracking.appointment_at).date() >= today:
+    now = now or datetime.now(timezone.utc)
+    # Compared as instants: a 01:00 Beirut appointment is the previous day in UTC, but hasn't passed.
+    if tracking and tracking.appointment_at and _utc(tracking.appointment_at) > now - timedelta(hours=12):
         return ("Your embassy appointment is booked. Bring everything on the appointment day checklist, and "
                 "record the submission here once you've handed it in.")
     if tracking and tracking.appointment_at:
