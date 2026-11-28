@@ -19,7 +19,7 @@ def upgrade():
         sa.Column("group_id", sqlmodel.sql.sqltypes.AutoString(length=32), nullable=False),
         sa.Column("label", sqlmodel.sql.sqltypes.AutoString(length=60), nullable=False),
         sa.Column("lead", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("created_at", sqlmodel.sql.sqltypes.UTCDateTime(), nullable=False),
         sa.ForeignKeyConstraint(["application_id"], ["application.id"]),
         sa.ForeignKeyConstraint(["traveler_id"], ["traveler.id"]),
         sa.PrimaryKeyConstraint("application_id"),
